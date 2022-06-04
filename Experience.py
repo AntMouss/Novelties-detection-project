@@ -6,7 +6,7 @@ import json
 
 from matplotlib import pyplot as plt
 import os
-from NLP_Module import SequencialLdaModel , TimeWindows , SeedGenerator
+from NLP_Module import SequencialLangageModeling , TimeWindows , SeedGenerator
 from tqdm import tqdm
 
 
@@ -223,8 +223,8 @@ def generateExperience(database_withKey , database_withoutKey , experience , the
            end_date, window in tlWith]
 
     # init guided lda for timeline with changement and without
-    glda_w = SequencialLdaModel(guided=True, seed=seed)
-    glda_wout = SequencialLdaModel(guided=True, seed=seed)
+    glda_w = SequencialLangageModeling(guided=True, seed=seed)
+    glda_wout = SequencialLangageModeling(guided=True, seed=seed)
 
     # train guidedlda for the 2 timelines with same hyperparameter (seed , lookback...)
     glda_w.add_windows(tlw, lookback=lookback , updateRes = save_words_timeline)

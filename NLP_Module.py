@@ -1,9 +1,10 @@
-import copy
 import math
 import random
 from gensim import corpora
 from gensim.models.ldamodel import LdaModel
-from data_processing import fileToObject, filterDictionnary
+from seedGen import SeedGenerator
+from Engine import GuidedLDA
+from data_processing import filterDictionnary
 import json
 from matplotlib import pyplot as plt
 import os
@@ -15,355 +16,19 @@ from gensim.models.coherencemodel import CoherenceModel
 from collections import Counter
 from tqdm import tqdm
 from corextopic import corextopic as ct
-from data_utils import TimeWindows , LabelsWordsCounter , DocumentsWordsCounter
-import scipy.sparse as ss
+from data_utils import TimeWindows
 import numpy as np
+import Engine
 
 
-
-class Engine:
-
-    def __init__(self, texts: list = None, labels: list = None , n_topics : int = 5):
-
-        self.labels = labels
-        self.texts = texts
-        self.n_topics = n_topics
-        self.core = None
-
-    def get_topic_terms(self,topic_id= 0, topn=100):
-        pass
-
-
-class CoreX(Engine):
-
-    def __init__(self , **kwargs):
-        super().__init__(**kwargs)
-        self.document_words_counter = DocumentsWordsCounter(self.texts)
-        self.words = [ word for word in self.document_words_counter.columns]
-        self.documents_matrix = self.document_words_counter.to_numpy(dype = bool)
-        self.documents_matrix = ss.csc_matrix(self.documents_matrix)
-        self.core = ct.Corex(n_hidden=self.n_topics, words=self.words, max_iter=200, verbose=False, seed=1)
-
-    def get_topic_terms(self,topic_id= 0, topn=100):
-
-        return self.core.get_topics(n_words=topn , topic=topic_id)
-
-
-class SupervisedCoreX(CoreX):
-    def __init__(self , **kwargs):
-        super().__init__(**kwargs)
-        self.core.fit(self.documents_matrix , y=self.labels)
-
-
-class GuidedCoreX(CoreX):
-    def __init__(self , seed : dict , anchor_strength = 3 , **kwargs ):
-        super(GuidedCoreX, self).__init__(**kwargs)
-        self.seed = seed
-        self.anchors = [words for lab , words in self.seed.items()]
-        self.core.fit(self.documents_matrix , anchors=self.anchors)
-
-
-
-class LFIDF(Engine):
-
-    def __init__(self, texts, labels):
-
-        super().__init__(texts, labels)
-        self.n_docs = len(texts)
-        self.labels_words_counter = LabelsWordsCounter(texts , labels)
-        self.table_idx = {label : i for i , label in enumerate(self.labels_words_counter.index)}
-        self.idx_words = {i : word for i , word in enumerate(self.labels_words_counter.columns)}
-        self.lfidf_matrix = self.process_lfidf_matrix()
-
-
-    def process_lfidf_matrix(self):
-        lfidf_matrix = copy.deepcopy(self.labels_words_counter).to_numpy()
-        for i in range(lfidf_matrix.shape[0]):
-            for j in range(lfidf_matrix.shape[1]):
-                lf = (lfidf_matrix[i][j]/np.sum(lfidf_matrix[i]))
-                idf = np.log(self.n_docs/np.sum(lfidf_matrix[j]))
-                lfidf_matrix[i][j] = lf*idf
-
-    def get_topic_terms(self,topic= None, topn=100):
-        idx = self.table_idx[topic]
-        label_serie = self.lfidf_matrix[idx]
-        words_idx = reversed(np.argsort(label_serie))[:topn]
-        return [self.idx_words[word_id] for word_id in words_idx]
-
-
-
-class LDA(Engine):
-
-    def __init__(self, dictionnary: corpora.Dictionary = None,
-                 random_state=42,**kwargs):
-
-        super().__init__(**kwargs)
-        self.random_state = random_state
-        self.dictionnary = dictionnary
-        corpus_bow = [self.dictionnary.doc2bow(text) for text in self.texts]
-        self.ldaargs = {
-            "corpus" : corpus_bow,
-            "num_topics" : self.n_topics,
-            "id2word" : self.dictionnary ,
-            "random_state" : self.random_state
-        }
-        self.core  = LdaModel(**self.ldaargs)
-
-
-    def get_topic_terms(self , **kwargs):
-
-        return self.core.get_topic_terms(**kwargs)
-
-
-class GuidedLDA(LDA):
-
-
-    def __init__(self, seed : dict = None , table : dict = None , **kwargs):
-
-        super().__init__(**kwargs)
-        self.table = table
-        self.seed = seed
-        self.ldaargs['eta'] = self.generate_eta(self.seed , self.dictionnary , self.table)
-        self.core = LdaModel(**self.ldaargs)
-
-    @staticmethod
-    def generate_eta(seed , dictionnary , table, normalize_eta=False, overratte=1e7):
-
-        ntopics = len(seed)
-
-        eta = np.full(shape=(ntopics, len(dictionnary)),
-                      fill_value=1)  # create a (ntopics, nterms) matrix and fill with 1
-        for topic in seed.keys():
-            topic_id = table[topic]
-            for word in seed[topic]:
-                keyindex = [index for index, term in dictionnary.items() if
-                            term == word]  # look up the word in the dictionary
-                if (len(keyindex) > 0):  # if it's in the dictionary
-                    try:
-                        eta[topic_id, keyindex[0]] = overratte  # put a large number in there
-                    except Exception as e:
-                        print(e)
-                        print(topic)
-                        print(keyindex[0])
-        if normalize_eta:
-            eta = np.divide(eta, eta.sum(axis=0))  # normalize so that the probabilities sum to 1 over all topics
-        # we can remove this line for other test
-        return eta
-
-
-
-
-
-
-
-class SeedGenerator:
-
-    """
-    use this class to generate seed object.
-    In our case seed objet is a set of words correlated to a specific label in our database.
-    Because each aticle is labelized we can use this class to return one word set by label in the database
-    """
-
-    def __init__(self, seedArticlePath=None, databasePath=None, k=10):
-        """
-        we can use pre-selected
-        @param seedArticlePath:
-        @param databasePath:
-        @param k:
-        """
-        self.labels=['crime' , 'politique' , 'economy' , 'justice' , 'general']
-        self.seedPath = seedArticlePath
-        self.databasePath = databasePath
-        self.database_with_keys = fileToObject(self.databasePath)
-        self.k = k
-        self.labelDictionnary = {}
-
-
-        if self.seedPath is None:
-           self.seedArticlesId = self.selectArticlesSeedRandomly()
-        else:
-            self.seedArticlesId = fileToObject(self.seedPath)
-
-
-
-    def selectArticlesSeedRandomly(self):
-
-
-        articlesRandomlySelected = []
-        articlesRandomlySelectedId = []
-        articlesIdPerlabel = {}
-        for article_id in self.database_with_keys:
-            try:
-                label_article = self.database_with_keys[article_id]['label'][0]
-                if label_article in self.labels:
-                    if label_article not in articlesIdPerlabel.keys():
-                        articlesIdPerlabel[label_article] = []
-                    articlesIdPerlabel[label_article].append(article_id)
-            except Exception as e:
-                continue
-        for label in articlesIdPerlabel.keys():
-            count = 0
-            if self.k > math.floor(5*(len(articlesIdPerlabel[label]) / 100)):
-                k_real = math.floor(5*(len(articlesIdPerlabel[label]) / 100))
-            else:
-                k_real = self.k
-            while(count != k_real):
-                article_id_randomly_selected = random.choice(articlesIdPerlabel[label])
-                if len(self.database_with_keys[article_id_randomly_selected]['process_text']) != 0 and article_id_randomly_selected not in articlesRandomlySelectedId:
-                    count += 1
-                    articlesRandomlySelectedId.append(article_id_randomly_selected)
-
-        return articlesRandomlySelectedId
-
-
-
-    def updateLabelDictionnary (self , processedText , label):
-
-        first = []
-        try:
-            for word in processedText:
-                if word not in self.labelDictionnary.keys():
-                    self.labelDictionnary[word] = {}
-                    self.labelDictionnary[word]['dfs'] = 0
-                    self.labelDictionnary[word]['cfs'] = 0
-
-                if label not in self.labelDictionnary[word].keys():
-                    self.labelDictionnary[word][label] = {}
-                    self.labelDictionnary[word][label]['dfs_label'] = 0
-                    self.labelDictionnary[word][label]['cfs_label'] = 0
-
-                self.labelDictionnary[word]['cfs'] += 1
-                self.labelDictionnary[word][label]['cfs_label'] += 1
-
-                if word not in first:
-                    self.labelDictionnary[word][label]['dfs_label'] += 1
-                    self.labelDictionnary[word]['dfs'] += 1
-                    first.append(word)
-        except Exception as e:
-            print(e)
-
-
-
-    def fetchLabelsTexts(self):
-        """
-        for each label process and append all text in the according list (according to the label)
-
-        """
-
-        labelsTexts = {}
-        for article_id in self.seedArticlesId:
-            article_label = self.database_with_keys[article_id]['label'][0]
-            article_text = self.database_with_keys[article_id]['process_text']
-            if article_label not in labelsTexts.keys():
-                labelsTexts[article_label] = []
-            self.updateLabelDictionnary(article_text , article_label)
-            labelsTexts[article_label] += article_text
-        for label in labelsTexts.keys():
-            labelsTexts[label] = set(labelsTexts[label])
-
-        return labelsTexts
-
-        # return [fileToJson(path)['text']for path in seedPath]
-
-
-    def generateSeed(self , exclusive =True , doLFIDF = False , nbWordsByLabel = 0):
-        """"
-        for each topic remove world that are not exclusive to a topic
-        and return a dictionnary with labels as keys and set of words as values
-
-        """
-        labelsSets = self.fetchLabelsTexts()
-        filtredLabelsSets = {}
-        # we can keep the same dictionnary during the iteration because when we modified a set from a label we lost the words that are not exclusive to the current label and we can use this word for eliminate no exclusive words to the others label so we had to make a new dictionnary
-        if exclusive:
-            for i , targetLabel in enumerate(labelsSets.keys()):
-
-                filtredLabelsSets[targetLabel] = set()
-                setOthersLabel = set()
-                for label in labelsSets.keys():
-                    if label != targetLabel:
-                        setOthersLabel = setOthersLabel.union(labelsSets[label])
-
-                    filtredLabelsSets[targetLabel] = list(labelsSets[targetLabel].difference(setOthersLabel))
-        else:
-            # we don't filter the set of words Label
-            filtredLabelsSets = labelsSets
-
-        # make ranking for select more significant seed words
-
-        if doLFIDF:
-            for label in filtredLabelsSets:
-                lfidf_liste = []
-                for word in filtredLabelsSets[label]:
-                    lfidf_score = self.labelDictionnary[word][label]['dfs_label']
-                    # if self.labelDictionnary[word][label]['dfs_label']>1:
-                    #     print('erer')
-                    # lfidf_score = (self.labelDictionnary[word][label]['dfs_label']/self.k )/ (self.labelDictionnary[word]['dfs']/(len(self.labels)*self.k))
-                    lfidf_liste.append((word , lfidf_score))
-                lfidf_liste_sorted = sorted(lfidf_liste, key=lambda tup: tup[1] , reverse=True)
-                if nbWordsByLabel > len(lfidf_liste_sorted):
-                    filtredLabelsSets[label] = [tpl[0] for tpl in lfidf_liste_sorted]
-                else:
-                    filtredLabelsSets[label] = [tpl[0] for tpl in lfidf_liste_sorted[:nbWordsByLabel]]
-        return filtredLabelsSets
-
-
-
-
-    def generatePriors(self):
-        """
-
-        :return:dictionnary of priors with words as keys and label as value
-        """
-        priors = {}
-        labelSet = self.generateSeed()
-        # priors={ word : label for word in labelSet[label] for label in labelSet.keys() }
-
-        for label in labelSet.keys():
-            for word in labelSet[label]:
-                priors[word] = label
-        return priors
-
-    @staticmethod
-    def filterPriors(priors, dictionnary):
-        """
-
-        :param priors: dictionnary with words as keys and label as value
-        :param dictionnary: gensim reference dictionnary based on our all corpus
-        :return: other priors that is a copy of the input priors without the word that is not in the reference dictionnary
-        """
-        priorsToReturn = priors.copy()
-        for word in priors.keys():
-
-            try:
-                dictionnary.token2id[word]
-            except KeyError as e:
-                del priorsToReturn[word]
-        return priorsToReturn
-
-    @staticmethod
-    def savePriors(priors, filePath):
-
-        with open(filePath, 'w') as f:
-            f.write(json.dumps(priors))
-
-    @staticmethod
-    def loadPriors(filePath):
-
-        with open(filePath, 'r') as f:
-            return json.load(f)
-
-
-
-
-class SequencialLdaModel:
+class SequencialLangageModeling:
 
     """
     the purpose of this class is to train a new guidedLda model by temporal windows
     and compare the keywords by topic and follow the comportement of this keywords in the differents topics
     """
 
-    def __init__(self,guided = None , engineClassName = None , nb_topics=0 , semi_filtred_dictionnary=None , seed=None):
+    def __init__(self,guided = None , nb_topics=0 , semi_filtred_dictionnary=None , seed=None):
         """
         this class need one specific dictionnary and one specific dataBase
         as the dataBase is so important we don't want to load the dataBase with this class
@@ -382,7 +47,7 @@ class SequencialLdaModel:
 
         """
 
-        self.engine = globals()[engineClassName]
+        self.engine = Engine.Engine
         self.semi_filtred_dictionnary = corpora.Dictionary()
         if guided == False and seed is not None:
             raise Exception("no guided lda can't have seed")
@@ -455,32 +120,22 @@ class SequencialLdaModel:
 
         """
 
-        # # first we need to process the articles text of the window. it's better to process text here to bring the model independant of the previous processing of the data
-        # processor = ProcessorText()
-        # processedTexts = processor.processTexts(data_window)
-
-        # For the moment we just check if the window is empty
         if len(documents_window) != 0:
             if self.guided == True:
                 texts_window = [ text for text , label in documents_window]
             else:
                 texts_window = documents_window
 
-
-            # second ,we need to generate a new window dictionnary and semi-filtred it after we can update the reference dictionnary with the function merge_with from gensim
             window_dictionnary = corpora.Dictionary(texts_window)
-            # # for the moment we do the semi-filtrage previously directly on the text of our data , so we don't need to do here.
-            # window_dictionnary = filterDictionnary(window_dictionnary, total_filter=False)
 
             #update semi-filtred dictionnary
             self.semi_filtred_dictionnary.merge_with(window_dictionnary)
 
-
-            #we filtre window_dictionnary
+            #we filtre bad words from window_dictionnary
             self.updateBadwords()
             window_dictionnary_f = filterDictionnary(window_dictionnary , bad_words=self.bad_words)
 
-            # fourth transform text corpus in bow corpus with the filtred reference dictionnary
+            # fourth transform text corpus in bow corpus with the filtred window dictionnary
             corpus_bow = [window_dictionnary_f.doc2bow(document) for document in texts_window]
 
             if self.guided == True:
@@ -490,16 +145,13 @@ class SequencialLdaModel:
                 # train specific GLDA model correlated to the window
                 model = self.engine(corpus_bow, num_topics=self.nb_topics, id2word=window_dictionnary_f , eta=eta , random_state=random_state)
 
-
             else:
                 model = self.engine(corpus_bow, num_topics=self.nb_topics, id2word=window_dictionnary_f , random_state=random_state)
                 cm = CoherenceModel(model=model, topn=150, coherence='c_v')
                 scores = cm.get_coherence_per_topic()
                 self.coherence_scores.append(scores)
 
-
             return model, window_dictionnary_f
-
 
 
     def add_windows(self, data , lookback = 10 , updateRes = True   ):
@@ -1043,7 +695,7 @@ if __name__ == '__main__':
     with open(seedPath , 'r') as fs:
         seed = json.load(fs)
 
-    MTGLDA=SequencialLdaModel(guided=True , seed=random_seed)
+    MTGLDA=SequencialLangageModeling(guided=True, seed=random_seed)
     start_time = time.time()
     MTGLDA.add_windows(data , lookback=0.5)
     #MTGLDA.visualizeTopicEvolution(0 , ntop= 100)
@@ -1051,7 +703,7 @@ if __name__ == '__main__':
     MTGLDA.getRes()
     MTGLDA.save(model1Path)
 
-    MTGLDA = SequencialLdaModel()
+    MTGLDA = SequencialLangageModeling()
     MTGLDA.load(model1Path)
     MTGLDA.visualizeTopicEvolution(1 , ntop=400 , soft=True)
     print('f')

@@ -1,7 +1,5 @@
-
 import os
 import json
-import re
 from html2text import HTML2Text
 import feedparser
 from bs4 import BeautifulSoup
@@ -11,10 +9,8 @@ import shutil
 from urllib.parse import urlparse
 from datetime import datetime
 import logging
-from threading import Thread
 import threading
-import time
-from data_processing import ProcessorText , extract_text
+from data_processing import extract_text
 import sys
 import validators
 import pathlib

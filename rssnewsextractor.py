@@ -1,9 +1,7 @@
 import os.path
-
 from flask import Flask, request
 from flask_restplus import Api, Resource, fields
 import requests
-
 from os import path
 import json
 import sys
