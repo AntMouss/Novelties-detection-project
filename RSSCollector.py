@@ -1,8 +1,4 @@
-'''
 
-
-Gendarmerie Nationale.
-'''
 import os
 import json
 import re
