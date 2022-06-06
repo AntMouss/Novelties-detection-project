@@ -58,7 +58,7 @@ class ArticlesDataset:
 
 class SplitedArticlesDataset(ArticlesDataset):
 
-    def __init__(self, delta = 1 , look_back = 100 , **kwargs):
+    def __init__(self, delta = 1 , lookback = 100 , mode : chr = 's' , **kwargs):
         """
 
         @param delta: duration of each window
@@ -67,10 +67,30 @@ class SplitedArticlesDataset(ArticlesDataset):
         @param kwargs:
         """
         super().__init__(**kwargs)
-        self.look_back = look_back
-        self.look_back_articles = []
+        if mode == 's':
+            self.features = ['text' , 'labels']
+        else:
+            self.features = ['text']
+        self.lookback = lookback
+        self.lookback_articles = []
         self.delta = delta * 3600
+        self.label_articles_counter = []
 
+
+    def update_lookback_articles(self, window_articles):
+        #transform relative look_back to absolute look_back
+        if self.lookback < 1:
+            self.lookback = math.ceil(self.lookback * len(window_articles))
+        if self.lookback > len(window_articles):
+            self.lookback_articles = self.lookback_articles[(self.lookback - len(window_articles)):] + window_articles
+        else:
+            self.lookback_articles = window_articles[-self.lookback:]
+
+    def transform(self , articles):
+        res = []
+        for article in articles:
+            res.append(article[feature] for feature in self.features)
+        return zip(*res)
 
 
     def __iter__(self):
@@ -81,15 +101,17 @@ class SplitedArticlesDataset(ArticlesDataset):
         for i ,  article in enumerate(self.articles):
             if article['timeStamp'] < self.start_date or ProcessorText.detectLanguage(article['title']) != 'fr':
                 continue
-            while ref_date_tmsp + n_window * self.delta < article['timeStamp'] and article['timeStamp'] < self.end_date:
+            while ref_date_tmsp + self.delta < article['timeStamp'] and article['timeStamp'] < self.end_date:
                 n_window += 1
-                window_articles.append(self.look_back_articles)
-                yield window_articles
-                self.look_back_articles = window_articles[-self.look_back:]
+                ref_date_tmsp = ref_date_tmsp + self.delta
+                window_articles.append(self.lookback_articles)
+                yield  ref_date_tmsp , window_articles
+                self.update_lookback_articles(window_articles)
                 del window_articles
                 window_articles = []
             window_articles.append(article)
-        yield window_articles
+        yield ref_date_tmsp , window_articles
+
 
 
 
@@ -207,10 +229,6 @@ class TimeWindows:
             self.startTime=minTime
 
 
-class Formater:
-
-    def __init__(self , texts : List[List[str]] = None , labels : List[str] = None , with_label = True):
-        pass
 
 
 class WordsCounter:

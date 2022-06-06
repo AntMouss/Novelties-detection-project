@@ -62,6 +62,7 @@ def analyseStreamCollect(timeWindow_data , perLabel = True):
     @perLabel : plot evolution of numbers of articles for all label
     """
     #evolution of number of articles per time-window
+    global id_label
     plt.figure()
     if perLabel:
         plt.title("number of articles per window per label")

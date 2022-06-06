@@ -1,16 +1,12 @@
 import math
 import random
 import copy
-
 import json
-
-from matplotlib import pyplot as plt
 import os
-from NLP_Module import SequencialLangageModeling , TimeWindows , SeedGenerator
+from Sequential_Module import SequencialLangageModeling
 from tqdm import tqdm
 
-
-
+from data_utils import TimeWindows
 
 
 def createArtificialChange (timeline, thematics, experience):

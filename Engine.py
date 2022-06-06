@@ -9,8 +9,9 @@ from data_utils import DocumentsWordsCounter, LabelsWordsCounter
 
 class Engine:
 
-    def __init__(self, texts: list = None, n_topics : int = 5):
+    def __init__(self, texts: list = None, n_topics : int = 5 , random_state : int = 42):
 
+        self.random_state = random_state
         self.texts = texts
         self.n_topics = n_topics
         self.core = None
@@ -65,7 +66,7 @@ class LFIDF(SupervisedEngine):
         super().__init__(**kwargs)
         self.n_docs = len(self.texts)
         self.labels_words_counter = LabelsWordsCounter(self.texts , self.labels)
-        self.table_idx = {label : i for i , label in enumerate(self.labels_words_counter.index)}
+        self.labels_idx = {label : i for i , label in enumerate(self.labels_words_counter.index)}
         self.idx_words = {i : word for i , word in enumerate(self.labels_words_counter.columns)}
         self.lfidf_matrix = self.process_lfidf_matrix()
 
@@ -79,10 +80,11 @@ class LFIDF(SupervisedEngine):
                 lfidf_matrix[i][j] = lf*idf
 
     def get_topic_terms(self,topic= None, topn=100):
-        idx = self.table_idx[topic]
+        idx = self.labels_idx[topic]
         label_serie = self.lfidf_matrix[idx]
         words_idx = reversed(np.argsort(label_serie))[:topn]
-        return [self.idx_words[word_id] for word_id in words_idx]
+        #[(word , score) , ...]
+        return [(self.idx_words[word_id] , label_serie[word_id]) for word_id in words_idx]
 
 
 
@@ -106,7 +108,8 @@ class LDA(Engine):
 
     def get_topic_terms(self , **kwargs):
 
-        return self.core.get_topic_terms(**kwargs)
+        res = self.core.get_topic_terms(**kwargs)
+        return [(self.core.id2word(word_id) , score) for word_id , score in res]
 
 
 class GuidedLDA(GuidedEngine , LDA):
