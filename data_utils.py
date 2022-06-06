@@ -36,11 +36,16 @@ class ArticlesDataset:
 
         return len(self.article_keys_idx)
 
+    def verif(self , article):
+        if ProcessorText.detectLanguage(article['title']) == self.lang:
+            return True
+        else:
+            return False
 
     def __iter__(self):
 
          for article in self.articles:
-             if ProcessorText.detectLanguage(article['title']) == 'fr':
+            if self.verif(article):
                  yield article
 
 
@@ -56,7 +61,7 @@ class ArticlesDataset:
         return True
 
 
-class SplitedArticlesDataset(ArticlesDataset):
+class TimeLineArticlesDataset(ArticlesDataset):
 
     def __init__(self, delta = 1 , lookback = 100 , mode : chr = 's' , **kwargs):
         """
@@ -75,6 +80,10 @@ class SplitedArticlesDataset(ArticlesDataset):
         self.lookback_articles = []
         self.delta = delta * 3600
         self.label_articles_counter = []
+        self._ids_to_remove = []
+
+    def set_ids_to_remove(self,ids_to_remove:List):
+        self._ids_to_remove = ids_to_remove
 
 
     def update_lookback_articles(self, window_articles):
@@ -86,6 +95,7 @@ class SplitedArticlesDataset(ArticlesDataset):
         else:
             self.lookback_articles = window_articles[-self.lookback:]
 
+
     def transform(self , articles):
         res = []
         for article in articles:
@@ -93,24 +103,35 @@ class SplitedArticlesDataset(ArticlesDataset):
         return zip(*res)
 
 
+    def verif(self , article):
+
+        if article['timeStamp'] < self.start_date:
+            return False
+        elif ProcessorText.detectLanguage(article['title']) != self.lang:
+            return False
+        elif article['id'] in self._ids_to_remove:
+            return False
+        else:
+            return True
+
     def __iter__(self):
 
         ref_date_tmsp = self.start_date
         n_window = 1
         window_articles = []
         for i ,  article in enumerate(self.articles):
-            if article['timeStamp'] < self.start_date or ProcessorText.detectLanguage(article['title']) != 'fr':
+            if self.verif(article):
                 continue
             while ref_date_tmsp + self.delta < article['timeStamp'] and article['timeStamp'] < self.end_date:
                 n_window += 1
                 ref_date_tmsp = ref_date_tmsp + self.delta
                 window_articles.append(self.lookback_articles)
-                yield  ref_date_tmsp , window_articles
+                yield  ref_date_tmsp , self.transform(window_articles)
                 self.update_lookback_articles(window_articles)
                 del window_articles
                 window_articles = []
             window_articles.append(article)
-        yield ref_date_tmsp , window_articles
+        yield ref_date_tmsp , self.transform(window_articles)
 
 
 
@@ -287,7 +308,7 @@ class LabelsDictionnary:
 if __name__ == '__main__':
 
     path = '/home/mouss/data/final_database.json'
-    test = SplitedArticlesDataset(path , delta=24)
+    test = TimeLineArticlesDataset(path, delta=24)
     see = []
     for el in test:
         see.append(len(el))

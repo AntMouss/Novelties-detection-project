@@ -3,10 +3,114 @@ import random
 import copy
 import json
 import os
+from typing import List, Tuple
 from Sequential_Module import SequencialLangageModeling
 from tqdm import tqdm
+from data_utils import TimeWindows , TimeLineArticlesDataset
+from datetime import datetime
 
-from data_utils import TimeWindows
+
+class Thematic:
+    def __init__(self , name : str , label : str  ,date : datetime , article_ids : List):
+        self.article_ids = article_ids
+        self.date = date
+        self.label = label
+        self.name = name
+
+
+
+class ExperiencesMetadata:
+
+    def __init__(self , name : str = None , range : List[Tuple] = None , nb_windows : int = None ):
+        self.nb_windows = nb_windows
+        self.range = range
+        self.name = name
+
+
+
+class ExperiencesMetadataGenerator:
+
+    def __init__(self ,thematics : List[Thematic] = None  , timeline_size : int = None , nb_experience : int = 32
+                 , cheat : bool = False , boost : int = 0):
+        self.boost = boost
+        self.cheat = cheat
+        self.nb_experience = nb_experience
+        self.timeline_size = timeline_size
+        self.thematics = thematics
+        self.min_thematic_size = 100
+        self.max_size = self.timeline_size//4
+        self.min_size = 2
+
+    @staticmethod
+    def verifSide(start, size, total_size, ranges):
+
+        end = start + size
+        if start < 3 or end > total_size - 3:
+            return False
+        for range in ranges:
+            if range[0] - 3 < start < range[1] + 3 or range[0] - 3 < end < range[1] + 3:
+                return False
+        return True
+
+    def __iter__(self ):
+
+        if self.max_size >= 1:
+            raise Exception("max_size need to be inferior to 1")
+        max_size = math.ceil(self.timeline_size * self.max_size)
+        thematics_experience = [thematic.name for thematic in self.thematics if
+                                len(thematic.article_ids) > self.min_thematic_size]
+        count = 0
+        while count < self.nb_experience:
+            experience = {}
+            thematic = random.choice(thematics_experience)
+            experience['name'] = thematic
+            experience['ranges'] = []
+            fail = 0
+            while count < self.nb_experience and fail < 15:
+                size = random.randrange(self.min_size, max_size)
+                window_start = random.randrange(self.timeline_size)
+                ver = ExperiencesMetadataGenerator.verifSide(window_start, size, self.timeline_size, experience['ranges'])
+                if ver:
+                    experience['ranges'].append((window_start, window_start + size))
+                    count += 1
+                    print(f"count : {count}")
+                    fail = 0
+                else:
+                    fail += 1
+                    print(f"fail : {fail}")
+            # sort ranges
+            experience['ranges'].sort(key=lambda tup: tup[0])
+
+            experience['cheat'] = self.cheat
+            experience['boost'] = self.boost
+
+            yield ExperiencesMetadata(**experience)
+
+
+    def __call__(self, min_thematic_size = 4000 , min_size = 2 , max_size = 0.25):
+        self.min_thematic_size = min_thematic_size
+        self.min_size = min_size
+        self.max_size = max_size
+
+
+
+
+class ExperiencesGenerator:
+
+    def __init__(self, experiencesMetadataGenerator : ExperiencesMetadataGenerator):
+        self.experiencesMetadataGenerator = experiencesMetadataGenerator
+
+
+    def generate_timelines(self) -> Tuple[TimeLineArticlesDataset]:
+
+        for metadata in self.experiencesMetadataGenerator:
+            ids_to_remove
+            timelinewout = TimeLineArticlesDataset()
+            timelinew = TimeLineArticlesDataset().set_ids_to_remove(ids_to_remove)
+            yield timelinew , timelinewout
+
+
+
 
 
 def createArtificialChange (timeline, thematics, experience):
@@ -252,86 +356,37 @@ def generateExperience(database_withKey , database_withoutKey , experience , the
 
 
 
-def generateExperienceData(thematics  , timeline_size , nb_experience = 32 , cheat = False , boost = 0):
-
-    experiences = {}
-    experiences['info'] = {'timeline_size' : timeline_size}
-    experiences['experiences'] = []
-    min_size_experience = 2
-    max_size_experience = timeline_size // 4
-    thematics_experience = [thematic_name for thematic_name in thematics.keys() if len(thematics[thematic_name]['articles']) > 4000]
-    count = 0
-    while count < nb_experience:
-        experience = {}
-        thematic = random.choice(thematics_experience)
-        experience['name'] = thematic
-        experience['ranges'] = []
-        fail = 0
-        while count < nb_experience and fail < 15:
-            size = random.randrange(min_size_experience , max_size_experience)
-            window_start = random.randrange(timeline_size)
-            ver = verifSide(window_start , size , timeline_size , experience['ranges'])
-            if ver:
-                experience['ranges'].append([window_start , window_start+size])
-                count += 1
-                print(f"count : {count}")
-                fail = 0
-            else:
-                fail += 1
-                print(f"fail : {fail}")
-        #sort ranges
-        experience['ranges'].sort(key=lambda tup:tup[0])
-
-        experience['cheat'] = cheat
-        experience['boost'] = boost
-
-        experiences['experiences'].append(experience)
-
-
-    return experiences
 
 
 
-
-def verifSide(start , size , total_size , ranges):
-
-    end  = start + size
-    if start < 3 or end > total_size - 3:
-        return False
-    for range in ranges:
-        if range[0] - 3 < start < range[1] + 3 or  range[0] - 3 < end < range[1] + 3:
-            return False
-    return  True
-
-
-def doExperience(path  ,database_withKey ,  database_withoutKey , thematics ,
-                           seed , lookback ,window_size , save_words_timeline):
-
-
-    # add number of window in timeline
-    timeline_size = len(TimeWindows(window_size).splittArticlesPerWindows(database_withoutKey))
-    # generate timeline with targeted thematic and without trageted thematic
-
-    experiences = generateExperienceData(thematics=thematics, timeline_size=timeline_size, nb_experience=50,
-                                         cheat=False)
-
-
-    all_experiences_data = []
-    for i, experience in tqdm(list(enumerate(experiences['experiences'] , start=2))):
-
-        experience_folder = os.path.join(path, 'experience' + str(i))
-        # check if the folder exist
-        if not os.path.exists(experience_folder):
-            os.makedirs(experience_folder)
-        final_data = generateExperience(database_withKey=database_withKey, database_withoutKey=database_withoutKey,
-                                        experience=experience, thematics=thematics,
-                                        seed=seed, experience_folder=experience_folder, lookback=lookback, window_size=window_size,
-                                        save_words_timeline=save_words_timeline)
-        all_experiences_data.append(final_data)
-
-    # save all experiences results
-    with open(os.path.join(path , 'interface.json'), 'w') as f:
-        f.write(json.dumps(all_experiences_data))
+# def doExperience(path  ,database_withKey ,  database_withoutKey , thematics ,
+#                            seed , lookback ,window_size , save_words_timeline):
+#
+#
+#     # add number of window in timeline
+#     timeline_size = len(TimeWindows(window_size).splittArticlesPerWindows(database_withoutKey))
+#     # generate timeline with targeted thematic and without trageted thematic
+#
+#     experiences = generateExperienceData(thematics=thematics, timeline_size=timeline_size, nb_experience=50,
+#                                          cheat=False)
+#
+#
+#     all_experiences_data = []
+#     for i, experience in tqdm(list(enumerate(experiences['experiences'] , start=2))):
+#
+#         experience_folder = os.path.join(path, 'experience' + str(i))
+#         # check if the folder exist
+#         if not os.path.exists(experience_folder):
+#             os.makedirs(experience_folder)
+#         final_data = generateExperience(database_withKey=database_withKey, database_withoutKey=database_withoutKey,
+#                                         experience=experience, thematics=thematics,
+#                                         seed=seed, experience_folder=experience_folder, lookback=lookback, window_size=window_size,
+#                                         save_words_timeline=save_words_timeline)
+#         all_experiences_data.append(final_data)
+#
+#     # save all experiences results
+#     with open(os.path.join(path , 'interface.json'), 'w') as f:
+#         f.write(json.dumps(all_experiences_data))
 
 
 
@@ -377,7 +432,7 @@ if __name__ == '__main__':
         seed = json.load(f)
 
 
-    doExperience( path=os.path.join(root,'Experience_lookback0_window_size24_2')  ,database_withKey=data_withk, database_withoutKey=data_withoutk , seed=seed , thematics=thematics , lookback=0, window_size=24 , save_words_timeline=False)
+    #doExperience( path=os.path.join(root,'Experience_lookback0_window_size24_2')  ,database_withKey=data_withk, database_withoutKey=data_withoutk , seed=seed , thematics=thematics , lookback=0, window_size=24 , save_words_timeline=False)
     # doExperience( path=os.path.join(root,'Experience_lookback200_window_size24')  ,database_withKey=data_withk, database_withoutKey=data_withoutk , seed=seed , thematics=thematics , lookback=200, window_size=24, save_words_timeline=False)
     # doExperience( path=os.path.join(root,'Experience_lookback0_window_size1')  ,database_withKey=data_withk ,  database_withoutKey=data_withoutk , seed=seed , thematics=thematics , lookback=0, window_size=1, save_words_timeline=False)
     # doExperience( path=os.path.join(root,'Experience_lookback200_window_size1')  , database_withKey=data_withk ,database_withoutKey=data_withoutk , seed=seed , thematics=thematics , lookback=200, window_size=1, save_words_timeline=False)

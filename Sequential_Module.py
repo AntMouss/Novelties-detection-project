@@ -1,7 +1,7 @@
 import math
 import random
 from typing import List
-from data_utils import SplitedArticlesDataset
+from data_utils import TimeLineArticlesDataset
 from gensim import corpora
 from data_processing import filterDictionnary
 import os
@@ -667,7 +667,7 @@ class SequencialLangageModeling:
 
 
     @check_size
-    def treat_Window(self,texts ,  **kwargs):
+    def treat_Window(self,texts : List[List] ,  **kwargs):
 
         window_dictionnary = corpora.Dictionary(texts)
         # update semi-filtred dictionnary
@@ -681,7 +681,7 @@ class SequencialLangageModeling:
         return model, window_dictionnary_f
 
 
-    def add_windows(self, data : SplitedArticlesDataset, lookback = 10, update_res = True):
+    def add_windows(self, data : TimeLineArticlesDataset, lookback = 10, update_res = True):
 
         self.info['lookback'] = lookback
         rValue= random.Random()
@@ -737,7 +737,6 @@ class SequencialLangageModeling:
                 #appearance['keyword'][topic_id]['relative_score'] = str(score/average_score_topic)
 
 
-
     def updateBadwords(self):
 
         no_above = 1 - 0.5 * (1 - (1 /( 1 + math.log10(self.semi_filtred_dictionnary.num_docs / 100))))
@@ -769,7 +768,7 @@ class SequencialLangageModeling:
 
 
 
-    def getTopWordsTopic(self, topic_id, model : Engine = None, ntop : int = 100):
+    def getTopWordsTopic(self, topic_id, model : Engine = None, ntop : int = 100 , **kwargs):
 
 
         # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
@@ -788,33 +787,15 @@ class SequencialLangageModeling:
         return [{word : topWordsTopics[i][word] for word in topWordsTopics_tmp[i]} for i in range (len(topWordsTopics))]
 
 
-    def compareTopicSequentialy (self , topic_id , first_w = 0 , last_w =0 ,ntop = 100,fixeWindow = False, **kwargs):
 
-       # we use thi condition to set the numero of the last window because by
-       # default we want to compute similarity until the last window
-        if last_w == 0:
-            last_w = len(self.models)
-        if fixeWindow == True:
-            return [self.calcule_similarity_topics_W_W('jaccard', ntop, first_w, i, **kwargs)[topic_id] for i in range(first_w + 1, last_w)]
-        else:
-            return [self.calcule_similarity_topics_W_W('jaccard', ntop, i, i + 1, **kwargs)[topic_id] for i in range (first_w, last_w - 1)]
+class NoSupervisedSequantiallangageModeling(SequencialLangageModeling):
 
+    def compareTopicSequentialy(self):
+        pass
 
-    def calcule_similarity_topics_W_W(self,distance ='jaccard', ntop = 100, ith_window = 0, jth_window = 1, soft=False , **kwargs):
-
-            if distance == 'jaccard':
-                ithTopWordsTopics = self.getTopWordsTopics(self.models[ith_window], ntop=ntop, **kwargs)
-                # list of sets of top words per topics in jth window
-                jthTopWordsTopics = self.getTopWordsTopics(self.models[jth_window], ntop=ntop, **kwargs)
-                if soft == False:
-                    return [len(set(ithTopWordsTopics[topic_id].keys()).difference(set(jthTopWordsTopics[topic_id]))) / len(jthTopWordsTopics) for topic_id in range(len(ithTopWordsTopics)) ]
-                else:
-                    intersections =  [(set(ithTopWordsTopics[topic_id].keys()).difference(set(jthTopWordsTopics[topic_id]))) for topic_id in range(len(ithTopWordsTopics)) ]
-                    return [sum([jthTopWordsTopics[word]] for word in intersection) / len(jthTopWordsTopics) for intersection in intersections]
-            else:
-                raise Exception('for the moment there is just jaccard distance')
-
-
+    def calcule_similarity_topics_W_W(self):
+        # find a way to compare no unknown topic from 2 differents windows
+        pass
 
 
 class SupervisedSequantialLangagemodeling(SequencialLangageModeling):
@@ -824,7 +805,7 @@ class SupervisedSequantialLangagemodeling(SequencialLangageModeling):
         self.engine = Engine.SupervisedEngine
 
 
-    def add_windows(self, data : SplitedArticlesDataset, lookback = 10, update_res = True):
+    def add_windows(self, data : TimeLineArticlesDataset, lookback = 10, update_res = True):
 
         self.info['lookback'] = lookback
         rValue = random.Random()
@@ -850,9 +831,40 @@ class SupervisedSequantialLangagemodeling(SequencialLangageModeling):
                 print(e)
                 pass
 
+    def compareTopicSequentialy(self, topic_id, first_w=0, last_w=0, ntop=100, fixeWindow=False, **kwargs):
+
+        # we use thi condition to set the numero of the last window because by
+        # default we want to compute similarity until the last window
+        if last_w == 0:
+            last_w = len(self.models)
+        if fixeWindow == True:
+            return [self.calcule_similarity_topics_W_W('jaccard', ntop, first_w, i, **kwargs)[topic_id] for i in
+                    range(first_w + 1, last_w)]
+        else:
+            return [self.calcule_similarity_topics_W_W('jaccard', ntop, i, i + 1, **kwargs)[topic_id] for i in
+                    range(first_w, last_w - 1)]
+
+    def calcule_similarity_topics_W_W(self, distance='jaccard', ntop=100, ith_window=0, jth_window=1, soft=False,
+                                      **kwargs):
+
+        if distance == 'jaccard':
+            ithTopWordsTopics = self.getTopWordsTopics(self.models[ith_window], ntop=ntop, **kwargs)
+            # list of sets of top words per topics in jth window
+            jthTopWordsTopics = self.getTopWordsTopics(self.models[jth_window], ntop=ntop, **kwargs)
+            if soft == False:
+                return [len(set(ithTopWordsTopics[topic_id].keys()).difference(set(jthTopWordsTopics[topic_id]))) / len(
+                    jthTopWordsTopics) for topic_id in range(len(ithTopWordsTopics))]
+            else:
+                intersections = [(set(ithTopWordsTopics[topic_id].keys()).difference(set(jthTopWordsTopics[topic_id])))
+                                 for topic_id in range(len(ithTopWordsTopics))]
+                return [sum([jthTopWordsTopics[word]] for word in intersection) / len(jthTopWordsTopics) for
+                        intersection in intersections]
+        else:
+            raise Exception('for the moment there is just jaccard distance')
 
 
-class GuidedSequantialLangagemodeling(SequencialLangageModeling):
+
+class GuidedSequantialLangagemodeling(SupervisedSequantialLangagemodeling):
 
     def __init__(self , seed ,  **kwargs):
         super(GuidedSequantialLangagemodeling, self).__init__(**kwargs)
