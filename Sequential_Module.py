@@ -786,16 +786,16 @@ class SequencialLangageModeling:
                 topWordsTopics_tmp[j] = topWordsTopics_tmp[j].difference(topWordsTopics_tmp[i])
         return [{word : topWordsTopics[i][word] for word in topWordsTopics_tmp[i]} for i in range (len(topWordsTopics))]
 
-
-
-class NoSupervisedSequantiallangageModeling(SequencialLangageModeling):
-
     def compareTopicSequentialy(self):
         pass
 
     def calcule_similarity_topics_W_W(self):
         # find a way to compare no unknown topic from 2 differents windows
         pass
+
+    def get_res(self):
+        return self.res
+
 
 
 class SupervisedSequantialLangagemodeling(SequencialLangageModeling):
@@ -843,6 +843,7 @@ class SupervisedSequantialLangagemodeling(SequencialLangageModeling):
         else:
             return [self.calcule_similarity_topics_W_W('jaccard', ntop, i, i + 1, **kwargs)[topic_id] for i in
                     range(first_w, last_w - 1)]
+
 
     def calcule_similarity_topics_W_W(self, distance='jaccard', ntop=100, ith_window=0, jth_window=1, soft=False,
                                       **kwargs):

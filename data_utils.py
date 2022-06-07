@@ -1,10 +1,11 @@
 from typing import List
-
-from data_processing import addTimestampField , dateToDateTime
 import math
 import ijson
 from data_processing import ProcessorText
 import pandas as pd
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ExperienceGen import ExperiencesMetadata, Thematic
 
 
 class ArticlesDataset:
@@ -49,7 +50,6 @@ class ArticlesDataset:
                  yield article
 
 
-
     def check_sorted(self):
 
         tmsp_ref = 0
@@ -79,11 +79,8 @@ class TimeLineArticlesDataset(ArticlesDataset):
         self.lookback = lookback
         self.lookback_articles = []
         self.delta = delta * 3600
+        self.window_idx = 0
         self.label_articles_counter = []
-        self._ids_to_remove = []
-
-    def set_ids_to_remove(self,ids_to_remove:List):
-        self._ids_to_remove = ids_to_remove
 
 
     def update_lookback_articles(self, window_articles):
@@ -97,10 +94,44 @@ class TimeLineArticlesDataset(ArticlesDataset):
 
 
     def transform(self , articles):
+
         res = []
         for article in articles:
             res.append(article[feature] for feature in self.features)
         return zip(*res)
+
+
+    def __iter__(self):
+
+        ref_date_tmsp = self.start_date
+        self.window_idx = 1
+        window_articles = []
+        for i , article in enumerate(self.articles):
+
+            while ref_date_tmsp + self.delta < article['timeStamp'] and article['timeStamp'] < self.end_date:
+                self.window_idx += 1
+                ref_date_tmsp = ref_date_tmsp + self.delta
+                window_articles.append(self.lookback_articles)
+                yield  ref_date_tmsp , self.transform(window_articles)
+                self.update_lookback_articles(window_articles)
+                del window_articles
+                window_articles = []
+            if self.verif(article):
+                continue
+            else:
+                window_articles.append(article)
+        yield ref_date_tmsp , self.transform(window_articles)
+
+
+class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
+    def __init__(self , thematic : 'Thematic',metadata : 'ExperiencesMetadata',**kwargs ):
+        super(EditedTimeLineArticlesDataset, self).__init__(**kwargs)
+        self.thematic = thematic
+        self.metadata = metadata
+        self._ids_to_remove = self.thematic.article_ids
+
+    def set_ids_to_remove(self, ids_to_remove: List):
+        self._ids_to_remove = ids_to_remove
 
 
     def verif(self , article):
@@ -109,145 +140,17 @@ class TimeLineArticlesDataset(ArticlesDataset):
             return False
         elif ProcessorText.detectLanguage(article['title']) != self.lang:
             return False
-        elif article['id'] in self._ids_to_remove:
+        elif self.between_boundaries()  and article['id'] in self._ids_to_remove:
             return False
         else:
             return True
 
-    def __iter__(self):
+    def between_boundaries(self):
 
-        ref_date_tmsp = self.start_date
-        n_window = 1
-        window_articles = []
-        for i ,  article in enumerate(self.articles):
-            if self.verif(article):
-                continue
-            while ref_date_tmsp + self.delta < article['timeStamp'] and article['timeStamp'] < self.end_date:
-                n_window += 1
-                ref_date_tmsp = ref_date_tmsp + self.delta
-                window_articles.append(self.lookback_articles)
-                yield  ref_date_tmsp , self.transform(window_articles)
-                self.update_lookback_articles(window_articles)
-                del window_articles
-                window_articles = []
-            window_articles.append(article)
-        yield ref_date_tmsp , self.transform(window_articles)
-
-
-
-
-class TimeWindows:
-
-    def __init__(self,deltaTime,startTime=None,endTime=None) :
-        """
-
-        @param startTime: start of the time window (timestamp format suggered but can handdle string date)
-        @param endTime: end of the time window (timestamp format suggered but can handdle string date)
-        @param deltaTime: time intervall to split the window in many windows (timestamp format) in hour
-
-        """
-        if startTime is not None and endTime is not None:
-            if isinstance(startTime , str):
-                startTime = dateToDateTime(startTime , timeStamp=True)
-            if isinstance(endTime , str):
-                endTime = dateToDateTime(startTime , timeStamp=True)
-            if startTime-endTime>0:
-                change=startTime
-                startTime=endTime
-                endTime=change
-
-        self.startTime= startTime
-        self.endTime = endTime
-        self.deltaTime = deltaTime * 3600
-
-
-
-    def defineEndTimeAndNumberOfWindows (self):
-
-        self.n_windows = abs(math.ceil((self.endTime - self.startTime) / self.deltaTime))
-        self.endTime = self.startTime + self.deltaTime * self.n_windows
-
-
-
-    def splittArticlesPerWindows(self, data):
-        """
-
-        :param data: data from dataBase with a 'date' field as timeStamp format but can handdle string format the data need to be sorted by date (ascending)
-        return: list of list of id articles per time window sorted by time
-        """
-
-        # allArticleInWindow = [sorted(article_id , key=data[article_id]['date']) for article_id in data.keys() if self.startTime <= data[article_id]['date'] <= self.endTime]
-        if self.startTime == None:
-            self.startTime = data[0]['timeStamp']
-        if self.endTime == None:
-            self.endTime = data[-1]['timeStamp']
-        self.defineEndTimeAndNumberOfWindows()
-
-        splittedData = []
-        g=0
-        jref=0
-        for i in range (self.n_windows-1):
-            crossing = False
-            start_date_window = self.startTime + i * self.deltaTime
-            end_date_window = self.startTime + (i + 1) * self.deltaTime
-            window_articles=[]
-            for j in range(jref , len(data)):
-                try:
-                    if 'timeStamp' not in data[j].keys():
-                        data[j] = addTimestampField(data[j]['id'])
-                    date_article = data[j]['timeStamp']
-
-                    if start_date_window <= date_article < end_date_window:
-                        window_articles.append(data[j]['id'])
-                        crossing = True
-                    else:
-                        if crossing:
-                            jref = j
-                            splittedData.append((end_date_window, window_articles))
-
-                            break
-
-                except TypeError as e:
-                    print('empty field for date stimestamp')
-                    g += 1
-                    continue
-                except Exception as er:
-                    print('erere')
-                        # note the ids lists are not sorted by date
-                        # but in theory it's not necessary to sorted by date articles in the same window time
-
-        return splittedData
-
-
-
-    # we don't need this function anymore because data had to be sorted (ascending way)
-    def findStartAndEndTime(self, data):
-        """
-        we can use this fonction if the database isn't sorted to found start article and end article in the data
-        but this function is unuseful because we choose a more optimize process that needed sorted data in asceneding way
-        @param data: data from dataBase with 'date' field
-        """
-        if self.endTime==0:
-            maxTime=0
-            for article_id in data.keys():
-                if 'timeStamp' not in data[article_id].keys():
-                    if len(data[article_id]['date'])==0:
-                        continue
-                    data[article_id] = addTimestampField(data[article_id])
-                if data[article_id]['timeStamp'] > maxTime:
-                    maxTime = data[article_id]['timeStamp']
-            self. endTime=maxTime
-
-        if self.startTime==0:
-            minTime=1000000000000 #big value to be sure that the initial min value is superior to the real min value in the data
-            for article_id in data.keys():
-                if 'timeStamp' not in data[article_id].keys():
-                    if len(data[article_id]['date'])==0:
-                        continue
-                    data[article_id] = addTimestampField(data[article_id])
-                if data[article_id]['timeStamp'] < maxTime:
-                    minTime = data[article_id]['timeStamp']
-            self.startTime=minTime
+        for range in self.metadata.ranges:
+            if range[0] <= self.window_idx <= range[1]:
+                return False
+        return True
 
 
 
