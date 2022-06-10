@@ -171,7 +171,7 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
     def between_boundaries(self):
 
         for range in self.metadata.ranges:
-            if range[0] <= self.window_idx <= range[1]:
+            if range[0] <= self.window_idx < range[1]:
                 return True
         return False
 

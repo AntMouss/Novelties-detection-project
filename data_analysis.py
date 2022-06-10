@@ -1,11 +1,55 @@
-
+from typing import List
 import numpy as np
 import copy
-import os
-import json
+from ExperienceGen import ExperiencesResults
 import statistics
 from matplotlib import pyplot as plt
 from scipy.stats import pearsonr
+
+
+
+class Characterizer:
+
+    def __init__(self , results : ExperiencesResults ):
+        self.results = results.results
+        self.info = results.info
+        topic_characteristics = {
+            "before":[],
+            "after": [],
+            "middle" : [],
+            "in" : [],
+            "out" : [],
+            "inside": []
+        }
+        self.characteristics = [topic_characteristics for _ in range(self.info["nb_topics"])]
+
+
+    def caracterize(self):
+
+        for result in self.results:
+            for i , (topic_res_w , topic_res_wout) in enumerate(zip(result['with'] , result['without'])):
+                tmp = abs(topic_res_w - topic_res_wout)
+                for j , value in enumerate(tmp):
+                    key = self.choose_key(j , result.metadata.ranges)
+                    self.characteristics[i][key].append(value)
+
+    @staticmethod
+    def choose_key(idx_window , ranges):
+        if idx_window < ranges[0][0]:
+            return 'before'
+        elif idx_window > ranges[-1][1]:
+            return 'after'
+        else:
+            for entry , out in ranges:
+                if idx_window == out:
+                    return 'out'
+                elif idx_window == entry:
+                    return 'in'
+                elif entry < idx_window < out:
+                    return 'inside'
+            return 'middle'
+
+
 
 
 def testModel(corpus, model, id2topic, topic2id):
@@ -103,103 +147,6 @@ def analyseStreamCollect(timeWindow_data , perLabel = True):
         plt.show()
 
 
-def caracterisationExperiences(resultats):
-
-    # assume that all the timeline in the experiences have the same size
-    timeline_size = len(resultats[0]['serie'][0]['general'][0]['data']) + 1
-    car_experiences = {}
-
-    experiences = [ res['serie'][2]['with'] for res in resultats ]
-
-    #assume that it's same lookback for all experiences
-    lookback = experiences[0]['lookback']
-
-
-
-    res_experiences= []
-    for resultat_experience in resultats:
-        tmp_res = {}
-        #label means categorie: 'general' , 'justice' , 'politique' ...
-        for label , data_s in resultat_experience['serie'][0].items():
-
-            diffBetween_W_n_Wout = [ abs(data_s[0]['data'][i][1] - data_s[1]['data'][i][1]) for i in range (len(data_s[0]['data']))]
-            percent_articles_thematic = []
-
-            for i in range(len(data_s[0]['data'])):
-                if (data_s[0]['data'][i][2] - lookback) != 0:
-                    percent_articles_thematic.append(((data_s[1]['data'][i][2] - lookback) - (data_s[0]['data'][i][2] - lookback)) / (data_s[0]['data'][i][2] - lookback))
-                else:
-                    percent_articles_thematic.append(0)
-
-            tmp_res[label] = (diffBetween_W_n_Wout , percent_articles_thematic)
-        res_experiences.append(tmp_res)
-
-    #calcul te correlation between variation of number of thematics articles and difference of similarity between w model and wout model
-    diff_vector = []
-    var_articles_percent_vector = []
-    for label , res in tmp_res.items():
-        var_articles_percent_vector += [0]
-        diff_vector += res[0]
-        var_articles_percent_vector += [abs((res[1][i-1] - res[1][i])) for i in range (len(res[1])) if i != 0]
-    print("correlation pearson scipy : "+str(pearsonr(diff_vector , var_articles_percent_vector)[0]))
-    #print("correlation coefficient numpy : "+str(np.corrcoef(diff_vector , var_articles_percent_vector)))
-
-
-
-
-    #better way for caracterisation {label: { type_window : [] , ...} , ...}
-    for i , experience in enumerate(experiences):
-
-        tmp_res = res_experiences[i]
-        first_entry = experience['ranges'][0][0]
-        last_out = experience['ranges'][-1][1]
-
-        for label in tmp_res.keys():
-            if label not in car_experiences:
-                car_experiences[label] = {}
-            for j in range(1, timeline_size):
-                if j < first_entry:
-                    if 'before' not in car_experiences[label].keys():
-                        car_experiences[label]['before'] = []
-                    car_experiences[label]['before'].append(tmp_res[label][0][j - 1])
-                    continue
-                if j > last_out+1:
-                    if 'after' not in car_experiences[label].keys():
-                        car_experiences[label]['after'] = []
-                    car_experiences[label]['after'].append(tmp_res[label][0][j - 1])
-                    continue
-                passage = False
-                for n_range in experience['ranges']:
-                    if j == n_range[0]:
-                        if 'entry' not in car_experiences[label].keys():
-                            car_experiences[label]['entry'] = []
-                        car_experiences[label]['entry'].append(tmp_res[label][0][j - 1])
-                        passage = True
-                        break
-                    if j == n_range[1] + 1:
-                        if 'out' not in car_experiences[label].keys():
-                            car_experiences[label]['out'] = []
-                        car_experiences[label]['out'].append(tmp_res[label][0][j - 1])
-                        passage = True
-                        break
-                    if n_range[0] < j <= n_range[1]:
-                        if 'inside' not in car_experiences[label].keys():
-                            car_experiences[label]['inside'] = []
-                        car_experiences[label]['inside'].append(tmp_res[label][0][j - 1])
-                        passage = True
-                        break
-                if passage:
-                    continue
-                else:
-                    if 'outside' not in car_experiences[label].keys():
-                        car_experiences[label]['outside'] = []
-                    car_experiences[label]['outside'].append(tmp_res[label][0][j - 1])
-                    continue
-
-
-    return car_experiences
-
-
 
 
 def calculeCaracteristics(car ):
@@ -218,21 +165,5 @@ def vizualiseCaracteristics(car):
         plt.show()
 
 
-
-
-
-if __name__ == '__main__':
-
-    #experiences path and root path
-    root = '/home/mouss/data'
-    experiences_file_path = os.path.join(root , 'myExperiences10.json')
-
-    #load experiences results
-    with open(experiences_file_path , 'r') as f:
-        data = json.load(f)
-
-    #format experiences data as caracterisation data
-    caracterisation_data = caracterisationExperiences(data)
-    vizualiseCaracteristics(caracterisation_data)
-    car_statistique = calculeCaracteristics(caracterisation_data)
-    print('f')
+ranges = [(4, 7), (9, 12)]
+print(Characterizer.choose_key(5 , ranges))

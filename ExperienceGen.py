@@ -6,8 +6,21 @@ from datetime import datetime
 from data_utils import TimeLineArticlesDataset, EditedTimeLineArticlesDataset
 from data_processing import ProcessorText
 
+class Data:
 
-class Thematic:
+    def save(self , path):
+        with open(path , 'w') as f:
+            f.write(json.dumps(self.__dict__))
+
+
+    def load(self , path):
+        with open(path , 'r') as f:
+            data = json.load(f)
+        return Data(**data)
+
+
+
+class Thematic(Data):
     def __init__(self , name : str , label : str  ,date : datetime , article_ids : List , lifetime : str):
         self.lifetime = lifetime
         self.article_ids = article_ids
@@ -15,26 +28,10 @@ class Thematic:
         self.label = label
         self.name = name
 
-    def save(self , path):
-        with open(path , 'w') as f:
-            to_dumps = {
-                "name" : self.name,
-                "date" : self.date,
-                "label" : self.label,
-                "articles" : self.article_ids
-            }
-            f.write(json.dumps(to_dumps))
-
-
-    def load(self , path):
-        with open(path , 'r') as f:
-            thematic = json.load(f)
-        return Thematic(**thematic)
 
 
 
-
-class ExperiencesMetadata:
+class ExperiencesMetadata(Data):
 
     def __init__(self, name : str = None, ranges : List[Tuple] = None, nb_windows : int = None , cheat : bool = False , 
                  boost = 0):
@@ -43,6 +40,23 @@ class ExperiencesMetadata:
         self.nb_windows = nb_windows
         self.ranges = ranges
         self.name = name
+
+
+class ExperiencesResult(Data):
+
+    def __init__(self , metadata : ExperiencesMetadata , similarity : Tuple[List] , label_counter : List[dict] , info : dict):
+        self.label_counter = label_counter
+        self.similarity = {"with" : similarity[0] , "without" : similarity[1]}
+        self.metadata = metadata
+
+
+class ExperiencesResults(Data):
+
+    def __init__(self , results : List[ExperiencesResult], info : dict):
+        self.info = info
+        self.results = results
+
+
 
 
 
@@ -122,11 +136,15 @@ class ExperiencesGenerator:
     def __init__(self, experiencesMetadataGenerator : ExperiencesMetadataGenerator , sequential_model : Type[SequencialLangageModeling]):
         self.sequential_model = sequential_model
         self.experiencesMetadataGenerator = experiencesMetadataGenerator
+        self.new_experience = {}
+        self.experiences_res = []
 
 
     def generate_timelines(self , **kwargs) -> Tuple[TimeLineArticlesDataset]:
 
         for metadata , thematic in self.experiencesMetadataGenerator:
+
+            self.new_experience["metadata"] = metadata
             timelinewout = TimeLineArticlesDataset(**kwargs["initialize_dataset"])
             timelinew = EditedTimeLineArticlesDataset(thematic=thematic , metadata=metadata , **kwargs["initialize_dataset"])
             yield timelinewout , timelinew
@@ -141,14 +159,26 @@ class ExperiencesGenerator:
             sq_model_wout.add_windows(timeline_wout , kwargs["initialize_dataset"]['lookback'] , **kwargs['initialize_engine'])
             yield sq_model_wout , sq_model_w
 
+
     def generate_results(self , **kwargs):
 
         for model_wout , model_w in self.generate_model(**kwargs):
             res_w = model_w.compareTopicSequentialy(**kwargs["comparaison"])
             res_wout = model_w.compareTopicSequentialy(**kwargs["comparaison"])
+            self.new_experience['with'] = res_w
+            self.new_experience['without'] = res_wout
+            try:
+                counter_w = model_w.label_articles_counter
+                counter_wout = model_wout.label_articles_counter
+                self.new_experience['counter_with'] = counter_w
+                self.new_experience['counter_without'] = counter_wout
+            except AttributeError:
+                pass
+            self.experiences_res.append(self.new_experience)
+            del self.new_experience
+            self.new_experience = {}
+
             yield res_wout , res_w
-
-
 
 
 
@@ -191,6 +221,4 @@ if __name__ == '__main__':
     experienceGenerator = ExperiencesGenerator(experiencesMetadataGenerator=metadataGenerator , sequential_model=model_type)
     for res_w , res_wout in experienceGenerator.generate_results(**kwargs):
         res.append((res_w , res_wout))
-
-
 
