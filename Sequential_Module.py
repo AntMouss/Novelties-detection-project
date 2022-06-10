@@ -5,8 +5,8 @@ from data_utils import TimeLineArticlesDataset
 from gensim import corpora
 from data_processing import filterDictionnary
 import os
-from corextopic import corextopic as ct
 import Engine
+import numpy as np
 
 
 # class SequencialLangageModeling:
@@ -631,10 +631,10 @@ import Engine
 
 
 def check_size(func):
-    def wrapper(*args):
-        if len(args[0]) == 0:
+    def wrapper(*args , **kwargs):
+        if len(args[1]) == 0:
             raise Exception('documents empty , we can not process the sequence')
-        func(*args)
+        return func(*args , **kwargs)
     return wrapper
 
 
@@ -666,46 +666,23 @@ class SequencialLangageModeling:
 
 
 
+    def add_windows(self, timeline_w, param, param1):
+        pass
+
+
     @check_size
-    def treat_Window(self,texts : List[List] ,  **kwargs):
+    def treat_Window(self, texts: List[List], **kwargs):
 
         window_dictionnary = corpora.Dictionary(texts)
         # update semi-filtred dictionnary
         self.semi_filtred_dictionnary.merge_with(window_dictionnary)
-        #we filtre bad words from window_dictionnary
+        # we filtre bad words from window_dictionnary
         self.updateBadwords()
-        window_dictionnary_f = filterDictionnary(window_dictionnary , bad_words=self.bad_words)
+        window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
-        model = self.engine(texts=texts , n_topics=self.nb_topics ,**kwargs )
+        model = self.engine(texts=texts, **kwargs)
 
         return model, window_dictionnary_f
-
-
-    def add_windows(self, data : TimeLineArticlesDataset, lookback = 10, update_res = True):
-
-        self.info['lookback'] = lookback
-        rValue= random.Random()
-        rValue.seed(37)
-        for i  , (end_date_window , texts_window) in (enumerate(data)):
-            random_state = rValue.randint(1, 14340)
-            print(f"numero of window: {i} -- random state: {random_state}")
-            print(f"size documents: {len(texts_window)} ")
-            print("-"*30)
-            kwargs = {"random_state" : random_state}
-            try:
-                model , window_dictionnary = self.treat_Window(texts_window , **kwargs)
-                # for bound window to the right glda model we use no_window
-                no_window = i
-                self.updateBadwords()
-                if update_res:
-                    self.updateResults(end_date_window , window_dictionnary , model , no_window)
-                self.date_window_idx[end_date_window] = no_window
-                self.models.append(model)
-                self.nb_windows += 1
-
-            except Exception as e:
-                print(e)
-                pass
 
 
     def updateResults(self, end_date ,  dictionnary_window : corpora.Dictionary, model : Engine, no_window: int , ntop : int = 100):
@@ -756,7 +733,7 @@ class SequencialLangageModeling:
         return: list of list id of words in the dictionnary, one list by gldaModel so one list by time intervall
         """
         topWordsTopics=[]
-        for topic_id in range(model.n_topics):
+        for topic_id in range(model.nb_topics):
             topWordsTopic = self.getTopWordsTopic(topic_id, model, ntop , **kwargs)
             topWordsTopics.append(topWordsTopic)
 
@@ -786,15 +763,43 @@ class SequencialLangageModeling:
                 topWordsTopics_tmp[j] = topWordsTopics_tmp[j].difference(topWordsTopics_tmp[i])
         return [{word : topWordsTopics[i][word] for word in topWordsTopics_tmp[i]} for i in range (len(topWordsTopics))]
 
-    def compareTopicSequentialy(self):
-        pass
 
-    def calcule_similarity_topics_W_W(self):
-        # find a way to compare no unknown topic from 2 differents windows
-        pass
 
     def get_res(self):
         return self.res
+
+
+
+class NoSupervisedSequantialLangagemodeling(SequencialLangageModeling):
+
+    def add_windows(self, data: TimeLineArticlesDataset, lookback=10, update_res=False , **kwargs):
+
+        self.info['lookback'] = lookback
+        rValue = random.Random()
+        rValue.seed(37)
+        for i, (end_date_window, texts_window) in (enumerate(data)):
+            random_state = rValue.randint(1, 14340)
+            print(f"numero of window: {i} -- random state: {random_state}")
+            print(f"size documents: {len(texts_window)} ")
+            print("-" * 30)
+            kwargs["random_state"] = random_state
+            try:
+                model, window_dictionnary = self.treat_Window(texts_window , **kwargs)
+                # for bound window to the right glda model we use no_window
+                no_window = i
+                self.updateBadwords()
+                if update_res:
+                    self.updateResults(end_date_window, window_dictionnary, model, no_window)
+                self.date_window_idx[end_date_window] = no_window
+                self.models.append(model)
+                self.nb_windows += 1
+
+            except Exception as e:
+                print(e)
+                pass
+
+    def no_supervised_stuff(self):
+        pass
 
 
 
@@ -805,7 +810,7 @@ class SupervisedSequantialLangagemodeling(SequencialLangageModeling):
         self.engine = Engine.SupervisedEngine
 
 
-    def add_windows(self, data : TimeLineArticlesDataset, lookback = 10, update_res = True):
+    def add_windows(self, data : TimeLineArticlesDataset, lookback = 10, update_res = False , **kwargs):
 
         self.info['lookback'] = lookback
         rValue = random.Random()
@@ -831,23 +836,32 @@ class SupervisedSequantialLangagemodeling(SequencialLangageModeling):
                 print(e)
                 pass
 
-    def compareTopicSequentialy(self, topic_id, first_w=0, last_w=0, ntop=100, fixeWindow=False, **kwargs):
+    def compareTopicSequentialy(self, topic_id, first_w=0, last_w=0, ntop=100, fixeWindow=False, back = 1 ,**kwargs):
 
         # we use thi condition to set the numero of the last window because by
         # default we want to compute similarity until the last window
         if last_w == 0:
             last_w = len(self.models)
+        res = []
         if fixeWindow == True:
-            return [self.calcule_similarity_topics_W_W('jaccard', ntop, first_w, i, **kwargs)[topic_id] for i in
-                    range(first_w + 1, last_w)]
+            for i in range(first_w + 1, last_w):
+                res.append(self.calcule_similarity_topics_W_W('jaccard', ntop, first_w, i, **kwargs)[topic_id])
         else:
-            return [self.calcule_similarity_topics_W_W('jaccard', ntop, i, i + 1, **kwargs)[topic_id] for i in
-                    range(first_w, last_w - 1)]
+            for i in range(first_w+1, last_w):
+                window_res = []
+                for j in range(back):
+                    try:
+                        window_res.append(self.calcule_similarity_topics_W_W('jaccard', ntop, i - 1 - j, i , **kwargs)[topic_id])
+                    except:
+                        break
+                res.append(np.mean(window_res))
+        return res
 
 
     def calcule_similarity_topics_W_W(self, distance='jaccard', ntop=100, ith_window=0, jth_window=1, soft=False,
                                       **kwargs):
-
+        if ith_window < 0 or jth_window < 0:
+            raise Exception("index should be positives")
         if distance == 'jaccard':
             ithTopWordsTopics = self.getTopWordsTopics(self.models[ith_window], ntop=ntop, **kwargs)
             # list of sets of top words per topics in jth window
@@ -865,23 +879,24 @@ class SupervisedSequantialLangagemodeling(SequencialLangageModeling):
 
 
 
-class GuidedSequantialLangagemodeling(SupervisedSequantialLangagemodeling):
+class GuidedSequantialLangagemodeling(NoSupervisedSequantialLangagemodeling , SupervisedSequantialLangagemodeling):
 
-    def __init__(self , seed ,  **kwargs):
+    def __init__(self , seed : dict ,  **kwargs):
         super(GuidedSequantialLangagemodeling, self).__init__(**kwargs)
         self.engine = Engine.GuidedEngine
         self.seed = seed
+        self.table = {idx : label for idx , label in enumerate(seed.keys())}
 
 
     def getTopWordsTopic(self, topic_id, model : Engine = None, ntop : int = 100 , remove_seed_words : bool = True):
 
         # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
-        topWords = model.get_topic_terms(topicid= topic_id, topn=ntop)
+        topWordsTopic = model.get_topic_terms(topicid= topic_id, topn=ntop)
+        topic = self.table[topic_id]
         if remove_seed_words:
-            for word in topWords.keys():
-                if word in self.seed[topic_id]:
-                    del (topWords[word])
-        topWordsTopic = {topWord[0] : topWord[1] for topWord in topWords}
+            words2keep = set(topWordsTopic.keys()).intersection(self.seed[topic])
+            for word in words2keep:
+                del (topWordsTopic[word])
         return topWordsTopic
 
 
@@ -900,7 +915,7 @@ class LDASequantialModeling(SequencialLangageModeling):
         self.updateBadwords()
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
-        model = self.engine(texts=texts, n_topics=self.nb_topics, dictionnary=window_dictionnary_f, **kwargs)
+        model = self.engine(texts=texts, dictionnary=window_dictionnary_f, **kwargs)
 
         return model, window_dictionnary_f
 
@@ -911,90 +926,5 @@ class GuidedLDASenquentialModeling( LDASequantialModeling , GuidedSequantialLang
     def __init__(self , **kwargs):
         super(GuidedLDASenquentialModeling, self).__init__(**kwargs)
         self.engine = Engine.GuidedLDA
-
-
-
-
-
-
-
-if __name__ == '__main__':
-
-    #load database , define Time-windows , splitt data
-    start_time = 1620637617 # 10 may 9 hour A.M
-    end_time = 1626340017 #15 jully 9 hour A.M
-    deltaTime=24 # in hour
-    folderPath='/home/mouss/data'
-
-    dataBaseName1 = 'final_database_50000_100000.json_2'
-    dataBaseOriginalName = 'final_database.json'
-    dataSplitName = 'text_per_window_data_50000.json'
-    seedName = 'seed_test_200'
-    seedPath = os.path.join(folderPath , seedName)
-    dataBasePath1 = os.path.join(folderPath, dataBaseName1)
-    dataSplitPath = os.path.join(folderPath, dataSplitName)
-    model1Name  = 'model_1'
-    model1Path = os.path.join(folderPath , model1Name)
-
-    topic_model = ct.Corex(n_hidden=2)
-    topic_model.get_topics()
-
-
-    # with open(dataBasePath1 , 'r') as f:
-    #      data = json.load(f)
-    #
-    # data = splittDataPipeline(data , delta_time=deltaTime )
-    # print('f')
-    # # #
-    # # # # # # #
-    # #save the windows with processed text without remake the process
-    # #put data in json format (because tuple is not json serializable):
-    # data = [[window[0] ,window[1] ] for window in data ]
-    # with open (dataSplitPath,'w') as f:
-    #     f.write(json.dumps(data))
-    #
-    #
-    # #load the windows with processed text
-    # with open (dataSplitPath,'r') as f:
-    #     data = json.load(f)
-    # data=[(window[0] , window[1]) for window in data]
-    #
-    # # #fake_data = [(data[100][0] , data[100][1]+data[101][1]+data[102][1]) for _ in range (10)]
-    # # #analyseStreamCollect(data[:100] , perLabel= True)
-    #
-    #
-    # #generate seed randomly
-    # random_seed = SeedGenerator(databasePath=dataBasePath1, k=200).generateSeed(exclusive=True, doLFIDF=True, nbWordsByLabel=200)
-    #
-    # with open(seedPath , 'r') as fs:
-    #     seed = json.load(fs)
-    #
-    # MTGLDA=SequencialLangageModeling(guided=True, seed=random_seed)
-    # start_time = time.time()
-    # MTGLDA.add_windows(data , lookback=0.5)
-    # #MTGLDA.visualizeTopicEvolution(0 , ntop= 100)
-    #
-    # MTGLDA.getRes()
-    # MTGLDA.save(model1Path)
-    #
-    # MTGLDA = SequencialLangageModeling()
-    # MTGLDA.load(model1Path)
-    # MTGLDA.visualizeTopicEvolution(1 , ntop=400 , soft=True)
-    # print('f')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

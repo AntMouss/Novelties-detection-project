@@ -4,20 +4,10 @@ from datetime import datetime
 import locale
 from urllib.parse import urlparse
 from tqdm import tqdm
-
-import gensim.corpora
-from bs4 import BeautifulSoup
 import requests
-from gensim import corpora
-from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-import numpy as np
 from langdetect import detect
 import simplemma
-# ROOT_FOLDER="/tmptest9"
-# DAY_FOLDER_NAME=""
-# from SemanticComparison import CompareSentences
-import torch
 import stopwordsiso
 import copy
 import re
@@ -27,6 +17,7 @@ import sys
 import signal
 from threading import Thread
 import functools
+
 
 
 def timeout(timeout):
@@ -58,6 +49,7 @@ def timeout(timeout):
             return ret
         return wrapper
     return deco
+
 
 
 def fileToObject(filepath):
@@ -192,52 +184,6 @@ def getDataPathList(ROOT_FOLDER, targetFileName):
 
     return listpath
 
-
-# def vectorizeTitle(title):
-#     cleaningTitle = CompareSentences.getStandardText(title, lowerCase=True)
-#     sentenceEmbedding = CompareSentences.getSentenceEmbeddings(cleaningTitle)
-#     return sentenceEmbedding
-
-
-# def addEmbeddingDataBase(data):
-#     try:
-#         for key in data.keys():
-#             # use tensor format for compare tensor with transformer
-#             data[key]['Embedding'] = vectorizeTitle(data[key]['title']).tolist()
-#             print(key)
-#     except Exception as e:
-#         print(e)
-#         pass
-#     return data
-
-
-# def findSimilarity(data):
-#     # initialize dictionnary
-#     for key in data.keys():
-#         data[key]['similarArticles'] = {}
-#     try:
-#         for i, key in enumerate(data.keys()):
-#             for key2 in list(data.keys())[i + 1:]:
-#                 similarity = CompareSentences.scoreEmbededSentences(torch.Tensor(data[key]['Embedding']),
-#                                                                     torch.Tensor(data[key2]['Embedding']))
-#                 print(f'similarity between {key} and {key2} : {similarity}')
-#                 if similarity[0] > 0.75 and key != key2:
-#                     data[key]['similarArticles'][key2] = similarity[0].tolist()
-#                     data[key2]['similarArticles'][key] = similarity[0].tolist()
-#
-#                     # data[key]['similarArticles'].append(key2)
-#                     # data[key2]['similarArticles'].append(key)
-#                     print('similar detect')
-#
-#             data[key]['similarArticles'] = {k: v for k, v in
-#                                             sorted(data[key]['similarArticles'].items(), key=lambda item: item[1])}
-#
-#
-#     except Exception as e:
-#         print(e)
-#         pass
-#
-#     return data
 
 
 def makeTable(label, domain, dataBaseFile, tableFile):
@@ -460,14 +406,17 @@ class ProcessorText:
         :return:
         '''
         lang = ''
-        if text.strip():
-            try:
-                lang = detect(text.strip())
-            except:
-                pass
-        else:
-            lang = 'en'
-        return lang
+        try:
+            if text.strip():
+                try:
+                    lang = detect(text.strip())
+                except:
+                    pass
+            else:
+                lang = 'en'
+            return lang
+        except:
+            pass
 
     def processWord(self, word, langData , lemmatize=True , filtreStopWords=True , filtreSmallWords=True , filtreNumber = True):
 
@@ -505,7 +454,7 @@ class ProcessorText:
 
         return word.lower()
 
-
+    @functools.lru_cache(maxsize=100)
     def processText(self, text, lematize=True ,filtreStopWords=True , filtreSmallWords=True , filtreNumber = True ):
 
 
@@ -534,7 +483,7 @@ class ProcessorText:
         for i, text in enumerate(texts):
             textprocessed = self.processText(text , lematize=lematize , filtreStopWords=filtreStopWords , filtreSmallWords=filtreSmallWords , filtreNumber=filtreNumber)
             # to remove None type text
-            if isinstance(text , list):
+            if isinstance(textprocessed , list):
                 textsProcessed.append(textprocessed)
 
         return textsProcessed
@@ -827,57 +776,3 @@ def addProcessedText(  dataBasePath_source , databasePath_destination   ):
         if nb_articles % 50000:
             with open(databasePath_destination, 'w') as f:
                 f.write(json.dumps(data2))
-            # dictionnary_test.add_documents(data_for_dictionnary)
-            # data_for_dictionnary = []
-            # l = sorted(dictionnary_test.cfs.items(), key=lambda x: x[1] , reverse=True)
-            # l = { dictionnary_test[k] : v for k,v in l}
-
-
-
-
-
-
-if __name__ == '__main__':
-
-
-
-
-
-
-    # #sorted dataBase file and save
-    # with open('/home/mouss/data/final_database.json' , 'r') as f :
-    #     data = json.load(f)
-    #     data2 = []
-    #     for article in data:
-    #         if article['timeStamp'] is not None :
-    #             data2.append(article)
-    #
-    # data2 = sorted(data2, key=lambda x: x['timeStamp'])
-    # with open('/home/mouss/data/final_database.json' , 'w') as f:
-    #     f.write(json.dumps(data2))
-
-     #add processed text
-    addProcessedText('/home/mouss/data/final_database.json' , '/home/mouss/data/final_database_new_process_all.json')
-    print('f')
-
-
-    # #commande à lancer demain
-    # #fill missing information from previous database
-    # rootDatabase = '/articles'
-    # configPath = './config.json'
-    # imputeFieldAfterCollect(rootDatabase ,configPath)
-
-
-    # # merge all data.json file in one database.json file
-    # merger = MergerDataJson('data.json' , '/home/mouss/data' , 'final_database.json' ,'/articles')
-    # merger.mergeData(allData=True)
-
-
-    #
-    # # #testing streamFiler class
-    # # stream = StreamerFile('/tmpTest9', 'fullData.json', ['text', 'label'])
-    # # for i ,j in stream:
-    # #     print (i , j)
-    #
-
-

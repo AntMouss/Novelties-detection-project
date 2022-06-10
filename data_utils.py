@@ -8,22 +8,45 @@ if TYPE_CHECKING:
     from ExperienceGen import ExperiencesMetadata, Thematic
 
 
+def transformU(articles , processor : ProcessorText = None , process_done = True):
+
+    texts = []
+
+    for article in articles:
+        if process_done:
+            text = article['process_text']
+        else:
+            text =processor.processText(article['text'])
+        texts.append(text)
+    return texts
+
+
+def transformS(articles , processor : ProcessorText = None , process_done = False):
+
+    res = []
+    for article in articles:
+        if process_done:
+            res.append((article['text_processed'] , article['label'][0]))
+        else:
+            res.append((processor.processText(article['text']) , article['label'][0]))
+    texts , labels = list(zip(*res))
+    labels = list(labels)
+    return texts , labels
+
+
+
+
 class ArticlesDataset:
 
     def __init__(self , path ,start = 1615105271 , end = 1630999271, is_sorted = True, lang = 'fr'):
 
         self.lang = lang
         self.path = path
-        self.article_keys_idx = {article['id'] : i for i , article in enumerate(self.articles)}
-        self.article_keys_list = list(self.article_keys_idx.keys())
-        if end is not None:
+        if start >= end:
+            raise Exception("start should be inferior of end")
+        else:
+            self.start_date  = start
             self.end_date = end
-        else:
-            self.end_date = len(self)
-        if start is not None:
-            self.start_date = start
-        else:
-            self.start_date = 0
         if is_sorted:
             if self.check_sorted() == False:
                 raise Exception("dataset is not sorted !!")
@@ -33,19 +56,21 @@ class ArticlesDataset:
         f = open(self.path , 'r')
         return ijson.items(f , 'item')
 
-    def __len__(self):
-
-        return len(self.article_keys_idx)
 
     def verif(self , article):
-        if ProcessorText.detectLanguage(article['title']) == self.lang:
-            return True
-        else:
+        if ProcessorText.detectLanguage(article['title']) != self.lang:
             return False
+        else:
+            return True
+
 
     def __iter__(self):
 
          for article in self.articles:
+            if article['timeStamp'] < self.start_date:
+                 continue
+            if article['timeStamp'] > self.end_date:
+                break
             if self.verif(article):
                  yield article
 
@@ -63,24 +88,27 @@ class ArticlesDataset:
 
 class TimeLineArticlesDataset(ArticlesDataset):
 
-    def __init__(self, delta = 1 , lookback = 100 , mode : chr = 's' , **kwargs):
+    def __init__(self, delta = 1 , lookback = 100  , processor : ProcessorText = None , transform_fct: callable = transformU , **kwargs):
         """
 
         @param delta: duration of each window
         @param look_back: number of article of the previous window that we agregate to the current window if look_back < 1
         the look back is relative (percentage of the last window)
+        @param mode: supervised 's' return texts , labels . unsupervised 'u' return texts
         @param kwargs:
         """
         super().__init__(**kwargs)
-        if mode == 's':
-            self.features = ['text' , 'labels']
-        else:
-            self.features = ['text']
+        self.transform = transform_fct
+        self.processor = processor
         self.lookback = lookback
         self.lookback_articles = []
         self.delta = delta * 3600
         self.window_idx = 0
         self.label_articles_counter = []
+
+    def __len__(self):
+
+        return math.ceil((self.end_date - self.start_date)/self.delta)
 
 
     def update_lookback_articles(self, window_articles):
@@ -93,37 +121,34 @@ class TimeLineArticlesDataset(ArticlesDataset):
             self.lookback_articles = window_articles[-self.lookback:]
 
 
-    def transform(self , articles):
-
-        res = []
-        for article in articles:
-            res.append(article[feature] for feature in self.features)
-        return zip(*res)
-
-
     def __iter__(self):
 
         ref_date_tmsp = self.start_date
-        self.window_idx = 1
+        self.window_idx = 0
         window_articles = []
         for i , article in enumerate(self.articles):
-
-            while ref_date_tmsp + self.delta < article['timeStamp'] and article['timeStamp'] < self.end_date:
+            if article['timeStamp'] < self.start_date:
+                 continue
+            if article['timeStamp'] > self.end_date:
+                break
+            while article['timeStamp'] >= ref_date_tmsp + self.delta :
                 self.window_idx += 1
                 ref_date_tmsp = ref_date_tmsp + self.delta
-                window_articles.append(self.lookback_articles)
-                yield  ref_date_tmsp , self.transform(window_articles)
+                window_articles += (self.lookback_articles)
+                yield  ref_date_tmsp , self.transform(window_articles , processor=self.processor)
                 self.update_lookback_articles(window_articles)
                 del window_articles
                 window_articles = []
             if self.verif(article):
-                continue
-            else:
                 window_articles.append(article)
-        yield ref_date_tmsp , self.transform(window_articles)
+            else:
+                continue
+        yield ref_date_tmsp , self.transform(window_articles , processor=self.processor)
+
 
 
 class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
+
     def __init__(self , thematic : 'Thematic',metadata : 'ExperiencesMetadata',**kwargs ):
         super(EditedTimeLineArticlesDataset, self).__init__(**kwargs)
         self.thematic = thematic
@@ -136,9 +161,7 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
 
     def verif(self , article):
 
-        if article['timeStamp'] < self.start_date:
-            return False
-        elif ProcessorText.detectLanguage(article['title']) != self.lang:
+        if ProcessorText.detectLanguage(article['title']) != self.lang:
             return False
         elif self.between_boundaries()  and article['id'] in self._ids_to_remove:
             return False
@@ -204,18 +227,3 @@ class LabelsDictionnary:
                 if word not in self.index[label].keys():
                     self.index[label][word] = 0
                 self.index[label][word] += 1
-
-
-
-
-if __name__ == '__main__':
-
-    path = '/home/mouss/data/final_database.json'
-    test = TimeLineArticlesDataset(path, delta=24)
-    see = []
-    for el in test:
-        see.append(len(el))
-
-    test_it = iter(test)
-    print(next(test_it))
-    print(next(test_it))
