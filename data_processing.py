@@ -493,13 +493,6 @@ class ProcessorText:
 def filterDictionnary(dictionnary, filterStopwords=False, total_filter=False, filterNumber=False, filterSmallWord=False, keep_tokens=None, bad_ids=None, bad_words=None):
     """
 
-    @param dictionnary:
-    @param filterStopwords:
-    @param filterStrongExtremes:
-    @param filterWeakExtremes:
-    @param filterNumber:
-    @param filterSmallWord:
-    @return:
     """
     dictionnary_output = copy.deepcopy(dictionnary)
     if filterStopwords:

@@ -88,7 +88,7 @@ class ArticlesDataset:
 
 class TimeLineArticlesDataset(ArticlesDataset):
 
-    def __init__(self, delta = 1 , lookback = 100  , processor : ProcessorText = None , transform_fct: callable = transformU , **kwargs):
+    def __init__(self, delta = 1 , lookback = 100  , processor : ProcessorText = None , transform_fct: callable = transformS , **kwargs):
         """
 
         @param delta: duration of each window
@@ -172,8 +172,8 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
 
         for range in self.metadata.ranges:
             if range[0] <= self.window_idx <= range[1]:
-                return False
-        return True
+                return True
+        return False
 
 
 

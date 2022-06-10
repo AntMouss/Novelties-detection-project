@@ -115,11 +115,10 @@ class LDA(Engine):
 class GuidedLDA(GuidedEngine , LDA):
 
 
-    def __init__(self , table : dict = None , **kwargs):
+    def __init__(self, **kwargs):
 
         super().__init__(**kwargs)
-        self.table = table
-        self.ldaargs['eta'] = self.generate_eta(self.seed , self.dictionnary , self.table)
+        self.ldaargs['eta'] = self.generate_eta(self.seed , self.dictionnary)
         self.core = LdaModel(**self.ldaargs)
 
     @staticmethod

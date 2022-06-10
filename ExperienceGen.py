@@ -1,8 +1,7 @@
-import math
 import random
 import json
 from typing import List, Tuple , Type
-from Sequential_Module import SequencialLangageModeling , GuidedLDASenquentialModeling
+from Sequential_Module import SequencialLangageModeling , GuidedLDASequentialModeling
 from datetime import datetime
 from data_utils import TimeLineArticlesDataset, EditedTimeLineArticlesDataset
 from data_processing import ProcessorText
@@ -130,24 +129,24 @@ class ExperiencesGenerator:
         for metadata , thematic in self.experiencesMetadataGenerator:
             timelinewout = TimeLineArticlesDataset(**kwargs["initialize_dataset"])
             timelinew = EditedTimeLineArticlesDataset(thematic=thematic , metadata=metadata , **kwargs["initialize_dataset"])
-            yield timelinew , timelinewout
+            yield timelinewout , timelinew
 
 
     def generate_model(self,**kwargs) -> Tuple[SequencialLangageModeling]:
 
-        for timeline_w , timeline_wout in self.generate_timelines(**kwargs):
+        for timeline_wout , timeline_w in self.generate_timelines(**kwargs):
             sq_model_w = self.sequential_model(**kwargs["initialize_engine"])
             sq_model_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **kwargs['initialize_engine'])
             sq_model_wout = self.sequential_model(**kwargs['initialize_engine'])
             sq_model_wout.add_windows(timeline_wout , kwargs["initialize_dataset"]['lookback'] , **kwargs['initialize_engine'])
-            yield sq_model_w , sq_model_wout
+            yield sq_model_wout , sq_model_w
 
     def generate_results(self , **kwargs):
 
-        for model_w , model_wout in self.generate_model(**kwargs):
+        for model_wout , model_w in self.generate_model(**kwargs):
             res_w = model_w.compareTopicSequentialy(**kwargs["comparaison"])
             res_wout = model_w.compareTopicSequentialy(**kwargs["comparaison"])
-            yield res_w , res_wout
+            yield res_wout , res_w
 
 
 
@@ -181,14 +180,14 @@ if __name__ == '__main__':
     kwargs = {
         "experience" : {"nb_experiences" : 32 , "cheat" : False , "boost" : 0},
         "comparaison" : {"topic_id" : 0, "first_w" :0, "last_w" :0, "ntop" :100, "fixeWindow" :False , "remove_seed_words" : True},
-        "initialize_dataset":{"start" : start_time,"end" : end_time , "path":dataprocessedPath, "lookback" : 0.2 , "delta" : 1  , "processor" : processor},
+        "initialize_dataset":{"start" : start_time,"end" : end_time , "path":dataprocessedPath, "lookback" : 10 , "delta" : 1  , "processor" : processor},
         "initialize_engine" : {"nb_topics" : len(seed) , "seed" : seed}
     }
     data = TimeLineArticlesDataset(**kwargs["initialize_dataset"])
     kwargs["experience"]["timeline_size"] = len(data)
     res = []
     metadataGenerator = ExperiencesMetadataGenerator(thematics=thematics , **kwargs['experience'])
-    model_type = GuidedLDASenquentialModeling
+    model_type = GuidedLDASequentialModeling
     experienceGenerator = ExperiencesGenerator(experiencesMetadataGenerator=metadataGenerator , sequential_model=model_type)
     for res_w , res_wout in experienceGenerator.generate_results(**kwargs):
         res.append((res_w , res_wout))
