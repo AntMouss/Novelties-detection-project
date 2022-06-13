@@ -1,0 +1,17 @@
+numpy~=1.21.0
+scipy~=1.7.0
+gensim~=4.0.1
+corextopic~=1.1
+ijson~=3.1.4
+pandas~=1.4.2
+feedparser~=6.0.8
+requests~=2.22.0
+validators~=0.18.2
+html2text~=2020.1.16
+beautifulsoup4~=4.9.3
+matplotlib~=3.4.2
+simplemma~=0.3.0
+stopwordsiso~=0.6.1
+tqdm~=4.61.1
+nltk~=3.6.2
+langdetect~=1.0.9

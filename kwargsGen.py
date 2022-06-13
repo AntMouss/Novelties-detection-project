@@ -233,10 +233,16 @@ class KwargsResultsGenerator:
         return KwargsResults(**kwargs_dictionnary)
 
 
-class FinalKwargsGenerator:
+class FullKwargsGenerator:
 
     def __new__(cls):
-        return {"experience" : KwargsExperiencesGenerator() ,
-                "initialize_dataset": KwargsDatasetGenerator(),
-                "initialize_engine" : KwargsModelGenerator() ,
-                "generate_result": KwargsResultsGenerator() }
+        return {"experience" : KwargsExperiencesGenerator().__dict__ ,
+                "initialize_dataset": KwargsDatasetGenerator().__dict__,
+                "initialize_engine" : KwargsModelGenerator().__dict__ ,
+                "generate_result": KwargsResultsGenerator().__dict__ }
+
+class Generator:
+    def __init__(self , n : int):
+        self.n = n
+    def __iter__(self):
+        yield FullKwargsGenerator()
