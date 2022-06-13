@@ -1,11 +1,11 @@
-from typing import List
+import json
+from datetime import datetime
+from typing import List, Tuple
 import math
 import ijson
 from data_processing import ProcessorText
 import pandas as pd
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from ExperienceGen import ExperiencesMetadata, Thematic
+
 
 
 def transformU(articles , processor : ProcessorText = None , process_done = True):
@@ -33,6 +33,57 @@ def transformS(articles , processor : ProcessorText = None , process_done = Fals
     labels = list(labels)
     return texts , labels
 
+
+class Data:
+
+    def save(self , path):
+        with open(path , 'w') as f:
+            f.write(json.dumps(self.__dict__))
+
+
+    def load(self , path):
+        with open(path , 'r') as f:
+            data = json.load(f)
+        return Data(**data)
+
+
+
+class Thematic(Data):
+    def __init__(self , name : str , label : str  ,date : datetime , article_ids : List , lifetime : str):
+        self.lifetime = lifetime
+        self.article_ids = article_ids
+        self.date = date
+        self.label = label
+        self.name = name
+
+
+
+class ExperiencesMetadata(Data):
+
+    def __init__(self, name : str = None, ranges : List[Tuple] = None, nb_windows : int = None , cheat : bool = False ,
+                 boost = 0):
+        self.boost = boost
+        self.cheat = cheat
+        self.nb_windows = nb_windows
+        self.ranges = ranges
+        self.name = name
+
+
+class ExperiencesResult(Data):
+
+    def __init__(self , metadata : ExperiencesMetadata , similarity : Tuple[List] , label_counter_w : List[dict] = None
+                 , label_counter_wout : List[dict] = None):
+        self.label_counter_wout = label_counter_wout
+        self.label_counter_w = label_counter_w
+        self.similarity = {"with" : similarity[0] , "without" : similarity[1]}
+        self.metadata = metadata
+
+
+class ExperiencesResults(Data):
+
+    def __init__(self , results : List[ExperiencesResult], info : dict):
+        self.info = info
+        self.results = results
 
 
 
@@ -149,7 +200,7 @@ class TimeLineArticlesDataset(ArticlesDataset):
 
 class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
 
-    def __init__(self , thematic : 'Thematic',metadata : 'ExperiencesMetadata',**kwargs ):
+    def __init__(self , thematic : Thematic,metadata : ExperiencesMetadata,**kwargs ):
         super(EditedTimeLineArticlesDataset, self).__init__(**kwargs)
         self.thematic = thematic
         self.metadata = metadata

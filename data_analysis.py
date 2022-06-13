@@ -1,40 +1,44 @@
-from typing import List
 import numpy as np
 import copy
-from ExperienceGen import ExperiencesResults
+from data_utils import ExperiencesResults
 import statistics
 from matplotlib import pyplot as plt
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr , ttest_ind
 
 
 
-class Characterizer:
+class Sampler:
 
     def __init__(self , results : ExperiencesResults ):
+
         self.results = results.results
         self.info = results.info
-        topic_characteristics = {
-            "before":[],
+
+    @property
+    def samples(self):
+
+        topic_samples = {
+            "before": [],
             "after": [],
-            "middle" : [],
-            "in" : [],
-            "out" : [],
+            "middle": [],
+            "in": [],
+            "out": [],
             "inside": []
         }
-        self.characteristics = [topic_characteristics for _ in range(self.info["nb_topics"])]
-
-
-    def caracterize(self):
-
+        samples = [topic_samples for _ in range(self.info["nb_topics"])]
         for result in self.results:
-            for i , (topic_res_w , topic_res_wout) in enumerate(zip(result['with'] , result['without'])):
+            similarity = result.similarity
+            for i , (topic_res_w , topic_res_wout) in enumerate(zip(similarity['with'] , similarity['without'])):
                 tmp = abs(topic_res_w - topic_res_wout)
                 for j , value in enumerate(tmp):
-                    key = self.choose_key(j , result.metadata.ranges)
-                    self.characteristics[i][key].append(value)
+                    key = Sampler.choose_key(j, result.metadata.ranges)
+                    samples[i][key].append(value)
+        return samples
+
 
     @staticmethod
     def choose_key(idx_window , ranges):
+
         if idx_window < ranges[0][0]:
             return 'before'
         elif idx_window > ranges[-1][1]:
@@ -48,6 +52,43 @@ class Characterizer:
                 elif entry < idx_window < out:
                     return 'inside'
             return 'middle'
+
+
+class Analyser:
+
+    def __init__(self , samples , risk = 0.05):
+        self.risk = risk
+        self.samples = samples
+        self.nb_topics = len(samples)
+
+    def topic_pvalue_matrix(self , topic_id , trim = 0  , verbose = True):
+
+        topic_samples = self.samples[topic_id]
+        types_window = list(topic_samples.keys())
+        nb_windows = len(types_window)
+        pvalue_matrix = np.zeros((nb_windows , nb_windows))
+        for i in range(len(types_window)):
+            a = topic_samples[types_window[i]]
+            for j in range(i , len(types_window)):
+                b = topic_samples[types_window[j]]
+                _ , pvalue = ttest_ind(a , b , trim=trim)
+                if pvalue < self.risk and verbose:
+                    print('H0 refused')
+                pvalue_matrix[i][j] = pvalue
+                pvalue_matrix[j][i] = pvalue
+        return pvalue_matrix
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -166,4 +207,4 @@ def vizualiseCaracteristics(car):
 
 
 ranges = [(4, 7), (9, 12)]
-print(Characterizer.choose_key(5 , ranges))
+print(Sampler.choose_key(5, ranges))

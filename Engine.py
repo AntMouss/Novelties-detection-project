@@ -1,4 +1,6 @@
 import copy
+from typing import List
+
 import numpy as np
 from gensim import corpora
 from gensim.models import LdaModel
@@ -9,23 +11,25 @@ from data_utils import DocumentsWordsCounter, LabelsWordsCounter
 
 class Engine:
 
-    def __init__(self, texts: list = None, nb_topics : int = 5, random_state : int = 42):
+    def __init__(self, texts: List[List], nb_topics : int = 5, random_state : int = 42):
 
         self.random_state = random_state
         self.texts = texts
         self.nb_topics = nb_topics
         self.core = None
 
-    def get_topic_terms(self,topic_id= 0, topn=100):
+    def get_topic_terms(self,topic_id : int, topn=100):
         pass
 
 class SupervisedEngine(Engine):
-    def __init__(self , labels: list = None  , **kwargs):
+    def __init__(self , labels: List , labels_idx: List  , **kwargs):
         super(SupervisedEngine, self).__init__(**kwargs)
+        self.labels_idx = labels_idx
         self.labels = labels
 
+
 class GuidedEngine(Engine):
-    def __init__(self , seed : dict = None  , **kwargs):
+    def __init__(self , seed : dict  , **kwargs):
         super(GuidedEngine, self).__init__(**kwargs)
         self.seed = seed
 
@@ -40,11 +44,11 @@ class CoreX(Engine):
         self.documents_matrix = ss.csc_matrix(self.documents_matrix)
         self.core = ct.Corex(n_hidden=self.nb_topics, words=self.words, max_iter=200, verbose=False, seed=1)
 
-    def get_topic_terms(self,topic_id= 0, topn=100):
+    def get_topic_terms(self,topic_id : int, topn=100):
         res = self.core.get_topics(n_words=topn , topic=topic_id)
         return {word[0] : word[1] for word in res}
 
-
+# not usable
 class SupervisedCoreX(SupervisedEngine , CoreX ):
     def __init__(self , **kwargs):
         super().__init__(**kwargs)
@@ -54,7 +58,7 @@ class SupervisedCoreX(SupervisedEngine , CoreX ):
 class GuidedCoreX(GuidedEngine,CoreX):
     def __init__(self , anchor_strength = 3 , **kwargs ):
         super(GuidedCoreX, self).__init__(**kwargs)
-        self.anchors = [words for lab , words in self.seed.items()]
+        self.anchors = [words for _ , words in self.seed.items()]
         self.core.fit(self.documents_matrix , anchors=self.anchors , anchor_strength=anchor_strength)
 
 
@@ -66,23 +70,32 @@ class LFIDF(SupervisedEngine):
         super().__init__(**kwargs)
         self.n_docs = len(self.texts)
         self.labels_words_counter = LabelsWordsCounter(self.texts , self.labels)
-        self.labels_idx = {label : i for i , label in enumerate(self.labels_words_counter.index)}
+        self.labels_words_counter = (self.labels_words_counter.reindex(self.labels_idx)).fillna(0)
         self.idx_words = {i : word for i , word in enumerate(self.labels_words_counter.columns)}
         self.lfidf_matrix = self.process_lfidf_matrix()
 
 
     def process_lfidf_matrix(self):
-        lfidf_matrix = copy.deepcopy(self.labels_words_counter).to_numpy()
+
+        lfidf_matrix = self.labels_words_counter.to_numpy()
+        shadow = np.zeros_like(lfidf_matrix)
         for i in range(lfidf_matrix.shape[0]):
+            if np.sum(lfidf_matrix[i]) == 0:
+                #return random value when the topic is inexistant in the texts input
+                shadow[i] = np.random.random(lfidf_matrix.shape[1])/1000
+                continue
             for j in range(lfidf_matrix.shape[1]):
                 lf = (lfidf_matrix[i][j]/np.sum(lfidf_matrix[i]))
-                idf = np.log(self.n_docs/np.sum(lfidf_matrix[j]))
-                lfidf_matrix[i][j] = lf*idf
+                idf = np.log(self.n_docs/np.sum(lfidf_matrix[:,j]))
+                shadow[i][j] = lf*idf
+        return shadow
 
-    def get_topic_terms(self,topic= None, topn=100):
-        idx = self.labels_idx[topic]
-        label_serie = self.lfidf_matrix[idx]
-        words_idx = reversed(np.argsort(label_serie))[:topn]
+
+    def get_topic_terms(self, topic_id : int, topn=100):
+
+        topic = self.labels_idx[topic_id]
+        label_serie = self.lfidf_matrix[topic_id]
+        words_idx = np.flipud((np.argsort(label_serie)[-topn:]))
         #[(word , score) , ...]
         return {self.idx_words[word_id] : label_serie[word_id] for word_id in words_idx}
 
@@ -106,9 +119,9 @@ class LDA(Engine):
         self.core  = LdaModel(**self.ldaargs)
 
 
-    def get_topic_terms(self , **kwargs):
+    def get_topic_terms(self ,topic_id : int , topn = 100 , **kwargs):
 
-        res = self.core.get_topic_terms(**kwargs)
+        res = self.core.get_topic_terms(topicid=topic_id , topn = topn, **kwargs)
         return {self.core.id2word[word_id] : score for word_id , score in res}
 
 

@@ -11,6 +11,7 @@ from collections import Counter
 
 
 def check_size(func):
+
     def wrapper(*args , **kwargs):
         if len(args[1]) == 0:
             raise Exception('documents empty , we can not process the sequence')
@@ -19,7 +20,7 @@ def check_size(func):
 
 
 
-class SequencialLangageModeling:
+class MetaSequencialLangageModeling:
 
 
 
@@ -44,9 +45,11 @@ class SequencialLangageModeling:
                                    "juin" , "juillet" , "an" , "soir" , "mois", "lundi" , "mardi" , "mercredi"
             , "jeudi" , "vendredi" , "samedi" , "dimanche"]
 
+
     @check_size
     def treat_Window(self , data_window , **kwargs):
         pass
+
 
     def add_windows(self, data: TimeLineArticlesDataset, lookback=10, update_res=False, **kwargs):
 
@@ -135,8 +138,7 @@ class SequencialLangageModeling:
 
     def getTopWordsTopic(self, topic_id, model : Engine = None, ntop : int = 100 , **kwargs):
 
-
-        # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
+       # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
         topWords = model.get_topic_terms(topicid= topic_id, topn=ntop)
         topWordsTopic = {topWord[0] : topWord[1] for topWord in topWords}
         return topWordsTopic
@@ -158,7 +160,7 @@ class SequencialLangageModeling:
 
 
 
-class NoSupervisedSequantialLangagemodeling(SequencialLangageModeling):
+class NoSupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
 
     @check_size
     def treat_Window(self, texts: List[List], **kwargs):
@@ -172,19 +174,20 @@ class NoSupervisedSequantialLangagemodeling(SequencialLangageModeling):
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts, **kwargs)
-
         return model, window_dictionnary_f
+
 
     def no_supervised_stuff(self):
         pass
 
 
 
-class SupervisedSequantialLangagemodeling(SequencialLangageModeling):
+class SupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
 
-    def __init__(self , **kwargs):
+    def __init__(self ,labels_idx , **kwargs):
         super(SupervisedSequantialLangagemodeling, self).__init__(**kwargs)
         self.engine = Engine.SupervisedEngine
+        self.labels_idx = labels_idx
         self.label_articles_counter = []
 
     @check_size
@@ -201,7 +204,6 @@ class SupervisedSequantialLangagemodeling(SequencialLangageModeling):
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts , labels=labels, **kwargs)
-
         return model, window_dictionnary_f
 
 
@@ -221,7 +223,7 @@ class SupervisedSequantialLangagemodeling(SequencialLangageModeling):
                 for j in range(back):
                     try:
                         window_res.append(self.calcule_similarity_topics_W_W('jaccard', ntop, i - 1 - j, i , **kwargs)[topic_id])
-                    except:
+                    except Exception as e:
                         break
                 res.append(np.mean(window_res))
         return res
