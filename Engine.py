@@ -1,6 +1,4 @@
-import copy
 from typing import List
-
 import numpy as np
 from gensim import corpora
 from gensim.models import LdaModel
@@ -128,10 +126,10 @@ class LDA(Engine):
 class GuidedLDA(GuidedEngine , LDA):
 
 
-    def __init__(self, **kwargs):
+    def __init__(self, overratte , **kwargs):
 
         super().__init__(**kwargs)
-        self.ldaargs['eta'] = self.generate_eta(self.seed , self.dictionnary)
+        self.ldaargs['eta'] = self.generate_eta(self.seed , self.dictionnary , overratte=overratte)
         self.core = LdaModel(**self.ldaargs)
 
     @staticmethod

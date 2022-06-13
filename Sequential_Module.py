@@ -176,10 +176,8 @@ class NoSupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
         model = self.engine(texts=texts, **kwargs)
         return model, window_dictionnary_f
 
-
     def no_supervised_stuff(self):
         pass
-
 
 
 class SupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
@@ -341,6 +339,12 @@ class GuidedCoreXSequentialModeling(GuidedSequantialLangagemodeling):
     def __init__(self , **kwargs):
         super(GuidedCoreXSequentialModeling, self).__init__(**kwargs)
         self.engine = Engine.GuidedCoreX
+
+
+class NoSuperviedCoreXSequentialModeling(NoSupervisedSequantialLangagemodeling):
+    def __init__(self, **kwargs):
+        super(NoSuperviedCoreXSequentialModeling, self).__init__(**kwargs)
+        self.engine = Engine.CoreX
 
 
 class SupervisedCoreXSequentialModeling(SupervisedSequantialLangagemodeling):

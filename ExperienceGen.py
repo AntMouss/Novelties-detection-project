@@ -1,7 +1,7 @@
 import math
 import random
 import json
-from typing import List, Tuple , Type
+from typing import List, Tuple
 import Sequential_Module
 from data_utils import (TimeLineArticlesDataset,
                         EditedTimeLineArticlesDataset,
@@ -46,7 +46,7 @@ class ExperiencesMetadataGenerator:
                 return False
         return True
 
-    def __iter__(self ):
+    def __iter__(self):
 
         thematics_name = [(i , thematic.name) for i , thematic in enumerate(self.thematics) if
                                 len(thematic.article_ids) > self.min_thematic_size]
@@ -79,10 +79,6 @@ class ExperiencesMetadataGenerator:
             yield ExperiencesMetadata(**experience) , thematic
 
 
-    def __call__(self, min_thematic_size = 4000 , min_size = 2 , max_size = 0.25):
-        self.min_thematic_size = min_thematic_size
-        self.min_size_exp = min_size
-        self.max_size_exp_abs = max_size
 
 
 
@@ -96,7 +92,7 @@ class ExperiencesGenerator:
 
     def generate_timelines(self , **kwargs) -> Tuple[TimeLineArticlesDataset]:
 
-        for metadata , thematic in ExperiencesMetadataGenerator(thematics**kwargs['experience']):
+        for metadata , thematic in ExperiencesMetadataGenerator(**kwargs['experience']):
 
             self.new_experience["metadata"] = metadata
             timelinewout = TimeLineArticlesDataset(**kwargs["initialize_dataset"])
@@ -176,17 +172,28 @@ if __name__ == '__main__':
     processor  = ProcessorText()
     model_type = Sequential_Module.LFIDFSequentialModeling
 
+    nb_experiences = 32
+    min_thematic_size = 4000
+    min_size = 2
+    max_size = 0.25
+    ntop = 100
+    topic_id = 0
+    nb_topics = len(labels_idx)
+
 
     kwargs = {
-        "experience" : {"nb_experiences" : 32 , "timeline_size" : timeline_size , "thematics" : thematics , "cheat" : False , "boost" : 0 },
+        "experience" : {"nb_experiences" : nb_experiences , "timeline_size" : timeline_size , "thematics" : thematics ,
+                        "min_thematic_size" : min_thematic_size , "min_size" : min_size
+                        , "max_size" : max_size, "cheat" : False , "boost" : 0 },
 
-        "initialize_dataset":{"start" : start_date, "end" : end_date , "path":dataprocessedPath,
+        "initialize_dataset":{"start" : start_date, "end" : end_date , "path": dataprocessedPath,
                               "lookback" : lookback , "delta" : delta  , "processor" : processor},
 
-        "initialize_engine" : {"model_type" : model_type,"nb_topics" : len(seed) , "labels_idx" : labels_idx},
+        "initialize_engine" : {"model_type" : model_type,"nb_topics" : nb_topics ,
+                               "labels_idx" : labels_idx},
 
-        "generate_result": {"topic_id": 0, "first_w": 0, "last_w": 0, "ntop": 100, "fixeWindow": False,
-                        "remove_seed_words": True}
+        "generate_result": {"topic_id": topic_id, "first_w": 0, "last_w": 0, "ntop": ntop,
+                            "fixeWindow": False, "remove_seed_words": True}
     }
 
     #generate experiences
