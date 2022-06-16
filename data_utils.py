@@ -56,6 +56,9 @@ class Thematic(Data):
         self.label = label
         self.name = name
 
+    def __len__(self):
+        return len(self.article_ids)
+
 
 
 class ExperiencesMetadata(Data):

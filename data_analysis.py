@@ -206,5 +206,4 @@ def vizualiseCaracteristics(car):
         plt.show()
 
 
-ranges = [(4, 7), (9, 12)]
-print(Sampler.choose_key(5, ranges))
+

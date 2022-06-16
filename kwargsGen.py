@@ -19,6 +19,7 @@ class MetaModelKwargs:
     def __init__(self, nb_topics: int):
         self.nb_topics = nb_topics
         self.model_type = MetaSequencialLangageModeling
+        self.training_args = {}
 
 
 class SupervisedModelKwargs(MetaModelKwargs):
@@ -40,7 +41,7 @@ class GuidedLDAModelKwargs(GuidedModelKwargs):
                  nb_topics: int):
         super().__init__(seed, labels_idx, nb_topics)
         self.model_type = GuidedLDASequentialModeling
-        self.overrate = overrate
+        self.training_args["overrate"] = overrate
 
 
 class GuidedCoreXKwargs(GuidedModelKwargs):
@@ -48,7 +49,7 @@ class GuidedCoreXKwargs(GuidedModelKwargs):
                  nb_topics: int):
         super().__init__(seed, labels_idx, nb_topics)
         self.model_type = GuidedCoreXSequentialModeling
-        self.anchor_strength = anchor_strength
+        self.training_args["anchor_strength"] = anchor_strength
 
 
 class LFIDFModelKwargs(SupervisedModelKwargs):
@@ -71,12 +72,12 @@ class CoreXModelKwargs(MetaModelKwargs):
 
 class KwargsExperiences:
     def __init__(self, nb_experiences: int, timeline_size: int, thematics: List[Thematic],
-                 min_thematic_size: int, min_size: int, max_size: int, cheat: bool, boost: int):
+                 min_thematic_size: int, min_size_exp: int, max_size_exp_rel: int, cheat: bool, boost: int):
         self.boost = boost
         self.cheat = cheat
-        self.max_size = max_size
+        self.max_size_exp_rel = max_size_exp_rel
         self.min_thematic_size = min_thematic_size
-        self.min_size = min_size
+        self.min_size_exp = min_size_exp
         self.thematics = thematics
         self.timeline_size = timeline_size
         self.nb_experiences = nb_experiences
@@ -102,6 +103,11 @@ class KwargsResults:
         self.last_w = last_w
         self.first_w = first_w
         self.topic_id = topic_id
+
+class KwargsAnalyse:
+    def __init__(self , trim : int , risk = 0.05 ):
+        self.trim = trim
+        self.risk = risk
 
 
 
@@ -129,37 +135,41 @@ with open(thematics_path, 'r') as f:
     thematics = [Thematic(**thematic) for thematic in thematics]
 
 processor = ProcessorText()
+#GuidedLDAModelKwargs,LFIDFModelKwargs,GuidedCoreXKwargs
 
 KWARGS = {
-    "kwargs_model_type": MetaModelKwargs.__subclasses__(),
+    "kwargs_model_type": [GuidedLDAModelKwargs],
     "nb_experiences": [32, 48, 64],
     "thematics": [thematics],
-    "min_thematic_size": [0, 500, 1000, 4000],
-    "min_size": [i for i in range(2, 10)],
-    "max_size": [0.1, 0.2, 0.3],
+    "min_thematic_size": [0, 500, 1000,2000],
+    "min_size_exp": [i for i in range(2, 10)],
+    "max_size_exp_rel": [0.1, 0.2, 0.3],
     "cheat": [False],
     "boost": [0],
     "start": [1622376100],
-    "end": [1622376100 + 25 * 24 * 3600],
+    "end": [1622376100 + nb_jours * 3 * 3600],
     "path": ["/home/mouss/data/final_database_50000_100000_process_without_key.json"],
     "lookback": [i for i in range(5, 100, 5)],
-    "delta": [1, 24],
+    "delta": [1],
     "processor": [processor],
     "nb_topics": [len(labels_idx)],
     "labels_idx": [labels_idx],
     "topic_id": [i for i in range(len(labels_idx))],
     "first_w": [0],
     "last_w": [0],
-    "ntop": [30, 100],
+    "ntop": [ntop for ntop in range(50 , 101 , 10)],
     "fixeWindow": [False],
-    "remove_seed_words": [True, False],
+    "seed" : [seed],
+    "remove_seed_words": [True],
     "exclusive": [True, False],
     "back": [2, 8],
     "soft": [True, False],
     "random_state": [42],
-    "overratte": [10 ** i for i in range(2, 7)],
+    "overrate": [10 ** i for i in range(2, 7)],
     "anchor_strength": [i for i in range(3, 30)],
-    "trim": [0, 1, 2]
+    "trim": [0, 1, 2],
+    "risk" : [0.05]
+
 }
 
 rel_kwargs = {
@@ -178,6 +188,7 @@ class KwargsModelGenerator(MetaKwargsGenerator):
     def __new__(cls):
         kwargs_model_type = random.choice(KWARGS["kwargs_model_type"])
         kwargs_dictionnary = {}
+        #kwargs_dictionnary["training_args"] = {}
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("nb_topics"))
         if kwargs_model_type.__name__ == 'GuidedLDAModelKwargs':
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("overrate"))
@@ -197,15 +208,15 @@ class KwargsModelGenerator(MetaKwargsGenerator):
 
 
 class KwargsExperiencesGenerator:
-    def __new__(cls):
+    def __new__(cls , timeline_size):
         kwargs_dictionnary = {}
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("boost"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("cheat"))
-        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("max_size"))
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("max_size_exp_rel"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("min_thematic_size"))
-        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("min_size"))
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("min_size_exp"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("thematics"))
-        kwargs_dictionnary["timeline_size"] = math.ceil((KWARGS["end"] - KWARGS["start"])/KWARGS["delta"])
+        kwargs_dictionnary["timeline_size"] = timeline_size
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("nb_experiences"))
         return KwargsExperiences(**kwargs_dictionnary)
 
@@ -219,7 +230,7 @@ class KwargsDatasetGenerator:
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("path"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("end"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("start"))
-        return KwargsExperiences(**kwargs_dictionnary)
+        return KwargsDataset(**kwargs_dictionnary)
 
 
 class KwargsResultsGenerator:
@@ -230,19 +241,38 @@ class KwargsResultsGenerator:
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("last_w"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("first_w"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("topic_id"))
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("ntop"))
         return KwargsResults(**kwargs_dictionnary)
+
+
+class KwargsAnalyseGenerator:
+    def __new__(cls):
+        kwargs_dictionnary = {}
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("risk"))
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("trim"))
+        return KwargsAnalyse(**kwargs_dictionnary)
+
 
 
 class FullKwargsGenerator:
 
     def __new__(cls):
-        return {"experience" : KwargsExperiencesGenerator().__dict__ ,
-                "initialize_dataset": KwargsDatasetGenerator().__dict__,
-                "initialize_engine" : KwargsModelGenerator().__dict__ ,
-                "generate_result": KwargsResultsGenerator().__dict__ }
 
-class Generator:
+        full_kwargs = {}
+        full_kwargs["initialize_dataset"] = KwargsDatasetGenerator().__dict__
+        end_date = full_kwargs["initialize_dataset"]["end"]
+        start_date = full_kwargs["initialize_dataset"]["start"]
+        delta = full_kwargs["initialize_dataset"]["delta"]
+        timeline_size = math.ceil(( end_date- start_date) / delta)
+        full_kwargs["experience"] = KwargsExperiencesGenerator(timeline_size).__dict__
+        full_kwargs["initialize_engine"] = KwargsModelGenerator().__dict__
+        full_kwargs["generate_result"] = KwargsResultsGenerator().__dict__
+        full_kwargs["analyse"] = KwargsAnalyseGenerator().__dict__
+        return full_kwargs
+
+class KwargsGenerator:
     def __init__(self , n : int):
         self.n = n
     def __iter__(self):
-        yield FullKwargsGenerator()
+        for i in range(self.n):
+            yield FullKwargsGenerator()

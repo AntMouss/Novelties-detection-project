@@ -38,7 +38,7 @@ class CoreX(Engine):
         super().__init__(**kwargs)
         self.document_words_counter = DocumentsWordsCounter(self.texts)
         self.words = [ word for word in self.document_words_counter.columns]
-        self.documents_matrix = self.document_words_counter.to_numpy(dype = bool)
+        self.documents_matrix = self.document_words_counter.to_numpy(dtype = bool)
         self.documents_matrix = ss.csc_matrix(self.documents_matrix)
         self.core = ct.Corex(n_hidden=self.nb_topics, words=self.words, max_iter=200, verbose=False, seed=1)
 
@@ -56,8 +56,8 @@ class SupervisedCoreX(SupervisedEngine , CoreX ):
 class GuidedCoreX(GuidedEngine,CoreX):
     def __init__(self , anchor_strength = 3 , **kwargs ):
         super(GuidedCoreX, self).__init__(**kwargs)
-        self.anchors = [words for _ , words in self.seed.items()]
-        self.core.fit(self.documents_matrix , anchors=self.anchors , anchor_strength=anchor_strength)
+        self.anchors = [[word for word in words if word in self.words] for _ , words in self.seed.items()]
+        self.core.fit(self.documents_matrix , words=self.words, anchors=self.anchors , anchor_strength=anchor_strength)
 
 
 

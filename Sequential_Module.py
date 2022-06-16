@@ -139,8 +139,8 @@ class MetaSequencialLangageModeling:
     def getTopWordsTopic(self, topic_id, model : Engine = None, ntop : int = 100 , **kwargs):
 
        # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
-        topWords = model.get_topic_terms(topicid= topic_id, topn=ntop)
-        topWordsTopic = {topWord[0] : topWord[1] for topWord in topWords}
+        topWords = model.get_topic_terms(topic_id= topic_id, topn=ntop)
+        topWordsTopic = {topWord[0] : topWord[1] for topWord in topWords.items}
         return topWordsTopic
 
 
@@ -201,7 +201,7 @@ class SupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
         self.updateBadwords()
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
-        model = self.engine(texts=texts , labels=labels, **kwargs)
+        model = self.engine(texts=texts , labels=labels , labels_idx = self.labels_idx, **kwargs)
         return model, window_dictionnary_f
 
 
@@ -259,7 +259,6 @@ class GuidedSequantialLangagemodeling(SupervisedSequantialLangagemodeling):
         super(GuidedSequantialLangagemodeling, self).__init__(**kwargs)
         self.engine = Engine.GuidedEngine
         self.seed = seed
-        self.table = {idx : label for idx , label in enumerate(seed.keys())}
 
     @check_size
     def treat_Window(self, data_windows: tuple, **kwargs):
@@ -274,7 +273,7 @@ class GuidedSequantialLangagemodeling(SupervisedSequantialLangagemodeling):
         self.updateBadwords()
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
-        model = self.engine(texts=texts, **kwargs)
+        model = self.engine(texts=texts , seed=self.seed, **kwargs)
 
         return model, window_dictionnary_f
 
@@ -282,8 +281,8 @@ class GuidedSequantialLangagemodeling(SupervisedSequantialLangagemodeling):
     def getTopWordsTopic(self, topic_id, model : Engine = None, ntop : int = 100 , remove_seed_words : bool = True):
 
         # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
-        topWordsTopic = model.get_topic_terms(topicid= topic_id, topn=ntop)
-        topic = self.table[topic_id]
+        topWordsTopic = model.get_topic_terms(topic_id= topic_id, topn=ntop)
+        topic = self.labels_idx[topic_id]
         if remove_seed_words:
             words2keep = set(topWordsTopic.keys()).intersection(self.seed[topic])
             for word in words2keep:

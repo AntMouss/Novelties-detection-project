@@ -18,13 +18,14 @@ from data_analysis import Sampler , Analyser
 class ExperiencesMetadataGenerator:
 
     def __init__(self, thematics : List[Thematic] = None, timeline_size : int = None, nb_experiences : int = 32
-                 , max_size_exp_rel = 0.25 , min_size_exp = 3,cheat : bool = False, boost : int = 0):
+                 , max_size_exp_rel = 0.25 , min_size_exp = 3,cheat : bool = False, boost : int = 0 ,
+                 min_thematic_size : int = 1000):
         self.boost = boost
         self.cheat = cheat
         self.nb_experiences = nb_experiences
         self.timeline_size = timeline_size
         self.thematics = thematics
-        self.min_thematic_size = 100
+        self.min_thematic_size = min_thematic_size
         if max_size_exp_rel >= 1:
             raise Exception("max_size_exp_rel need to be inferior to 1")
         else:
@@ -55,7 +56,7 @@ class ExperiencesMetadataGenerator:
             experience = {}
             thematic_idx , thematic_name = random.choice(thematics_name)
             experience['name'] = thematic_name
-            thematic = thematics[thematic_idx]
+            thematic = self.thematics[thematic_idx]
             experience['ranges'] = []
             fail = 0
             while count < self.nb_experiences and fail < 15:
@@ -103,12 +104,15 @@ class ExperiencesGenerator:
     def generate_model(self,**kwargs) -> Tuple[Sequential_Module.MetaSequencialLangageModeling]:
 
         for timeline_wout , timeline_w in self.generate_timelines(**kwargs):
-            self.info["nb_topics"] = kwargs['intialize_engine']['nb_topics']
+            self.info["nb_topics"] = kwargs['initialize_engine']['nb_topics']
             sequential_model = kwargs['initialize_engine']['model_type']
+            training_args = kwargs['initialize_engine']['training_args']
+            del kwargs['initialize_engine']['model_type']
+            del kwargs['initialize_engine']['training_args']
             sq_model_w = sequential_model(**kwargs["initialize_engine"])
-            sq_model_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **kwargs['initialize_engine'])
+            sq_model_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **training_args)
             sq_model_wout = sequential_model(**kwargs['initialize_engine'])
-            sq_model_wout.add_windows(timeline_wout , kwargs["initialize_dataset"]['lookback'] , **kwargs['initialize_engine'])
+            sq_model_wout.add_windows(timeline_wout , kwargs["initialize_dataset"]['lookback'] , **training_args)
             yield sq_model_wout , sq_model_w
 
 
