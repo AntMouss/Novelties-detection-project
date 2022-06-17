@@ -1,4 +1,4 @@
-from typing import Type, List
+from typing import Type, List, Callable, Dict
 import random
 from Sequential_Module import (MetaSequencialLangageModeling,
                                GuidedSequantialLangagemodeling,
@@ -12,61 +12,64 @@ from Sequential_Module import (MetaSequencialLangageModeling,
 import math
 import json
 from data_utils import Thematic
-from data_processing import ProcessorText
+from data_processing import ProcessorText , absoluteThresholding , linearThresholding , exponentialThresholding
 
 
 class MetaModelKwargs:
-    def __init__(self, nb_topics: int):
+    def __init__(self, nb_topics: int , thresholding_fct_above: Callable,
+                 thresholding_fct_bellow: Callable, kwargs_above: Dict, kwargs_bellow: Dict):
+        self.thresholding_fct_above = thresholding_fct_above
+        self.thresholding_fct_bellow = thresholding_fct_bellow
+        self.kwargs_above = kwargs_above
+        self.kwargs_bellow = kwargs_bellow
         self.nb_topics = nb_topics
         self.model_type = MetaSequencialLangageModeling
         self.training_args = {}
 
 
 class SupervisedModelKwargs(MetaModelKwargs):
-    def __init__(self, labels_idx, nb_topics: int):
-        super().__init__(nb_topics)
+    def __init__(self, labels_idx, **kwargs):
+        super().__init__(**kwargs)
         self.model_type = SupervisedSequantialLangagemodeling
         self.labels_idx = labels_idx
 
 
 class GuidedModelKwargs(SupervisedModelKwargs):
-    def __init__(self, seed, labels_idx, nb_topics: int):
-        super().__init__(labels_idx, nb_topics)
+    def __init__(self, seed , **kwargs):
+        super().__init__(**kwargs)
         self.model_type = GuidedSequantialLangagemodeling
         self.seed = seed
 
 
 class GuidedLDAModelKwargs(GuidedModelKwargs):
-    def __init__(self, overrate, seed, labels_idx,
-                 nb_topics: int):
-        super().__init__(seed, labels_idx, nb_topics)
+    def __init__(self, overrate , **kwargs):
+        super().__init__(**kwargs)
         self.model_type = GuidedLDASequentialModeling
         self.training_args["overrate"] = overrate
 
 
 class GuidedCoreXKwargs(GuidedModelKwargs):
-    def __init__(self, anchor_strength, seed, labels_idx,
-                 nb_topics: int):
-        super().__init__(seed, labels_idx, nb_topics)
+    def __init__(self, anchor_strength , **kwargs):
+        super().__init__(**kwargs)
         self.model_type = GuidedCoreXSequentialModeling
         self.training_args["anchor_strength"] = anchor_strength
 
 
 class LFIDFModelKwargs(SupervisedModelKwargs):
-    def __init__(self, labels_idx, nb_topics: int):
-        super().__init__(labels_idx, nb_topics)
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
         self.model_type = LFIDFSequentialModeling
 
 
 class LDAModelKwargs(MetaModelKwargs):
-    def __init__(self, nb_topics: int):
-        super().__init__(nb_topics)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.model_type = LDASequantialModeling
 
 
 class CoreXModelKwargs(MetaModelKwargs):
-    def __init__(self, nb_topics: int):
-        super().__init__(nb_topics)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.model_type = NoSuperviedCoreXSequentialModeling
 
 
@@ -168,7 +171,15 @@ KWARGS = {
     "overrate": [10 ** i for i in range(2, 7)],
     "anchor_strength": [i for i in range(3, 30)],
     "trim": [0, 1, 2],
-    "risk" : [0.05]
+    "risk" : [0.05],
+    "thresholding_fct_above" : [absoluteThresholding , linearThresholding , exponentialThresholding],
+    "thresholding_fct_bellow" : [absoluteThresholding , linearThresholding],
+    "absolute_value_above":[2000 , 10000 , 20000],
+    "absolute_value_bellow" : [1, 3 , 10 , 20 , 100],
+    "relative_value_above" : [0.7 , 0.5 , 0.25],
+    "relative_value_bellow" : [0.05 , 0.01 , 0.001 , 0.0005 , 0.0001],
+    "limit" : [0.7 , 0.5 , 0.25],
+    "pente" : [10 , 50 , 100 , 500 , 1000]
 
 }
 
@@ -179,8 +190,11 @@ rel_kwargs = {
 class MetaKwargsGenerator:
 
     @staticmethod
-    def choose_arg(kwarg):
-        return {kwarg: random.choice(KWARGS[kwarg])}
+    def choose_arg(kwarg , key_name = None):
+        if key_name is None:
+            return {kwarg: random.choice(KWARGS[kwarg])}
+        else:
+            return {key_name: random.choice(KWARGS[kwarg])}
 
 
 class KwargsModelGenerator(MetaKwargsGenerator):
@@ -188,8 +202,11 @@ class KwargsModelGenerator(MetaKwargsGenerator):
     def __new__(cls):
         kwargs_model_type = random.choice(KWARGS["kwargs_model_type"])
         kwargs_dictionnary = {}
-        #kwargs_dictionnary["training_args"] = {}
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("nb_topics"))
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("thresholding_fct_above" ))
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("thresholding_fct_bellow" ))
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_kwargs_thresholding(
+            [kwargs_dictionnary["thresholding_fct_above"] , kwargs_dictionnary["thresholding_fct_bellow"]]))
         if kwargs_model_type.__name__ == 'GuidedLDAModelKwargs':
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("overrate"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("seed"))
@@ -205,6 +222,34 @@ class KwargsModelGenerator(MetaKwargsGenerator):
         if kwargs_model_type.__name__ == 'LDAModelKwargs':
             pass
         return kwargs_model_type(**kwargs_dictionnary)
+
+    @staticmethod
+    def choose_kwargs_thresholding(fcts : List[Callable]):
+        kwargs_thresholding = {
+            "kwargs_above" : {} ,
+            "kwargs_bellow" : {}
+        }
+        #begin with kwargs_above geneneration
+        if fcts[0] == absoluteThresholding:
+            kwargs_thresholding["kwargs_above"].update(
+                KwargsModelGenerator.choose_arg("absolute_value_above" , "absolute_value"))
+        elif fcts[0] == linearThresholding:
+            kwargs_thresholding["kwargs_above"].update(
+                KwargsModelGenerator.choose_arg("relative_value_above", "relative_value"))
+        elif fcts[0] == exponentialThresholding:
+            kwargs_thresholding["kwargs_above"].update(
+                KwargsModelGenerator.choose_arg("limit"))
+            kwargs_thresholding["kwargs_above"].update(
+                KwargsModelGenerator.choose_arg("pente"))
+        if fcts[1] == absoluteThresholding:
+            kwargs_thresholding["kwargs_above"].update(
+                KwargsModelGenerator.choose_arg("absolute_value_bellow" , "absolute_value"))
+        elif fcts[1] == linearThresholding:
+            kwargs_thresholding["kwargs_above"].update(
+                KwargsModelGenerator.choose_arg("relative_value_bellow", "relative_value"))
+        return kwargs_thresholding
+
+
 
 
 class KwargsExperiencesGenerator:

@@ -188,7 +188,7 @@ class TimeLineArticlesDataset(ArticlesDataset):
             while article['timeStamp'] >= ref_date_tmsp + self.delta :
                 self.window_idx += 1
                 ref_date_tmsp = ref_date_tmsp + self.delta
-                window_articles += (self.lookback_articles)
+                window_articles += self.lookback_articles
                 yield  ref_date_tmsp , self.transform(window_articles , processor=self.processor)
                 self.update_lookback_articles(window_articles)
                 del window_articles
@@ -217,7 +217,7 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
 
         if ProcessorText.detectLanguage(article['title']) != self.lang:
             return False
-        elif self.between_boundaries()  and article['id'] in self._ids_to_remove:
+        elif not self.between_boundaries()  and article['id'] in self._ids_to_remove:
             return False
         else:
             return True
@@ -228,6 +228,21 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
             if range[0] <= self.window_idx < range[1]:
                 return True
         return False
+
+
+    def update_lookback_articles(self, window_articles):
+        new_lookback_articles = []
+        #transform relative look_back to absolute look_back
+        if self.lookback < 1:
+            self.lookback = math.ceil(self.lookback * len(window_articles))
+        i = 0
+        window_articles = self.lookback_articles + window_articles
+        while len(new_lookback_articles) != self.lookback and  i < len(window_articles):
+            current_article = window_articles[-i]
+            if self.verif(current_article):
+                new_lookback_articles.append(current_article)
+        self.lookback_articles = new_lookback_articles
+
 
 
 
