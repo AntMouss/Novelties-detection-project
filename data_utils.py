@@ -60,6 +60,17 @@ class Thematic(Data):
         return len(self.article_ids)
 
 
+class Alerte(Data):
+    
+    def __init__(self , topic_id , risk : float , windows : List , pvalue : float):
+        self.pvalue = pvalue
+        self.windows = windows
+        self.risk = risk
+        self.topic_id = topic_id
+        
+        
+    
+
 
 class ExperiencesMetadata(Data):
 
@@ -74,9 +85,9 @@ class ExperiencesMetadata(Data):
 
 class ExperiencesResult(Data):
 
-    def __init__(self , metadata : ExperiencesMetadata , similarity : Tuple[List] , label_counter_w : List[dict] = None
-                 , label_counter_wout : List[dict] = None):
-        self.label_counter_wout = label_counter_wout
+    def __init__(self, metadata : ExperiencesMetadata, similarity : Tuple[List], label_counter_w : List[dict] = None
+                 , label_counter_ref : List[dict] = None):
+        self.label_counter_ref = label_counter_ref
         self.label_counter_w = label_counter_w
         self.similarity = {"with" : similarity[0] , "without" : similarity[1]}
         self.metadata = metadata

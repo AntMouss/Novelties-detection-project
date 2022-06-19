@@ -93,6 +93,9 @@ class ExperiencesGenerator:
         self.new_experience = {}
         self.info = {}
         self.reference_timeline = None
+        self.reference_model = None
+        self.model_type = None
+        self.training_args = None
 
 
     def generate_timelines(self , **kwargs) -> Tuple[TimeLineArticlesDataset]:
@@ -108,29 +111,33 @@ class ExperiencesGenerator:
 
     def generate_model(self,**kwargs) -> Tuple[Sequential_Module.MetaSequencialLangageModeling]:
 
+        self.info["nb_topics"] = kwargs['initialize_engine']['nb_topics']
+        self.model_type = kwargs['initialize_engine']['model_type']
+        self.training_args = kwargs['initialize_engine']['training_args']
+        del kwargs['initialize_engine']['model_type']
+        del kwargs['initialize_engine']['training_args']
         for reference_timeline , timeline_w in self.generate_timelines(**kwargs):
-            self.info["nb_topics"] = kwargs['initialize_engine']['nb_topics']
-            sequential_model = kwargs['initialize_engine']['model_type']
-            training_args = kwargs['initialize_engine']['training_args']
-            del kwargs['initialize_engine']['model_type']
-            del kwargs['initialize_engine']['training_args']
-            sq_model_ref = sequential_model(**kwargs['initialize_engine'])
-            sq_model_ref.add_windows(reference_timeline, kwargs["initialize_dataset"]['lookback'], **training_args)
+            sequential_model = self.model_type
+            if self.reference_model is None:
+                self.reference_model = sequential_model(**kwargs['initialize_engine'])
+                self.reference_model.add_windows(reference_timeline, kwargs["initialize_dataset"]['lookback'],
+                                                 **self.training_args)
             sq_model_w = sequential_model(**kwargs["initialize_engine"])
-            sq_model_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **training_args)
-            yield sq_model_ref , sq_model_w
+            sq_model_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **self.training_args)
+            yield self.reference_model , sq_model_w
 
 
     def generate_results(self , **kwargs):
-
+        # delete topic_id key for use compareTopicsSequentialy that is like compareTopicSequentialy for all topics
+        del kwargs["generate_result"]["topic_id"]
         for model_ref , model_w in self.generate_model(**kwargs):
-            res_w = model_w.compareTopicSequentialy(**kwargs["generate_result"])
-            res_wout = model_w.compareTopicSequentialy(**kwargs["generate_result"])
+            res_w = model_w.compareTopicsSequentialy(**kwargs["generate_result"])
+            res_wout = model_ref.compareTopicsSequentialy(**kwargs["generate_result"])
             similarity = (res_w , res_wout)
             self.new_experience['similarity'] = similarity
             try:
-                self.new_experience['label_counter_ref'] = model_w.label_articles_counter
-                self.new_experience['label_counter_wout'] = model_ref.label_articles_counter
+                self.new_experience['label_counter_w'] = model_w.label_articles_counter
+                self.new_experience['label_counter_ref'] = model_ref.label_articles_counter
 
             except AttributeError:
                 pass
@@ -138,14 +145,13 @@ class ExperiencesGenerator:
             del self.new_experience
             self.new_experience = {}
 
+    @staticmethod
+    def analyse_results(experiences_results : ExperiencesResults , risk = 0.05 , trim = 0):
 
-    def analyse_results(self , risk = 0.05 , trim = 0):
-
-        experiences_results = ExperiencesResults(self.experiences_res , self.info)
         samples = Sampler(experiences_results).samples
-        analyser = Analyser(samples , risk = risk)
-        for topic_id in range (len(samples)):
-            analyser.topic_pvalue_matrix(topic_id , trim=trim)
+        analyser = Analyser(samples , risk = risk , trim=trim)
+        return [alert for alert in analyser.test_hypothesis()]
+
 
 
 

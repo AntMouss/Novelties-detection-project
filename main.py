@@ -1,6 +1,7 @@
 from kwargsGen import KwargsGenerator
 from ExperienceGen import ExperiencesGenerator
 from multiprocessing import Pool
+from data_utils import ExperiencesResults
 
 NB_MODELS = 30
 
@@ -8,7 +9,8 @@ def process(**kwargs):
     try:
         experienceGenerator = ExperiencesGenerator()
         experienceGenerator.generate_results(**kwargs)
-        experienceGenerator.analyse_results(**kwargs["analyse"])
+        experiences_results = ExperiencesResults(experienceGenerator.experiences_res , experienceGenerator.info)
+        ExperiencesGenerator.analyse_results(experiences_results , **kwargs["analyse"])
     except Exception as e:
         print(e)
         print("tr")
