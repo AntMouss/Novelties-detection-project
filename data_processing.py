@@ -500,6 +500,9 @@ def linearThresholding(relative_value , nb_docs):
 def exponentialThresholding(nb_docs, limit = 0.5, pente = 100):
     if limit > 1:
         raise Exception("limit can't be superior to 1")
+    # i do this while method to avoid relative_value negative
+    while pente > nb_docs:
+        pente = pente // 2
     relative_value = 1 - limit * (1 - (1 / (1 + math.log10(nb_docs / pente))))
     return relative_value * nb_docs
 

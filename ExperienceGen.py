@@ -13,7 +13,7 @@ from data_processing import ProcessorText
 from data_analysis import Sampler , Analyser
 import logging
 
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename='log.log' , level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename='log/log.log' , level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

@@ -1,16 +1,8 @@
-import os.path
 from flask import Flask, request
 from flask_restplus import Api, Resource, fields
-import requests
-from os import path
 import json
 import sys
 import os
-from html2text import HTML2Text
-import hashlib
-import feedparser
-from bs4 import BeautifulSoup
-import re
 from threading import Thread
 import schedule
 

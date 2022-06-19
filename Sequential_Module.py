@@ -103,6 +103,10 @@ class MetaSequencialLangageModeling:
         nb_docs = self.semi_filtred_dictionnary.num_docs
         abs_no_above = self.thresholding_fct_above(nb_docs=nb_docs, **self.kwargs_above)
         abs_no_bellow = self.thresholding_fct_bellow(nb_docs=nb_docs, **self.kwargs_bellow)
+        if abs_no_bellow >= abs_no_above:
+            raise Exception("abs_no_bellow should be inferior to abs_no_above")
+        if abs_no_above <= 0:
+            raise Exception("abs_no_above should be superior to zero")
         self.bad_words = [word for id, word in self.semi_filtred_dictionnary.items() if
                           self.semi_filtred_dictionnary.dfs[id] < abs_no_bellow or self.semi_filtred_dictionnary.dfs[
                               id] > abs_no_above]
