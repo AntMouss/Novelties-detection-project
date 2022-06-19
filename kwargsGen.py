@@ -99,7 +99,8 @@ class KwargsDataset:
 
 class KwargsResults:
     def __init__(self, topic_id: int, first_w: int, last_w: int, ntop: int,
-                 fixeWindow: bool, remove_seed_words: bool):
+                 fixeWindow: bool, remove_seed_words: bool , back : int):
+        self.back = back
         self.remove_seed_words = remove_seed_words
         self.fixeWindow = fixeWindow
         self.ntop = ntop
@@ -119,12 +120,10 @@ dataprocessedPath = '/home/mouss/data/final_database_50000_100000_process_withou
 seedPath = '/home/mouss/data/mySeed.json'
 all_experiences_file = '/home/mouss/data/myExperiences_with_random_state.json'
 thematics_path = '/home/mouss/data/thematics.json'
-nb_jours = 1
+nb_jours = 25
 start_date = 1622376100.0
-end_date = start_date + nb_jours * 24 * 3600
 lookback = 10
 delta = 1
-timeline_size = math.ceil((end_date - start_date) / delta)
 
 # load seed
 with open(seedPath, 'r') as f:
@@ -144,7 +143,7 @@ KWARGS = {
     "kwargs_model_type": [GuidedLDAModelKwargs],
     "nb_experiences": [32, 48, 64],
     "thematics": [thematics],
-    "min_thematic_size": [0, 500, 1000,2000],
+    "min_thematic_size": [1000,2000],
     "min_size_exp": [i for i in range(2, 10)],
     "max_size_exp_rel": [0.1, 0.2, 0.3],
     "cheat": [False],
@@ -165,7 +164,7 @@ KWARGS = {
     "seed" : [seed],
     "remove_seed_words": [True],
     "exclusive": [True, False],
-    "back": [2, 8],
+    "back": [2,3,4,5,6],
     "soft": [True, False],
     "random_state": [42],
     "overrate": [10 ** i for i in range(2, 7)],
@@ -175,11 +174,11 @@ KWARGS = {
     "thresholding_fct_above" : [absoluteThresholding , linearThresholding , exponentialThresholding],
     "thresholding_fct_bellow" : [absoluteThresholding , linearThresholding],
     "absolute_value_above":[2000 , 10000 , 20000],
-    "absolute_value_bellow" : [1, 3 , 10 , 20 , 100],
+    "absolute_value_bellow" : [1, 3 , 10],
     "relative_value_above" : [0.7 , 0.5 , 0.25],
     "relative_value_bellow" : [0.05 , 0.01 , 0.001 , 0.0005 , 0.0001],
     "limit" : [0.7 , 0.5 , 0.25],
-    "pente" : [10 , 50 , 100 , 500 , 1000]
+    "pente" : [50 , 100 , 500 , 1000]
 
 }
 
@@ -242,10 +241,10 @@ class KwargsModelGenerator(MetaKwargsGenerator):
             kwargs_thresholding["kwargs_above"].update(
                 KwargsModelGenerator.choose_arg("pente"))
         if fcts[1] == absoluteThresholding:
-            kwargs_thresholding["kwargs_above"].update(
+            kwargs_thresholding["kwargs_bellow"].update(
                 KwargsModelGenerator.choose_arg("absolute_value_bellow" , "absolute_value"))
         elif fcts[1] == linearThresholding:
-            kwargs_thresholding["kwargs_above"].update(
+            kwargs_thresholding["kwargs_bellow"].update(
                 KwargsModelGenerator.choose_arg("relative_value_bellow", "relative_value"))
         return kwargs_thresholding
 
@@ -287,6 +286,7 @@ class KwargsResultsGenerator:
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("first_w"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("topic_id"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("ntop"))
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("back"))
         return KwargsResults(**kwargs_dictionnary)
 
 
@@ -308,7 +308,7 @@ class FullKwargsGenerator:
         end_date = full_kwargs["initialize_dataset"]["end"]
         start_date = full_kwargs["initialize_dataset"]["start"]
         delta = full_kwargs["initialize_dataset"]["delta"]
-        timeline_size = math.ceil(( end_date- start_date) / delta)
+        timeline_size = math.ceil(( end_date- start_date) / (delta*3600))
         full_kwargs["experience"] = KwargsExperiencesGenerator(timeline_size).__dict__
         full_kwargs["initialize_engine"] = KwargsModelGenerator().__dict__
         full_kwargs["generate_result"] = KwargsResultsGenerator().__dict__

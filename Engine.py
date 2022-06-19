@@ -126,10 +126,10 @@ class LDA(Engine):
 class GuidedLDA(GuidedEngine , LDA):
 
 
-    def __init__(self, overratte , **kwargs):
+    def __init__(self, overrate, **kwargs):
 
         super().__init__(**kwargs)
-        self.ldaargs['eta'] = self.generate_eta(self.seed , self.dictionnary , overratte=overratte)
+        self.ldaargs['eta'] = self.generate_eta(self.seed, self.dictionnary, overratte=overrate)
         self.core = LdaModel(**self.ldaargs)
 
     @staticmethod

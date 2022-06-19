@@ -109,7 +109,7 @@ class MetaSequencialLangageModeling:
         abs_no_above = self.thresholding_fct_above(nb_docs=nb_docs, **self.kwargs_above)
         abs_no_bellow = self.thresholding_fct_bellow(nb_docs=nb_docs, **self.kwargs_bellow)
         self.bad_words = [word for id, word in self.semi_filtred_dictionnary.items() if
-                          abs_no_bellow > self.semi_filtred_dictionnary.dfs[id] or self.semi_filtred_dictionnary.dfs[
+                          self.semi_filtred_dictionnary.dfs[id] < abs_no_bellow or self.semi_filtred_dictionnary.dfs[
                               id] > abs_no_above]
         self.bad_words += self.predefinedBadWords
 
@@ -285,6 +285,8 @@ class LDASequantialModeling(NoSupervisedSequantialLangagemodeling):
 
     @check_size
     def treat_Window(self, texts, **kwargs):
+        print(f"size documents: {len(texts)} ")
+        print("-" * 30)
         window_dictionnary = corpora.Dictionary(texts)
         # update semi-filtred dictionnary
         self.semi_filtred_dictionnary.merge_with(window_dictionnary)
@@ -306,6 +308,8 @@ class GuidedLDASequentialModeling(GuidedSequantialLangagemodeling):
     @check_size
     def treat_Window(self, data_window, **kwargs):
         texts, labels = data_window
+        print(f"size documents: {len(texts)} ")
+        print("-" * 30)
         window_dictionnary = corpora.Dictionary(texts)
         self.label_articles_counter.append(Counter(labels))
         # update semi-filtred dictionnary
@@ -314,7 +318,7 @@ class GuidedLDASequentialModeling(GuidedSequantialLangagemodeling):
         self.updateBadwords()
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
-        model = self.engine(texts=texts, dictionnary=window_dictionnary_f, **kwargs)
+        model = self.engine(texts=texts,seed=self.seed, dictionnary=window_dictionnary_f, **kwargs)
 
         return model, window_dictionnary_f
 

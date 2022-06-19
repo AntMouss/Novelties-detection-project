@@ -72,6 +72,9 @@ class ExperiencesMetadataGenerator:
                     fail += 1
                     print(f"fail : {fail}")
             # sort ranges
+            if len(experience['ranges']) == 0:
+                raise Exception("metadata have no ranges in 'ranges' attributes "
+                                ", probably because timeline_size is too small")
             experience['ranges'].sort(key=lambda tup: tup[0])
 
             experience['cheat'] = self.cheat

@@ -188,8 +188,7 @@ class TimeLineArticlesDataset(ArticlesDataset):
             while article['timeStamp'] >= ref_date_tmsp + self.delta :
                 self.window_idx += 1
                 ref_date_tmsp = ref_date_tmsp + self.delta
-                window_articles += self.lookback_articles
-                yield  ref_date_tmsp , self.transform(window_articles , processor=self.processor)
+                yield  ref_date_tmsp , self.transform(window_articles + self.lookback_articles , processor=self.processor)
                 self.update_lookback_articles(window_articles)
                 del window_articles
                 window_articles = []
@@ -236,11 +235,12 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
         if self.lookback < 1:
             self.lookback = math.ceil(self.lookback * len(window_articles))
         i = 0
-        window_articles = self.lookback_articles + window_articles
+        window_articles = window_articles + self.lookback_articles
         while len(new_lookback_articles) != self.lookback and  i < len(window_articles):
-            current_article = window_articles[-i]
+            current_article = window_articles[i]
             if self.verif(current_article):
                 new_lookback_articles.append(current_article)
+            i += 1
         self.lookback_articles = new_lookback_articles
 
 
