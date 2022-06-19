@@ -60,19 +60,15 @@ class MetaSequencialLangageModeling:
             random_state = rValue.randint(1, 14340)
             kwargs["random_state"] = random_state
             print(f"numero of window: {i} -- random state: {random_state}")
-            try:
-                model, window_dictionnary = self.treat_Window(data_windows, **kwargs)
-                # for bound window to the right glda model we use no_window
-                no_window = i
-                if update_res:
-                    self.updateResults(end_date_window, window_dictionnary, model, no_window)
-                self.date_window_idx[end_date_window] = no_window
-                self.models.append(model)
-                self.nb_windows += 1
+            model, window_dictionnary = self.treat_Window(data_windows, **kwargs)
+            # for bound window to the right glda model we use no_window
+            no_window = i
+            if update_res:
+                self.updateResults(end_date_window, window_dictionnary, model, no_window)
+            self.date_window_idx[end_date_window] = no_window
+            self.models.append(model)
+            self.nb_windows += 1
 
-            except Exception as e:
-                print(e)
-                pass
 
     def updateResults(self, end_date, dictionnary_window: corpora.Dictionary, model: Engine, no_window: int,
                       ntop: int = 100):
