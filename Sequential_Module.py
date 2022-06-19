@@ -1,5 +1,6 @@
 import math
 import random
+from functools import lru_cache
 from typing import List, Callable, Dict
 from data_utils import TimeLineArticlesDataset
 from gensim import corpora
@@ -50,6 +51,7 @@ class MetaSequencialLangageModeling:
     def treat_Window(self, data_window, **kwargs):
         pass
 
+    @lru_cache(maxsize=5)
     def add_windows(self, data: TimeLineArticlesDataset, lookback=10, update_res=False, **kwargs):
 
         self.info['lookback'] = lookback

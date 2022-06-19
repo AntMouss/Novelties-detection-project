@@ -188,7 +188,8 @@ class TimeLineArticlesDataset(ArticlesDataset):
             while article['timeStamp'] >= ref_date_tmsp + self.delta :
                 self.window_idx += 1
                 ref_date_tmsp = ref_date_tmsp + self.delta
-                yield  ref_date_tmsp , self.transform(window_articles + self.lookback_articles , processor=self.processor)
+                window_articles += (self.lookback_articles)
+                yield  ref_date_tmsp , self.transform(window_articles , processor=self.processor)
                 self.update_lookback_articles(window_articles)
                 del window_articles
                 window_articles = []
@@ -199,7 +200,8 @@ class TimeLineArticlesDataset(ArticlesDataset):
         yield ref_date_tmsp , self.transform(window_articles , processor=self.processor)
 
 
-
+# i decide to make checkout for update_lookback fuction because
+# it's not fair to remove thematic article of the look_back_articles (it's a methodology bias)
 class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
 
     def __init__(self , thematic : Thematic,metadata : ExperiencesMetadata,**kwargs ):
@@ -227,22 +229,6 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
             if range[0] <= self.window_idx < range[1]:
                 return True
         return False
-
-
-    def update_lookback_articles(self, window_articles):
-        new_lookback_articles = []
-        #transform relative look_back to absolute look_back
-        if self.lookback < 1:
-            self.lookback = math.ceil(self.lookback * len(window_articles))
-        i = 0
-        window_articles = window_articles + self.lookback_articles
-        while len(new_lookback_articles) != self.lookback and  i < len(window_articles):
-            current_article = window_articles[i]
-            if self.verif(current_article):
-                new_lookback_articles.append(current_article)
-            i += 1
-        self.lookback_articles = new_lookback_articles
-
 
 
 

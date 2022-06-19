@@ -121,6 +121,7 @@ seedPath = '/home/mouss/data/mySeed.json'
 all_experiences_file = '/home/mouss/data/myExperiences_with_random_state.json'
 thematics_path = '/home/mouss/data/thematics.json'
 nb_jours = 25
+nb_hours = 15
 start_date = 1622376100.0
 lookback = 10
 delta = 1
@@ -149,7 +150,7 @@ KWARGS = {
     "cheat": [False],
     "boost": [0],
     "start": [1622376100],
-    "end": [1622376100 + nb_jours * 3 * 3600],
+    "end": [1622376100 + nb_hours * 3600],
     "path": ["/home/mouss/data/final_database_50000_100000_process_without_key.json"],
     "lookback": [i for i in range(5, 100, 5)],
     "delta": [1],

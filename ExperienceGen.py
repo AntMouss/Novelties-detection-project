@@ -92,6 +92,7 @@ class ExperiencesGenerator:
         self.experiences_res = []
         self.new_experience = {}
         self.info = {}
+        self.reference_timeline = None
 
 
     def generate_timelines(self , **kwargs) -> Tuple[TimeLineArticlesDataset]:
@@ -99,36 +100,37 @@ class ExperiencesGenerator:
         for metadata , thematic in ExperiencesMetadataGenerator(**kwargs['experience']):
 
             self.new_experience["metadata"] = metadata
-            timelinewout = TimeLineArticlesDataset(**kwargs["initialize_dataset"])
+            if self.reference_timeline is None:
+                self.reference_timeline = TimeLineArticlesDataset(**kwargs["initialize_dataset"])
             timelinew = EditedTimeLineArticlesDataset(thematic=thematic , metadata=metadata , **kwargs["initialize_dataset"])
-            yield timelinewout , timelinew
+            yield self.reference_timeline , timelinew
 
 
     def generate_model(self,**kwargs) -> Tuple[Sequential_Module.MetaSequencialLangageModeling]:
 
-        for timeline_wout , timeline_w in self.generate_timelines(**kwargs):
+        for reference_timeline , timeline_w in self.generate_timelines(**kwargs):
             self.info["nb_topics"] = kwargs['initialize_engine']['nb_topics']
             sequential_model = kwargs['initialize_engine']['model_type']
             training_args = kwargs['initialize_engine']['training_args']
             del kwargs['initialize_engine']['model_type']
             del kwargs['initialize_engine']['training_args']
+            sq_model_ref = sequential_model(**kwargs['initialize_engine'])
+            sq_model_ref.add_windows(reference_timeline, kwargs["initialize_dataset"]['lookback'], **training_args)
             sq_model_w = sequential_model(**kwargs["initialize_engine"])
             sq_model_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **training_args)
-            sq_model_wout = sequential_model(**kwargs['initialize_engine'])
-            sq_model_wout.add_windows(timeline_wout , kwargs["initialize_dataset"]['lookback'] , **training_args)
-            yield sq_model_wout , sq_model_w
+            yield sq_model_ref , sq_model_w
 
 
     def generate_results(self , **kwargs):
 
-        for model_wout , model_w in self.generate_model(**kwargs):
+        for model_ref , model_w in self.generate_model(**kwargs):
             res_w = model_w.compareTopicSequentialy(**kwargs["generate_result"])
             res_wout = model_w.compareTopicSequentialy(**kwargs["generate_result"])
             similarity = (res_w , res_wout)
             self.new_experience['similarity'] = similarity
             try:
-                self.new_experience['label_counter_w'] = model_w.label_articles_counter
-                self.new_experience['label_counter_wout'] = model_wout.label_articles_counter
+                self.new_experience['label_counter_ref'] = model_w.label_articles_counter
+                self.new_experience['label_counter_wout'] = model_ref.label_articles_counter
 
             except AttributeError:
                 pass
