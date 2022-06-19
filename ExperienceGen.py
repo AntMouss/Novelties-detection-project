@@ -11,7 +11,10 @@ from data_utils import (TimeLineArticlesDataset,
                         ExperiencesResult)
 from data_processing import ProcessorText
 from data_analysis import Sampler , Analyser
+import logging
 
+logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename='log.log' , level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 
@@ -84,8 +87,6 @@ class ExperiencesMetadataGenerator:
 
 
 
-
-
 class ExperiencesGenerator:
 
     def __init__(self):
@@ -99,58 +100,69 @@ class ExperiencesGenerator:
 
 
     def generate_timelines(self , **kwargs) -> Tuple[TimeLineArticlesDataset]:
+        try:
+            for metadata , thematic in ExperiencesMetadataGenerator(**kwargs['experience']):
 
-        for metadata , thematic in ExperiencesMetadataGenerator(**kwargs['experience']):
+                self.new_experience["metadata"] = metadata
+                if self.reference_timeline is None:
+                    self.reference_timeline = TimeLineArticlesDataset(**kwargs["initialize_dataset"])
+                timelinew = EditedTimeLineArticlesDataset(thematic=thematic , metadata=metadata , **kwargs["initialize_dataset"])
+                yield self.reference_timeline , timelinew
 
-            self.new_experience["metadata"] = metadata
-            if self.reference_timeline is None:
-                self.reference_timeline = TimeLineArticlesDataset(**kwargs["initialize_dataset"])
-            timelinew = EditedTimeLineArticlesDataset(thematic=thematic , metadata=metadata , **kwargs["initialize_dataset"])
-            yield self.reference_timeline , timelinew
+        except Exception as e:
+            logger.debug(f"Exception occurred in Timeline Generation: {e}", exc_info=True)
 
 
     def generate_model(self,**kwargs) -> Tuple[Sequential_Module.MetaSequencialLangageModeling]:
 
-        self.info["nb_topics"] = kwargs['initialize_engine']['nb_topics']
-        self.model_type = kwargs['initialize_engine']['model_type']
-        self.training_args = kwargs['initialize_engine']['training_args']
-        del kwargs['initialize_engine']['model_type']
-        del kwargs['initialize_engine']['training_args']
-        for reference_timeline , timeline_w in self.generate_timelines(**kwargs):
-            sequential_model = self.model_type
-            if self.reference_model is None:
-                self.reference_model = sequential_model(**kwargs['initialize_engine'])
-                self.reference_model.add_windows(reference_timeline, kwargs["initialize_dataset"]['lookback'],
-                                                 **self.training_args)
-            sq_model_w = sequential_model(**kwargs["initialize_engine"])
-            sq_model_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **self.training_args)
-            yield self.reference_model , sq_model_w
+        try:
+            self.info["nb_topics"] = kwargs['initialize_engine']['nb_topics']
+            self.model_type = kwargs['initialize_engine']['model_type']
+            self.training_args = kwargs['initialize_engine']['training_args']
+            del kwargs['initialize_engine']['model_type']
+            del kwargs['initialize_engine']['training_args']
+            for reference_timeline , timeline_w in self.generate_timelines(**kwargs):
+                sequential_model = self.model_type
+                if self.reference_model is None:
+                    self.reference_model = sequential_model(**kwargs['initialize_engine'])
+                    self.reference_model.add_windows(reference_timeline, kwargs["initialize_dataset"]['lookback'],
+                                                     **self.training_args)
+                sq_model_w = sequential_model(**kwargs["initialize_engine"])
+                sq_model_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **self.training_args)
+                yield self.reference_model , sq_model_w
+
+        except Exception as e:
+            logger.debug(f"Exception occurred in Model Generation: {e}", exc_info=True)
 
 
     def generate_results(self , **kwargs):
-        # delete topic_id key for use compareTopicsSequentialy that is like compareTopicSequentialy for all topics
-        del kwargs["generate_result"]["topic_id"]
-        for model_ref , model_w in self.generate_model(**kwargs):
-            res_w = model_w.compareTopicsSequentialy(**kwargs["generate_result"])
-            res_wout = model_ref.compareTopicsSequentialy(**kwargs["generate_result"])
-            similarity = (res_w , res_wout)
-            self.new_experience['similarity'] = similarity
-            try:
+
+        try:
+            # delete topic_id key for use compareTopicsSequentialy that is like compareTopicSequentialy for all topics
+            del kwargs["generate_result"]["topic_id"]
+            for model_ref , model_w in self.generate_model(**kwargs):
+                res_w = model_w.compareTopicsSequentialy(**kwargs["generate_result"])
+                res_wout = model_ref.compareTopicsSequentialy(**kwargs["generate_result"])
+                similarity = (res_w , res_wout)
+                self.new_experience['similarity'] = similarity
                 self.new_experience['label_counter_w'] = model_w.label_articles_counter
                 self.new_experience['label_counter_ref'] = model_ref.label_articles_counter
+                self.experiences_res.append(ExperiencesResult(**self.new_experience))
+                del self.new_experience
+                self.new_experience = {}
+        except Exception as e:
+            logger.debug(f"Exception occurred in Results Generation: {e}", exc_info=True)
 
-            except AttributeError:
-                pass
-            self.experiences_res.append(ExperiencesResult(**self.new_experience))
-            del self.new_experience
-            self.new_experience = {}
 
     @staticmethod
     def analyse_results(experiences_results : ExperiencesResults , risk = 0.05 , trim = 0):
 
-        samples = Sampler(experiences_results).samples
-        analyser = Analyser(samples , risk = risk , trim=trim)
-        return [alert for alert in analyser.test_hypothesis()]
+        try:
+            samples = Sampler(experiences_results).samples
+            analyser = Analyser(samples , risk = risk , trim=trim)
+            return [alert for alert in analyser.test_hypothesis()]
+        except Exception as e:
+            logger.debug(f"Exception occurred in Alert Generation: {e}", exc_info=True)
 
 
 
