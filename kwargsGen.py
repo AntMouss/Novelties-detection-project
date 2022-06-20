@@ -100,10 +100,9 @@ class KwargsDataset:
 
 class KwargsResults:
     def __init__(self, topic_id: int, first_w: int, last_w: int, ntop: int,
-                 fixeWindow: bool, remove_seed_words: bool , back : int):
+                  remove_seed_words: bool , back : int):
         self.back = back
         self.remove_seed_words = remove_seed_words
-        self.fixeWindow = fixeWindow
         self.ntop = ntop
         self.last_w = last_w
         self.first_w = first_w
@@ -212,7 +211,6 @@ class KwargsResultsGenerator:
     def __new__(cls):
         kwargs_dictionnary = {}
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("remove_seed_words"))
-        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("fixeWindow"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("last_w"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("first_w"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("topic_id"))
@@ -256,7 +254,7 @@ class KwargsGenerator:
 
 KWARGS = {
     #GuidedLDAModelKwargs,LFIDFModelKwargs,GuidedCoreXKwargs
-    "kwargs_model_type": [LFIDFModelKwargs,GuidedCoreXKwargs],
+    "kwargs_model_type": [GuidedCoreXKwargs],
     #32, 48, 64
     "nb_experiences": [3 , 5],
     "thematics": [THEMATICS],
@@ -277,7 +275,6 @@ KWARGS = {
     "first_w": [0],
     "last_w": [0],
     "ntop": [ntop for ntop in range(50 , 101 , 10)],
-    "fixeWindow": [False],
     "seed" : [SEED],
     "remove_seed_words": [True],
     "exclusive": [True, False],

@@ -195,27 +195,24 @@ class SupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
         model = self.engine(texts=texts, labels=labels, labels_idx=self.labels_idx, **kwargs)
         return model, window_dictionnary_f
 
-    def compareTopicSequentialy(self, topic_id, first_w=0, last_w=0, ntop=100, fixeWindow=False, back=3, **kwargs):
+    def compareTopicSequentialy(self, topic_id, first_w=0, last_w=0, ntop=100, back=3, **kwargs):
 
         # we use thi condition to set the numero of the last window because by
         # default we want to compute similarity until the last window
         if last_w == 0:
             last_w = len(self.models)
         res = []
-        if fixeWindow == True:
-            for i in range(first_w + 1, last_w):
-                res.append(self.calcule_similarity_topics_W_W('jaccard', ntop, first_w, i, **kwargs)[topic_id])
-        else:
-            for i in range(first_w + 1, last_w):
-                window_res = []
-                for j in range(back):
-                    try:
-                        window_res.append(
-                            self.calcule_similarity_topics_W_W('jaccard', ntop, i - 1 - j, i, **kwargs)[topic_id])
-                    except Exception as e:
-                        break
-                res.append(np.mean(window_res))
+        for i in range(first_w + 1, last_w):
+            window_res = []
+            for j in range(back):
+                try:
+                    window_res.append(
+                        self.calcule_similarity_topics_W_W('jaccard', ntop, i - 1 - j, i, **kwargs)[topic_id])
+                except Exception as e:
+                    break
+            res.append(np.mean(window_res))
         return res
+
 
     def compareTopicsSequentialy(self, **kwargs):
 
@@ -232,10 +229,10 @@ class SupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
             # list of sets of top words per topics in jth window
             jthTopWordsTopics = self.getTopWordsTopics(self.models[jth_window], ntop=ntop, **kwargs)
             if soft == False:
-                return [len(set(jthTopWordsTopics[topic_id]).difference(set(ithTopWordsTopics[topic_id]))) / len(
+                return [len(set(jthTopWordsTopics[topic_id]).intersection(set(ithTopWordsTopics[topic_id]))) / len(
                     jthTopWordsTopics[topic_id]) for topic_id in range(len(ithTopWordsTopics))]
             else:
-                intersections = [(set(jthTopWordsTopics[topic_id].keys()).difference(set(ithTopWordsTopics[topic_id])))
+                intersections = [(set(jthTopWordsTopics[topic_id].keys()).intersection(set(ithTopWordsTopics[topic_id])))
                                  for topic_id in range(len(ithTopWordsTopics))]
                 return [sum([jthTopWordsTopics[topic_id][word] for word in intersection_topic]) for topic_id,
                         intersection_topic in enumerate(intersections)]
