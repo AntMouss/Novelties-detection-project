@@ -1,6 +1,7 @@
 from kwargsGen import KwargsGenerator
 from ExperienceGen import ExperiencesGenerator
 from multiprocessing import Pool
+from config_arguments import LOG_PATH
 from data_utils import ExperiencesResults
 import pickle
 import argparse
@@ -9,7 +10,7 @@ from threading import Lock
 
 l = Lock()
 
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename='log/log.log' , level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename=LOG_PATH , level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(description="pass config_file and save_path",
@@ -38,7 +39,7 @@ def process(**kwargs):
         experiences_results = ExperiencesResults(experienceGenerator.experiences_res , experienceGenerator.info)
         alerts = ExperiencesGenerator.analyse_results(experiences_results , **kwargs["analyse"])
         assert (alerts is not None)
-        l.locked()
+        l.acquire()
         save(process_id , kwargs , alerts)
         l.release()
         if len(alerts) != 0:

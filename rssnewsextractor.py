@@ -96,7 +96,7 @@ if __name__ == '__main__':
     rootDir = ''
     if len(sys.argv) > 1:
         rootDir=sys.argv[1]
-    with open(os.path.join(rootDir, "config/config.json"), "r") as f:
+    with open(os.path.join(rootDir, "config/config_service.json"), "r") as f:
         config = json.load(f)
 
     startServer()

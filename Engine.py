@@ -102,9 +102,10 @@ class LFIDF(SupervisedEngine):
 class LDA(Engine):
 
     def __init__(self, dictionnary: corpora.Dictionary = None,
-                 random_state=42,**kwargs):
+                 random_state=42, passes : int = 1 , **kwargs):
 
         super().__init__(**kwargs)
+        self.passes = passes
         self.random_state = random_state
         self.dictionnary = dictionnary
         corpus_bow = [self.dictionnary.doc2bow(text) for text in self.texts]
@@ -112,7 +113,8 @@ class LDA(Engine):
             "corpus" : corpus_bow,
             "num_topics" : self.nb_topics,
             "id2word" : self.dictionnary ,
-            "random_state" : self.random_state
+            "random_state" : self.random_state,
+            "passes" : self.passes
         }
         self.core  = LdaModel(**self.ldaargs)
 

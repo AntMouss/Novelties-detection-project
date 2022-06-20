@@ -1,4 +1,4 @@
-from typing import Type, List, Callable, Dict
+from typing import List, Callable, Dict
 import random
 from Sequential_Module import (MetaSequencialLangageModeling,
                                GuidedSequantialLangagemodeling,
@@ -10,7 +10,7 @@ from Sequential_Module import (MetaSequencialLangageModeling,
                                NoSuperviedCoreXSequentialModeling,
                                )
 import math
-import json
+from config_arguments import THEMATICS, NB_HOURS, PROCESSOR, LABELS_IDX, SEED, DATA_PATH
 from data_utils import Thematic
 from data_processing import ProcessorText , absoluteThresholding , linearThresholding , exponentialThresholding
 
@@ -42,10 +42,11 @@ class GuidedModelKwargs(SupervisedModelKwargs):
 
 
 class GuidedLDAModelKwargs(GuidedModelKwargs):
-    def __init__(self, overrate , **kwargs):
+    def __init__(self, overrate , passes , **kwargs):
         super().__init__(**kwargs)
         self.model_type = GuidedLDASequentialModeling
         self.training_args["overrate"] = overrate
+        self.training_args["passes"] = passes
 
 
 class GuidedCoreXKwargs(GuidedModelKwargs):
@@ -115,78 +116,6 @@ class KwargsAnalyse:
 
 
 
-dataPath = '/home/mouss/data/final_database.json'
-dataprocessedPath = '/home/mouss/data/final_database_50000_100000_process_without_key.json'
-seedPath = '/home/mouss/data/mySeed.json'
-all_experiences_file = '/home/mouss/data/myExperiences_with_random_state.json'
-thematics_path = '/home/mouss/data/thematics.json'
-nb_jours = 25
-nb_hours = 15
-start_date = 1622376100.0
-lookback = 10
-delta = 1
-
-# load seed
-with open(seedPath, 'r') as f:
-    seed = json.load(f)
-
-labels_idx = list(seed.keys())
-
-# load thematics
-with open(thematics_path, 'r') as f:
-    thematics = json.load(f)
-    thematics = [Thematic(**thematic) for thematic in thematics]
-
-processor = ProcessorText()
-#GuidedLDAModelKwargs,LFIDFModelKwargs,GuidedCoreXKwargs
-
-KWARGS = {
-    "kwargs_model_type": [GuidedLDAModelKwargs],
-    "nb_experiences": [32, 48, 64],
-    "thematics": [thematics],
-    "min_thematic_size": [1000,2000],
-    "min_size_exp": [i for i in range(2, 10)],
-    "max_size_exp_rel": [0.1, 0.2, 0.3],
-    "cheat": [False],
-    "boost": [0],
-    "start": [1622376100],
-    "end": [1622376100 + nb_hours * 3600],
-    "path": ["/home/mouss/data/final_database_50000_100000_process_without_key.json"],
-    "lookback": [i for i in range(5, 100, 5)],
-    "delta": [1],
-    "processor": [processor],
-    "nb_topics": [len(labels_idx)],
-    "labels_idx": [labels_idx],
-    "topic_id": [i for i in range(len(labels_idx))],
-    "first_w": [0],
-    "last_w": [0],
-    "ntop": [ntop for ntop in range(50 , 101 , 10)],
-    "fixeWindow": [False],
-    "seed" : [seed],
-    "remove_seed_words": [True],
-    "exclusive": [True, False],
-    "back": [2,3,4,5,6],
-    "soft": [True, False],
-    "random_state": [42],
-    "overrate": [10 ** i for i in range(2, 7)],
-    "anchor_strength": [i for i in range(3, 30)],
-    "trim": [0, 1, 2],
-    "risk" : [0.05],
-    "thresholding_fct_above" : [absoluteThresholding , linearThresholding , exponentialThresholding],
-    "thresholding_fct_bellow" : [absoluteThresholding , linearThresholding],
-    "absolute_value_above":[2000 , 10000 , 20000],
-    "absolute_value_bellow" : [1, 3 , 10],
-    "relative_value_above" : [0.7 , 0.5 , 0.25],
-    "relative_value_bellow" : [0.05 , 0.01 , 0.001 , 0.0005 , 0.0001],
-    "limit" : [0.7 , 0.5 , 0.25],
-    "pente" : [50 , 100 , 500 , 1000]
-
-}
-
-rel_kwargs = {
-    "timeline_size"
-}
-
 class MetaKwargsGenerator:
 
     @staticmethod
@@ -209,6 +138,7 @@ class KwargsModelGenerator(MetaKwargsGenerator):
             [kwargs_dictionnary["thresholding_fct_above"] , kwargs_dictionnary["thresholding_fct_bellow"]]))
         if kwargs_model_type.__name__ == 'GuidedLDAModelKwargs':
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("overrate"))
+            kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("passes"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("seed"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("labels_idx"))
         if kwargs_model_type.__name__ == 'GuidedCoreXKwargs':
@@ -322,3 +252,50 @@ class KwargsGenerator:
     def __iter__(self):
         for i in range(self.n):
             yield FullKwargsGenerator()
+
+
+KWARGS = {
+    #GuidedLDAModelKwargs,LFIDFModelKwargs,GuidedCoreXKwargs
+    "kwargs_model_type": [LFIDFModelKwargs,GuidedCoreXKwargs],
+    #32, 48, 64
+    "nb_experiences": [3 , 5],
+    "thematics": [THEMATICS],
+    "min_thematic_size": [1000,2000],
+    "min_size_exp": [i for i in range(2,4)],
+    "max_size_exp_rel": [0.1, 0.2, 0.3],
+    "cheat": [False],
+    "boost": [0],
+    "start": [1622376100],
+    "end": [1622376100 + NB_HOURS * 3600],
+    "path": [DATA_PATH],
+    "lookback": [i for i in range(5, 100, 5)],
+    "delta": [1],
+    "processor": [PROCESSOR],
+    "nb_topics": [len(LABELS_IDX)],
+    "labels_idx": [LABELS_IDX],
+    "topic_id": [i for i in range(len(LABELS_IDX))],
+    "first_w": [0],
+    "last_w": [0],
+    "ntop": [ntop for ntop in range(50 , 101 , 10)],
+    "fixeWindow": [False],
+    "seed" : [SEED],
+    "remove_seed_words": [True],
+    "exclusive": [True, False],
+    "back": [2,3,4,5,6],
+    "soft": [True, False],
+    "random_state": [42],
+    "overrate": [10 ** i for i in range(2, 7)],
+    "anchor_strength": [i for i in range(3, 30)],
+    "trim": [0, 0.05, 0.1],
+    "risk" : [0.05],
+    "thresholding_fct_above" : [absoluteThresholding , linearThresholding , exponentialThresholding],
+    "thresholding_fct_bellow" : [absoluteThresholding , linearThresholding],
+    "absolute_value_above":[2000 , 10000 , 20000],
+    "absolute_value_bellow" : [1, 3 , 10],
+    "relative_value_above" : [0.7 , 0.5 , 0.25],
+    "relative_value_bellow" : [0.05 , 0.01 , 0.001 , 0.0005 , 0.0001],
+    "limit" : [0.7 , 0.5 , 0.25],
+    "pente" : [50 , 100 , 500 , 1000],
+    "passes" : [1 , 2 , 4 , 7]
+
+}

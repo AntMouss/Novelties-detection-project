@@ -6,6 +6,7 @@ from data_processing import filterDictionnary
 import Engine
 import numpy as np
 from collections import Counter
+import functools
 
 
 def check_size(func):
@@ -134,7 +135,7 @@ class MetaSequencialLangageModeling:
 
         # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
         topWords = model.get_topic_terms(topic_id=topic_id, topn=ntop)
-        topWordsTopic = {topWord[0]: topWord[1] for topWord in topWords.items}
+        topWordsTopic = {topWord[0]: topWord[1] for topWord in topWords.items()}
         return topWordsTopic
 
     @staticmethod
@@ -220,6 +221,8 @@ class SupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
 
         return [self.compareTopicSequentialy(topic_id, **kwargs) for topic_id in range(self.nb_topics)]
 
+    # use lru cache for avoid useless call method in compareTopicSequentialy method . lazy way to not refactor the compareTopicSequentialy method
+    @functools.lru_cache(maxsize=2)
     def calcule_similarity_topics_W_W(self, distance='jaccard', ntop=100, ith_window=0, jth_window=1, soft=False,
                                       **kwargs):
         if ith_window < 0 or jth_window < 0:
@@ -229,13 +232,13 @@ class SupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
             # list of sets of top words per topics in jth window
             jthTopWordsTopics = self.getTopWordsTopics(self.models[jth_window], ntop=ntop, **kwargs)
             if soft == False:
-                return [len(set(ithTopWordsTopics[topic_id].keys()).difference(set(jthTopWordsTopics[topic_id]))) / len(
-                    jthTopWordsTopics) for topic_id in range(len(ithTopWordsTopics))]
+                return [len(set(jthTopWordsTopics[topic_id]).difference(set(ithTopWordsTopics[topic_id]))) / len(
+                    jthTopWordsTopics[topic_id]) for topic_id in range(len(ithTopWordsTopics))]
             else:
-                intersections = [(set(ithTopWordsTopics[topic_id].keys()).difference(set(jthTopWordsTopics[topic_id])))
+                intersections = [(set(jthTopWordsTopics[topic_id].keys()).difference(set(ithTopWordsTopics[topic_id])))
                                  for topic_id in range(len(ithTopWordsTopics))]
-                return [sum([jthTopWordsTopics[word]] for word in intersection) / len(jthTopWordsTopics) for
-                        intersection in intersections]
+                return [sum([jthTopWordsTopics[topic_id][word] for word in intersection_topic]) for topic_id,
+                        intersection_topic in enumerate(intersections)]
         else:
             raise Exception('for the moment there is just jaccard distance')
 

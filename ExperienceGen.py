@@ -1,6 +1,7 @@
 import math
 import random
 import json
+from config_arguments import LOG_PATH
 from typing import List, Tuple
 import Sequential_Module
 from data_utils import (TimeLineArticlesDataset,
@@ -13,7 +14,7 @@ from data_processing import ProcessorText
 from data_analysis import Sampler , Analyser
 import logging
 
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename='log/log.log' , level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename=LOG_PATH , level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -165,65 +166,4 @@ class ExperiencesGenerator:
             logger.debug(f"Exception occurred in Alert Generation: {e}", exc_info=True)
 
 
-
-
-
-if __name__ == '__main__':
-
-
-    #initialize all arguments
-
-    dataPath = '/home/mouss/data/final_database.json'
-    dataprocessedPath = '/home/mouss/data/final_database_50000_100000_process_without_key.json'
-    seedPath = '/home/mouss/data/mySeed.json'
-    all_experiences_file = '/home/mouss/data/myExperiences_with_random_state.json'
-    thematics_path = '/home/mouss/data/thematics.json'
-    nb_jours = 1
-    start_date = 1622376100.0
-    end_date = start_date + nb_jours * 24 * 3600
-    lookback = 10
-    delta = 1
-    timeline_size = math.ceil((end_date - start_date)/delta)
-
-    # load seed
-    with open(seedPath, 'r') as f:
-        seed = json.load(f)
-
-    labels_idx = list(seed.keys())
-
-    #load thematics
-    with open(thematics_path, 'r') as f:
-        thematics = json.load(f)
-        thematics = [Thematic(**thematic) for thematic in thematics]
-
-    processor  = ProcessorText()
-    model_type = Sequential_Module.LFIDFSequentialModeling
-
-    nb_experiences = 32
-    min_thematic_size = 4000
-    min_size = 2
-    max_size = 0.25
-    ntop = 100
-    topic_id = 0
-    nb_topics = len(labels_idx)
-
-
-    kwargs = {
-        "experience" : {"nb_experiences" : nb_experiences , "timeline_size" : timeline_size , "thematics" : thematics ,
-                        "min_thematic_size" : min_thematic_size , "min_size" : min_size
-                        , "max_size" : max_size, "cheat" : False , "boost" : 0 },
-
-        "initialize_dataset":{"start" : start_date, "end" : end_date , "path": dataprocessedPath,
-                              "lookback" : lookback , "delta" : delta  , "processor" : processor},
-
-        "initialize_engine" : {"model_type" : model_type,"nb_topics" : nb_topics ,
-                               "labels_idx" : labels_idx},
-
-        "generate_result": {"topic_id": topic_id, "first_w": 0, "last_w": 0, "ntop": ntop,
-                            "fixeWindow": False, "remove_seed_words": True}
-    }
-
-    #generate experiences
-    experienceGenerator = ExperiencesGenerator()
-    experienceGenerator.generate_results(**kwargs)
 
