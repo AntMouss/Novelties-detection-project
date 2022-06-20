@@ -5,8 +5,8 @@ import sys
 import os
 from threading import Thread
 import schedule
-
-from RSSCollector import RSSCollect #j'ai corrigé
+from RSSCollector import RSSCollect
+from Sequential_Module import MetaSequencialLangageModeling
 
 # Creation of the service with Flask
 app = Flask(__name__)
@@ -38,6 +38,33 @@ class CollectThread(Thread):
     def run(self):
         rssCollect=RSSCollect(self.rss_feed_config, self.output_path)
         schedule.every(self.loop_delay).minutes.do(rssCollect.treatNewsFeedList)
+        while True:
+            schedule.run_pending()
+
+
+class NoveltiesDetectionThread(Thread):
+    """
+    Service to detect novelties in the  collect information flow
+    """
+    def __init__(self, kwargs_model, data_window, loop_delay):
+        Thread.__init__(self)
+        self.data_window = data_window
+        self.loop_delay = loop_delay
+        self.model_type = kwargs_model['initialize_engine']['model_type']
+        self.training_args = kwargs_model['initialize_engine']['training_args']
+        self.comparaison_args = kwargs_model['generate_result']
+        del kwargs_model['initialize_engine']['model_type']
+        del kwargs_model['initialize_engine']['training_args']
+        sequential_model = self.model_type
+        self.reference_model : MetaSequencialLangageModeling  = sequential_model(**kwargs_model['initialize_engine'])
+
+    def process(self):
+        self.reference_model.treat_Window(self.data_window , **self.training_args)
+        res = self.reference_model.calcule_similarity_topics_W_W(**self.comparaison_args)
+        # do the characterization of res
+
+    def run(self):
+        schedule.every(self.loop_delay).minutes.do(self.process)
         while True:
             schedule.run_pending()
 
@@ -88,7 +115,11 @@ def startServer():
     :return:
     '''
     extractor = CollectThread(config["rss_feed_config_file"],config["output_path"],config["loop_delay"])
+    detector = NoveltiesDetectionThread(**config['train'])
     extractor.start()
+    detector.start()
+    extractor.join()
+    detector.join()
     print("Running Rest RSSNewsExtractor server")
     app.run(config["host"], port=config["port"], debug=False)
 

@@ -151,6 +151,11 @@ class MetaSequencialLangageModeling:
         return self.res
 
 
+    def calcule_similarity_topics_W_W(self , **kwargs):
+        pass
+
+
+
 class NoSupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
 
     @check_size

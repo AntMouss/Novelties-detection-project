@@ -1,6 +1,4 @@
-import math
 import random
-import json
 from config_arguments import LOG_PATH
 from typing import List, Tuple
 import Sequential_Module
@@ -10,7 +8,6 @@ from data_utils import (TimeLineArticlesDataset,
                         ExperiencesMetadata,
                         ExperiencesResults,
                         ExperiencesResult)
-from data_processing import ProcessorText
 from data_analysis import Sampler , Analyser
 import logging
 
@@ -95,7 +92,7 @@ class ExperiencesGenerator:
         self.new_experience = {}
         self.info = {}
         self.reference_timeline = None
-        self.reference_model : Sequential_Module.GuidedSequantialLangagemodeling = None
+        self.reference_model = None
         self.model_type = None
         self.training_args = None
 
@@ -128,7 +125,6 @@ class ExperiencesGenerator:
                     self.reference_model = sequential_model(**kwargs['initialize_engine'])
                     self.reference_model.add_windows(reference_timeline, kwargs["initialize_dataset"]['lookback'],
                                                      **self.training_args)
-                    self.reference_model.compareTopicsSequentialy(**kwargs["generate_result"])
                 sq_model_w = sequential_model(**kwargs["initialize_engine"])
                 sq_model_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **self.training_args)
                 yield self.reference_model , sq_model_w
