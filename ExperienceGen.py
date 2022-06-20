@@ -95,7 +95,7 @@ class ExperiencesGenerator:
         self.new_experience = {}
         self.info = {}
         self.reference_timeline = None
-        self.reference_model = None
+        self.reference_model : Sequential_Module.GuidedSequantialLangagemodeling = None
         self.model_type = None
         self.training_args = None
 
@@ -128,6 +128,7 @@ class ExperiencesGenerator:
                     self.reference_model = sequential_model(**kwargs['initialize_engine'])
                     self.reference_model.add_windows(reference_timeline, kwargs["initialize_dataset"]['lookback'],
                                                      **self.training_args)
+                    self.reference_model.compareTopicsSequentialy(**kwargs["generate_result"])
                 sq_model_w = sequential_model(**kwargs["initialize_engine"])
                 sq_model_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **self.training_args)
                 yield self.reference_model , sq_model_w
@@ -157,11 +158,13 @@ class ExperiencesGenerator:
 
     @staticmethod
     def analyse_results(experiences_results : ExperiencesResults , risk = 0.05 , trim = 0):
-
+        alerts = []
         try:
             samples = Sampler(experiences_results).samples
             analyser = Analyser(samples , risk = risk , trim=trim)
-            return [alert for alert in analyser.test_hypothesis()]
+            for alert in analyser.test_hypothesis():
+                alerts.append(alert)
+            return alerts
         except Exception as e:
             logger.debug(f"Exception occurred in Alert Generation: {e}", exc_info=True)
 

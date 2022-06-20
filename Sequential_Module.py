@@ -206,8 +206,10 @@ class SupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
             window_res = []
             for j in range(back):
                 try:
-                    window_res.append(
-                        self.calcule_similarity_topics_W_W('jaccard', ntop, i - 1 - j, i, **kwargs)[topic_id])
+                    similarity = self.calcule_similarity_topics_W_W('jaccard', ntop, i - 1 - j, i, **kwargs)[topic_id]
+                    if np.isnan(similarity):
+                        print('fix this')
+                    window_res.append(similarity)
                 except Exception as e:
                     break
             res.append(np.mean(window_res))
