@@ -92,8 +92,8 @@ class ExperiencesGenerator:
         self.new_experience = {}
         self.info = {}
         self.reference_timeline = None
-        self.reference_model = None
-        self.model_type = None
+        self.reference_calculator = None
+        self.calculator_type = None
         self.training_args = None
 
 
@@ -111,23 +111,23 @@ class ExperiencesGenerator:
             logger.debug(f"Exception occurred in Timeline Generation: {e}", exc_info=True)
 
 
-    def generate_model(self,**kwargs) -> Tuple[Sequential_Module.MetaSequencialLangageModeling]:
+    def generate_calculator(self, **kwargs) -> Tuple[Sequential_Module.MetaSequencialLangageSimilarityCalculator]:
 
         try:
             self.info["nb_topics"] = kwargs['initialize_engine']['nb_topics']
-            self.model_type = kwargs['initialize_engine']['model_type']
+            self.calculator_type = kwargs['initialize_engine']['model_type']
             self.training_args = kwargs['initialize_engine']['training_args']
             del kwargs['initialize_engine']['model_type']
             del kwargs['initialize_engine']['training_args']
             for reference_timeline , timeline_w in self.generate_timelines(**kwargs):
-                sequential_model = self.model_type
-                if self.reference_model is None:
-                    self.reference_model = sequential_model(**kwargs['initialize_engine'])
-                    self.reference_model.add_windows(reference_timeline, kwargs["initialize_dataset"]['lookback'],
-                                                     **self.training_args)
-                sq_model_w = sequential_model(**kwargs["initialize_engine"])
-                sq_model_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **self.training_args)
-                yield self.reference_model , sq_model_w
+                sequential_calculator = self.calculator_type
+                if self.reference_calculator is None:
+                    self.reference_calculator = sequential_calculator(**kwargs['initialize_engine'])
+                    self.reference_calculator.add_windows(reference_timeline, kwargs["initialize_dataset"]['lookback'],
+                                                          **self.training_args)
+                sq_calculator_w = sequential_calculator(**kwargs["initialize_engine"])
+                sq_calculator_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **self.training_args)
+                yield self.reference_calculator , sq_calculator_w
 
         except Exception as e:
             logger.debug(f"Exception occurred in Model Generation: {e}", exc_info=True)
@@ -138,13 +138,13 @@ class ExperiencesGenerator:
         try:
             # delete topic_id key for use compareTopicsSequentialy that is like compareTopicSequentialy for all topics
             del kwargs["generate_result"]["topic_id"]
-            for model_ref , model_w in self.generate_model(**kwargs):
-                res_w = model_w.compareTopicsSequentialy(**kwargs["generate_result"])
-                res_wout = model_ref.compareTopicsSequentialy(**kwargs["generate_result"])
+            for calculator_ref , calculator_with in self.generate_calculator(**kwargs):
+                res_w = calculator_with.compareTopicsSequentialy(**kwargs["generate_result"])
+                res_wout = calculator_ref.compareTopicsSequentialy(**kwargs["generate_result"])
                 similarity = (res_w , res_wout)
                 self.new_experience['similarity'] = similarity
-                self.new_experience['label_counter_w'] = model_w.label_articles_counter
-                self.new_experience['label_counter_ref'] = model_ref.label_articles_counter
+                self.new_experience['label_counter_w'] = calculator_with.label_articles_counter
+                self.new_experience['label_counter_ref'] = calculator_ref.label_articles_counter
                 self.experiences_res.append(ExperiencesResult(**self.new_experience))
                 del self.new_experience
                 self.new_experience = {}
@@ -158,7 +158,7 @@ class ExperiencesGenerator:
         try:
             samples = Sampler(experiences_results).samples
             analyser = Analyser(samples , risk = risk , trim=trim)
-            for alert in analyser.test_hypothesis():
+            for alert in analyser.test_hypothesis_topic_injection():
                 alerts.append(alert)
             return alerts
         except Exception as e:

@@ -27,7 +27,8 @@ def urlId(url):
     return hashlib.md5(url.encode()).hexdigest()
 
 lock = threading.Lock()
-inUse = False
+
+
 class RSSCollect():
     '''
     Main class to collect rss feeds
@@ -75,18 +76,11 @@ class RSSCollect():
         :return:
         '''
         global lock
-        global inUse
         print("RSS news extraction start")
 
         # to avoid call two threads to treat the feeds at the same time. The second thread, stops.
-        # no tread will start while the previous is still "inUse"  state
+        # no thread will start while the previous is still "inUse"  state
         lock.acquire()
-        if inUse:
-            lock.release()
-            return
-        else:
-            inUse=True
-        lock.release()
 
         # To guarantee that the folder date will be respected for this run
         dateNow = datetime.now()
@@ -96,42 +90,32 @@ class RSSCollect():
         if not os.path.exists(self.sourcesList):
             logging.warning(f"ERROR: RSS sources list file not found!{self.sourcesList} ")
             print("ERROR: RSS sources list file not found! ", self.sourcesList)
-            lock.acquire()
-            inUse = False
-            lock.release()
-            return
 
-        try:
-            with open(self.sourcesList, "r") as f:
-                rss_config = json.load(f)
-            url_rss = rss_config["rss_feed_url"]
-            # new_news = {}
+        with open(self.sourcesList, "r") as f:
+            rss_config = json.load(f)
+        url_rss = rss_config["rss_feed_url"]
+        listOfReadEntries = []
 
-            for i in range(len(url_rss)):
-                try:
-                    # Get information from the rss config file
-                    print(i)
-                    label = url_rss[i]["label"]
-                    url = url_rss[i]["url"]
-                    remove_tag_list = url_rss[i]["toRemove"] + rss_config['global']
-                    listOfReadEntries = self.treatRSSEntry(label, url, remove_tag_list,
-                                                                                collectFullHtml, collectRssImage,
-                                                                                collectArticleImages)
-                    self.saveProcessedNewsHashes(self.hashs)
-                    self.evaluateCollect(listOfReadEntries,url,collectArticleImages,collectRssImage)
+        for i in range(len(url_rss)):
+            print(i)
+            label = url_rss[i]["label"]
+            url = url_rss[i]["url"]
+            remove_tag_list = url_rss[i]["toRemove"] + rss_config['global']
+            try:
+                # Get information from the rss config file
+                listOfReadEntries += self.treatRSSEntry(label, url, remove_tag_list,
+                                                                            collectFullHtml, collectRssImage,
+                                                                            collectArticleImages)
+                self.saveProcessedNewsHashes(self.hashs)
+                self.evaluateCollect(listOfReadEntries,url,collectArticleImages,collectRssImage)
 
+            except Exception as e:
 
-                except Exception as e:
+                self.updateLogError(e , 1 , url)
+                pass
 
-                    self.updateLogError(e , 1 , url)
-                    pass
-
-            # Add the news information (if there's new news) in the database
-            print("RSS news extraction end")
-        except Exception as e:
-            pass
-        lock.acquire()
-        inUse=False
+        # Add the news information (if there's new news) in the database
+        print("RSS news extraction end")
         lock.release()
 
 

@@ -1,13 +1,13 @@
 from typing import List, Callable, Dict
 import random
-from Sequential_Module import (MetaSequencialLangageModeling,
-                               GuidedSequantialLangagemodeling,
-                               SupervisedSequantialLangagemodeling,
-                               LFIDFSequentialModeling,
-                               GuidedCoreXSequentialModeling,
-                               GuidedLDASequentialModeling,
-                               LDASequantialModeling,
-                               NoSuperviedCoreXSequentialModeling,
+from Sequential_Module import (MetaSequencialLangageSimilarityCalculator,
+                               GuidedSequantialLangageSimilarityCalculator,
+                               SupervisedSequantialLangageSimilarityCalculator,
+                               LFIDFSequentialSimilarityCalculator,
+                               GuidedCoreXSequentialSimilarityCalculator,
+                               GuidedLDASequentialSimilarityCalculator,
+                               LDASequantialSimilarityCalculator,
+                               NoSuperviedCoreXSequentialSimilarityCalculator,
                                )
 import math
 from config_arguments import THEMATICS, NB_HOURS, PROCESSOR, LABELS_IDX, SEED, DATA_PATH
@@ -15,7 +15,7 @@ from data_utils import Thematic
 from data_processing import ProcessorText , absoluteThresholding , linearThresholding , exponentialThresholding
 
 
-class MetaModelKwargs:
+class MetaCalculatorKwargs:
     def __init__(self, nb_topics: int , thresholding_fct_above: Callable,
                  thresholding_fct_bellow: Callable, kwargs_above: Dict, kwargs_bellow: Dict):
         self.thresholding_fct_above = thresholding_fct_above
@@ -23,55 +23,55 @@ class MetaModelKwargs:
         self.kwargs_above = kwargs_above
         self.kwargs_bellow = kwargs_bellow
         self.nb_topics = nb_topics
-        self.model_type = MetaSequencialLangageModeling
+        self.calculator_type = MetaSequencialLangageSimilarityCalculator
         self.training_args = {}
 
 
-class SupervisedModelKwargs(MetaModelKwargs):
+class SupervisedCalculatorKwargs(MetaCalculatorKwargs):
     def __init__(self, labels_idx, **kwargs):
         super().__init__(**kwargs)
-        self.model_type = SupervisedSequantialLangagemodeling
+        self.calculator_type = SupervisedSequantialLangageSimilarityCalculator
         self.labels_idx = labels_idx
 
 
-class GuidedModelKwargs(SupervisedModelKwargs):
+class GuidedCalculatorKwargs(SupervisedCalculatorKwargs):
     def __init__(self, seed , **kwargs):
         super().__init__(**kwargs)
-        self.model_type = GuidedSequantialLangagemodeling
+        self.calculator_type = GuidedSequantialLangageSimilarityCalculator
         self.seed = seed
 
 
-class GuidedLDAModelKwargs(GuidedModelKwargs):
+class GuidedLDACalculatorKwargs(GuidedCalculatorKwargs):
     def __init__(self, overrate , passes , **kwargs):
         super().__init__(**kwargs)
-        self.model_type = GuidedLDASequentialModeling
+        self.model_type = GuidedLDASequentialSimilarityCalculator
         self.training_args["overrate"] = overrate
         self.training_args["passes"] = passes
 
 
-class GuidedCoreXKwargs(GuidedModelKwargs):
+class GuidedCoreXCalculatorKwargs(GuidedCalculatorKwargs):
     def __init__(self, anchor_strength , **kwargs):
         super().__init__(**kwargs)
-        self.model_type = GuidedCoreXSequentialModeling
+        self.calculator_type = GuidedCoreXSequentialSimilarityCalculator
         self.training_args["anchor_strength"] = anchor_strength
 
 
-class LFIDFModelKwargs(SupervisedModelKwargs):
+class LFIDFCalculatorKwargs(SupervisedCalculatorKwargs):
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
-        self.model_type = LFIDFSequentialModeling
+        self.calculator_type = LFIDFSequentialSimilarityCalculator
 
 
-class LDAModelKwargs(MetaModelKwargs):
+class LDACalculatorKwargs(MetaCalculatorKwargs):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.model_type = LDASequantialModeling
+        self.calculator_type = LDASequantialSimilarityCalculator
 
 
-class CoreXModelKwargs(MetaModelKwargs):
+class CoreXCalculatorKwargs(MetaCalculatorKwargs):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.model_type = NoSuperviedCoreXSequentialModeling
+        self.calculator_type = NoSuperviedCoreXSequentialSimilarityCalculator
 
 
 class KwargsExperiences:
@@ -128,29 +128,29 @@ class MetaKwargsGenerator:
 class KwargsModelGenerator(MetaKwargsGenerator):
 
     def __new__(cls):
-        kwargs_model_type = random.choice(KWARGS["kwargs_model_type"])
+        kwargs_calculator_type = random.choice(KWARGS["kwargs_calculator_type"])
         kwargs_dictionnary = {}
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("nb_topics"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("thresholding_fct_above" ))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("thresholding_fct_bellow" ))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_kwargs_thresholding(
             [kwargs_dictionnary["thresholding_fct_above"] , kwargs_dictionnary["thresholding_fct_bellow"]]))
-        if kwargs_model_type.__name__ == 'GuidedLDAModelKwargs':
+        if kwargs_calculator_type.__name__ == 'GuidedLDACalculatorKwargs':
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("overrate"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("passes"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("seed"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("labels_idx"))
-        if kwargs_model_type.__name__ == 'GuidedCoreXKwargs':
+        if kwargs_calculator_type.__name__ == 'GuidedCoreXCalculatorKwargs':
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("anchor_strength"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("seed"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("labels_idx"))
-        if kwargs_model_type.__name__ == 'LFIDFModelKwargs':
+        if kwargs_calculator_type.__name__ == 'LFIDFCalculatorKwargs':
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("labels_idx"))
-        if kwargs_model_type.__name__ == 'CoreXModelKwargs':
+        if kwargs_calculator_type.__name__ == 'CoreXCalculatorKwargs':
             pass
-        if kwargs_model_type.__name__ == 'LDAModelKwargs':
+        if kwargs_calculator_type.__name__ == 'LDACalculatorKwargs':
             pass
-        return kwargs_model_type(**kwargs_dictionnary)
+        return kwargs_calculator_type(**kwargs_dictionnary)
 
     @staticmethod
     def choose_kwargs_thresholding(fcts : List[Callable]):
@@ -254,7 +254,7 @@ class KwargsGenerator:
 
 KWARGS = {
     #GuidedLDAModelKwargs,LFIDFModelKwargs,GuidedCoreXKwargs
-    "kwargs_model_type": [GuidedCoreXKwargs],
+    "kwargs_calculator_type": [GuidedCoreXCalculatorKwargs],
     #32, 48, 64
     "nb_experiences": [3 , 5],
     "thematics": [THEMATICS],

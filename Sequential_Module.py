@@ -18,7 +18,7 @@ def check_size(func):
     return wrapper
 
 
-class MetaSequencialLangageModeling:
+class MetaSequencialLangageSimilarityCalculator:
 
     def __init__(self, nb_topics: int, thresholding_fct_above: Callable,
                  thresholding_fct_bellow: Callable, kwargs_above: Dict, kwargs_bellow: Dict):
@@ -156,7 +156,7 @@ class MetaSequencialLangageModeling:
 
 
 
-class NoSupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
+class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimilarityCalculator):
 
     @check_size
     def treat_Window(self, texts: List[List], **kwargs):
@@ -176,10 +176,10 @@ class NoSupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
         pass
 
 
-class SupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
+class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimilarityCalculator):
 
     def __init__(self, labels_idx, **kwargs):
-        super(SupervisedSequantialLangagemodeling, self).__init__(**kwargs)
+        super(SupervisedSequantialLangageSimilarityCalculator, self).__init__(**kwargs)
         self.engine = Engine.SupervisedEngine
         self.labels_idx = labels_idx
         self.label_articles_counter = []
@@ -247,10 +247,10 @@ class SupervisedSequantialLangagemodeling(MetaSequencialLangageModeling):
             raise Exception('for the moment there is just jaccard distance')
 
 
-class GuidedSequantialLangagemodeling(SupervisedSequantialLangagemodeling):
+class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSimilarityCalculator):
 
     def __init__(self, seed: dict, **kwargs):
-        super(GuidedSequantialLangagemodeling, self).__init__(**kwargs)
+        super(GuidedSequantialLangageSimilarityCalculator, self).__init__(**kwargs)
         self.engine = Engine.GuidedEngine
         self.seed = seed
 
@@ -283,10 +283,10 @@ class GuidedSequantialLangagemodeling(SupervisedSequantialLangagemodeling):
         return topWordsTopic
 
 
-class LDASequantialModeling(NoSupervisedSequantialLangagemodeling):
+class LDASequantialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityCalculator):
 
     def __init__(self, **kwargs):
-        super(LDASequantialModeling, self).__init__(**kwargs)
+        super(LDASequantialSimilarityCalculator, self).__init__(**kwargs)
         self.engine = Engine.LDA
 
     @check_size
@@ -305,10 +305,10 @@ class LDASequantialModeling(NoSupervisedSequantialLangagemodeling):
         return model, window_dictionnary_f
 
 
-class GuidedLDASequentialModeling(GuidedSequantialLangagemodeling):
+class GuidedLDASequentialSimilarityCalculator(GuidedSequantialLangageSimilarityCalculator):
 
     def __init__(self, **kwargs):
-        super(GuidedLDASequentialModeling, self).__init__(**kwargs)
+        super(GuidedLDASequentialSimilarityCalculator, self).__init__(**kwargs)
         self.engine = Engine.GuidedLDA
 
     @check_size
@@ -329,28 +329,28 @@ class GuidedLDASequentialModeling(GuidedSequantialLangagemodeling):
         return model, window_dictionnary_f
 
 
-class GuidedCoreXSequentialModeling(GuidedSequantialLangagemodeling):
+class GuidedCoreXSequentialSimilarityCalculator(GuidedSequantialLangageSimilarityCalculator):
 
     def __init__(self, **kwargs):
-        super(GuidedCoreXSequentialModeling, self).__init__(**kwargs)
+        super(GuidedCoreXSequentialSimilarityCalculator, self).__init__(**kwargs)
         self.engine = Engine.GuidedCoreX
 
 
-class NoSuperviedCoreXSequentialModeling(NoSupervisedSequantialLangagemodeling):
+class NoSuperviedCoreXSequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityCalculator):
     def __init__(self, **kwargs):
-        super(NoSuperviedCoreXSequentialModeling, self).__init__(**kwargs)
+        super(NoSuperviedCoreXSequentialSimilarityCalculator, self).__init__(**kwargs)
         self.engine = Engine.CoreX
 
 
-class SupervisedCoreXSequentialModeling(SupervisedSequantialLangagemodeling):
+class SupervisedCoreXSequentialSimilarityCalculator(SupervisedSequantialLangageSimilarityCalculator):
 
     def __init__(self, **kwargs):
-        super(SupervisedCoreXSequentialModeling, self).__init__(**kwargs)
+        super(SupervisedCoreXSequentialSimilarityCalculator, self).__init__(**kwargs)
         self.engine = Engine.SupervisedCoreX
 
 
-class LFIDFSequentialModeling(SupervisedSequantialLangagemodeling):
+class LFIDFSequentialSimilarityCalculator(SupervisedSequantialLangageSimilarityCalculator):
 
     def __init__(self, **kwargs):
-        super(LFIDFSequentialModeling, self).__init__(**kwargs)
+        super(LFIDFSequentialSimilarityCalculator, self).__init__(**kwargs)
         self.engine = Engine.LFIDF

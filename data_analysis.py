@@ -81,7 +81,7 @@ class Analyser:
             return Alerte(topic_id , risk=self.risk , windows=[type_window1 , type_window2] , pvalue= pvalue)
 
 
-    def test_hypothesis(self):
+    def test_hypothesis_topic_injection(self):
 
         target_window_types = ['in' , 'out']
         other_window_types = ['inside' , 'middle' , 'after' , 'before']

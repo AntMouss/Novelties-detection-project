@@ -20,7 +20,7 @@ args = parser.parse_args()
 config = vars(args)
 
 SAVE_PATH = config["dest"]
-NB_MODELS = 30
+NB_CALCULATORS = 30
 RESULTATS = {}
 
 
@@ -55,6 +55,6 @@ def process(**kwargs):
 
 
 if __name__ == '__main__':
-    kwargs_generator = KwargsGenerator(NB_MODELS)
+    kwargs_generator = KwargsGenerator(NB_CALCULATORS)
     for kwargs in kwargs_generator:
         process(**kwargs)
