@@ -62,7 +62,7 @@ class Thematic(Data):
 
 class Alerte(Data):
     
-    def __init__(self , topic_id , risk : float , windows : List , pvalue : float):
+    def __init__(self , topic_id , risk : float , windows : List , pvalue : float , is_normal : bool = True):
         self.pvalue = pvalue
         self.windows = windows
         self.risk = risk

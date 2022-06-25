@@ -1,5 +1,4 @@
 from typing import List
-
 from flask import Flask, request
 from flask_restplus import Api, Resource, fields
 import json
@@ -102,6 +101,7 @@ class CollectThread(Thread):
         COLLECT_LOCKER.acquire()
         if READY_TO_CONSUME == False:
             new_data = self.rssCollect.treatNewsFeedList()
+            new_data = [article for _ , article in new_data]
             WINDOW_DATA += new_data
             self.count += 1
         if self.count == self.nb_loop:

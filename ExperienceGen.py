@@ -139,10 +139,10 @@ class ExperiencesGenerator:
             # delete topic_id key for use compareTopicsSequentialy that is like compareTopicSequentialy for all topics
             del kwargs["generate_result"]["topic_id"]
             for calculator_ref , calculator_with in self.generate_calculator(**kwargs):
-                res_w = calculator_with.compareTopicsSequentialy(**kwargs["generate_result"])
-                res_wout = calculator_ref.compareTopicsSequentialy(**kwargs["generate_result"])
-                similarity = (res_w , res_wout)
-                self.new_experience['similarity'] = similarity
+                res_w = calculator_with.compare_Windows_Sequentialy(**kwargs["generate_result"])
+                res_wout = calculator_ref.compare_Windows_Sequentialy(**kwargs["generate_result"])
+                similarities_score = (res_w , res_wout)
+                self.new_experience['similarity'] = similarities_score
                 self.new_experience['label_counter_w'] = calculator_with.label_articles_counter
                 self.new_experience['label_counter_ref'] = calculator_ref.label_articles_counter
                 self.experiences_res.append(ExperiencesResult(**self.new_experience))
@@ -156,9 +156,8 @@ class ExperiencesGenerator:
     def analyse_results(experiences_results : ExperiencesResults , risk = 0.05 , trim = 0):
         alerts = []
         try:
-            samples = Sampler(experiences_results).samples
-            analyser = Analyser(samples , risk = risk , trim=trim)
-            for alert in analyser.test_hypothesis_topic_injection():
+            analyser = Analyser(experiences_results , risk = risk , trim=trim)
+            for alert in analyser.multi_test_hypothesis_topic_injection():
                 alerts.append(alert)
             return alerts
         except Exception as e:

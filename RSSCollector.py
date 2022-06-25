@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from datetime import datetime
 import logging
 import threading
-from data_processing import extract_text
+from data_processing import extract_text , ProcessorText
 import sys
 import validators
 import pathlib
@@ -51,7 +51,7 @@ class RSSCollect():
     HTML_TAIL="</body></html>"
 
 
-    def __init__(self, sourcesList, rootOutputFolder):
+    def __init__(self, sourcesList, rootOutputFolder , processor : ProcessorText):
         '''
         Constructor
         :param sourcesList: File where the sources are stored
@@ -171,17 +171,17 @@ class RSSCollect():
                     article_copy = article.__copy__()
                     text = extract_text(article, remove_tag_list, clean=False)
                     cleansed_text = extract_text(article, remove_tag_list, clean=True)
-                    if len(cleansed_text)==0 or len(cleansed_text) == len(text):
-                        b=8
+                    process_text = ProcessorText.processText(cleansed_text)
                     htmlCollected = True
                 else:
                     text = ""
                     cleansed_text = ""
+                    process_text = ""
                     htmlCollected = False
 
                 # Complete the news information for the database
                 feed = {"title": entry["title"], "url": entry["link"], "text": text, "cleansed_text": cleansed_text,
-                        "label": label, "rss": rss,
+                        "label": label, "rss": rss, "process_text" : process_text,
                         "updated": False , 'htmlCollected': htmlCollected}
 
                 if "published" in entry.keys():
@@ -489,7 +489,6 @@ rootOutputFolder="/home/mouss/tmpTest18"
 
 if __name__ == '__main__':
 
-    # shutil.rmtree('/tmpTest4',ignore_errors=True)
 
     RSS_URL_file="rssfeed_news_test.json"
     rssc = RSSCollect(RSS_URL_file,rootOutputFolder)

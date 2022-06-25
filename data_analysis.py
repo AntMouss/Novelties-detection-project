@@ -1,8 +1,18 @@
 import numpy as np
 import copy
 from data_utils import ExperiencesResults , Alerte
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind , normaltest , pearsonr
+import itertools
 
+def check_topic_id(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except IndexError:
+            print("IndexError with topic_id...")
+            print("note that if your results object come from no supervised calculator,"
+                  " there is just one abstract topic with topic_id = 0")
+    return wrapper
 
 
 class Sampler:
@@ -11,6 +21,7 @@ class Sampler:
 
         self.results = results.results
         self.info = results.info
+
 
     @property
     def samples(self):
@@ -26,11 +37,11 @@ class Sampler:
         samples = [copy.deepcopy(topic_samples) for _ in range(self.info["nb_topics"])]
         for result in self.results:
             similarity = result.similarity
-            for i , (topic_res_w , topic_res_wout) in enumerate(zip(similarity['with'] , similarity['without'])):
+            for topic_id , (topic_res_w , topic_res_wout) in enumerate(zip(similarity['with'] , similarity['without'])):
                 tmp = np.abs(np.array(topic_res_w) - np.array(topic_res_wout))
-                for j , value in enumerate(tmp):
-                    key = Sampler.choose_key(j, result.metadata.ranges)
-                    samples[i][key].append(value)
+                for window_id , similarity_score in enumerate(tmp):
+                    key = Sampler.choose_key(window_id, result.metadata.ranges)
+                    samples[topic_id][key].append(similarity_score)
         return samples
 
 
@@ -54,45 +65,15 @@ class Sampler:
 
 class Analyser:
 
-    def __init__(self , samples , risk = 0.05 , trim = 0):
+    def __init__(self , results : ExperiencesResults , risk = 0.05 , trim = 0):
+        self.results = results
         self.trim = trim
         self.risk = risk
-        self.samples = samples
-        self.nb_topics = len(samples)
-        self.types_window = list(samples[0].keys())
+        self.samples = Sampler(self.results).samples
+        self.nb_topics = len(self.samples)
+        self.types_window = list(self.samples[0].keys())
 
-
-    @property
-    def matrix(self):
-        matrix = []
-        for topic_id in range(self.nb_topics):
-            matrix.append(self.topic_pvalue_matrix(topic_id , trim=self.trim))
-        return matrix
-
-
-    def generate_alert(self, topic_id, type_window1, type_window2):
-        if type_window1 not in self.types_window and type_window2 not in self.types_window:
-            raise Exception(f"this windows type don't exist , here is "
-                            f"the differents type:\n'{self.types_window}'")
-        idx1 = self.types_window.index(type_window1)
-        idx2 = self.types_window.index(type_window2)
-        pvalue = self.matrix[topic_id][idx1][idx2]
-        if pvalue < self.risk:
-            return Alerte(topic_id , risk=self.risk , windows=[type_window1 , type_window2] , pvalue= pvalue)
-
-
-    def test_hypothesis_topic_injection(self):
-
-        target_window_types = ['in' , 'out']
-        other_window_types = ['inside' , 'middle' , 'after' , 'before']
-        for topic_id in range (self.nb_topics):
-            for target_window in target_window_types:
-                for other_window in other_window_types:
-                    alert =  self.generate_alert(topic_id , type_window1=target_window , type_window2=other_window)
-                    if alert is not None:
-                        yield alert
-
-
+    @check_topic_id
     def topic_pvalue_matrix(self , topic_id , trim = 0 ):
 
         topic_samples = self.samples[topic_id]
@@ -106,3 +87,68 @@ class Analyser:
                 pvalue_matrix[i][j] = pvalue
                 pvalue_matrix[j][i] = pvalue
         return pvalue_matrix
+
+
+    @property
+    def pvalue_matrix(self):
+        matrix = []
+        for topic_id in range(self.nb_topics):
+            matrix.append(self.topic_pvalue_matrix(topic_id , trim=self.trim))
+        return matrix
+
+    @check_topic_id
+    def test_hypothesis_topic_injection(self, topic_id : int, type_window1 : str, type_window2 : str
+                                        , test_normality : bool = True):
+        is_normal = self.test_hypothesis_normal_distribution(topic_id)
+        if type_window1 not in self.types_window and type_window2 not in self.types_window:
+            raise Exception(f"this windows type don't exist , here is "
+                            f"the differents type:\n'{self.types_window}'")
+        idx1 = self.types_window.index(type_window1)
+        idx2 = self.types_window.index(type_window2)
+        pvalue = self.pvalue_matrix[topic_id][idx1][idx2]
+        if pvalue < self.risk:
+            return Alerte(topic_id , risk=self.risk , windows=[type_window1 , type_window2]
+                          , pvalue= pvalue , is_normal=is_normal)
+
+
+    def multi_test_hypothesis_topic_injection(self, test_normality = True):
+
+        target_window_types = ['in' , 'out']
+        other_window_types = ['inside' , 'middle' , 'after' , 'before']
+        for topic_id in range (self.nb_topics):
+            for target_window in target_window_types:
+                for other_window in other_window_types:
+                    alert =  self.test_hypothesis_topic_injection(topic_id ,type_window1=target_window
+                                    ,type_window2=other_window ,test_normality = test_normality)
+                    if alert is not None:
+                        yield alert
+
+    @check_topic_id
+    def test_hypothesis_normal_distribution(self , topic_id):
+        # "without" key is linked to the result that we obtained with the reference model that isn't
+        # contain topic injection
+        #we assume that the distribution of similarity is invariant acoording to the label
+        # so we flat the similarity["without"]
+        similarity_samples = [list(itertools.chain.from_iterable(result.similarity["without"][topic_id])) for result in self.results.results]
+        similarity_samples = list(itertools.chain.from_iterable(similarity_samples))
+        _ , pvalue = normaltest(similarity_samples)
+        # we assume that we take the same risk for normality hypothesis and topic injection hypothesis
+        if pvalue >= self.risk:
+            print("Normality confirmed")
+            return True
+        else:
+            print("Normality not confirmed")
+            return False
+
+
+    def test_correlation_hypothesis_similarity_counter_articles(self):
+
+        for topic_id in range(self.nb_topics):
+            similarity_topic = [result.similarity["without"][topic_id] for result in
+                                  self.results.results]
+            similarity_topic = list(itertools.chain.from_iterable(similarity_topic))
+            count_topic = [[window_count[topic_id] for window_count in result.label_counter_ref] for result in
+                                  self.results.results]
+            count_topic = list(itertools.chain.from_iterable(count_topic))
+            corr, _ = pearsonr(similarity_topic, count_topic)
+            print(f'Pearsons correlation for topic {topic_id}: %.3f' % corr)
