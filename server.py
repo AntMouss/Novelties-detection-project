@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 from flask import Flask, request
 from flask_restplus import Api, Resource, fields
 import json
@@ -7,7 +7,7 @@ import os
 from threading import Thread , Lock
 import schedule
 from RSSCollector import RSSCollect
-from Sequential_Module import MetaSequencialLangageSimilarityCalculator
+from Sequential_Module import MetaSequencialLangageSimilarityCalculator , SupervisedSequantialLangageSimilarityCalculator
 from WindowClassification import WindowClassifierModel
 
 # Creation of the service with Flask
@@ -66,12 +66,26 @@ class RSSNewsExtractor(Resource):
         return 'DELETE Not available for this service', 404
 
 
-
-
 WINDOW_DATA = []
 READY_TO_CONSUME = False
 COLLECT_LOCKER = Lock()
 PROCESS_LOCKER = Lock()
+
+
+def initialize_calculator(kwargs_calculator):
+    supervised_calculator_type = kwargs_calculator['initialize_engine']['model_type']
+    training_args = kwargs_calculator['initialize_engine']['training_args']
+    comparaison_args = kwargs_calculator['generate_result']
+    del kwargs_calculator['initialize_engine']['model_type']
+    del kwargs_calculator['initialize_engine']['training_args']
+    sequential_model = supervised_calculator_type
+    supervised_calculator: MetaSequencialLangageSimilarityCalculator = sequential_model(
+        **kwargs_calculator['initialize_engine'])
+    return {
+        "supervised_calculator" : supervised_calculator ,
+        "comparaison_args" : comparaison_args ,
+        "training_args"  : training_args}
+
 
 class CollectThread(Thread):
     """
@@ -119,21 +133,15 @@ class NoveltiesDetectionThread(Thread):
     """
     Service to detect novelties in the collect information flow
     """
-    def __init__(self, kwargs_calculator, loop_delay , classifier_models :List[WindowClassifierModel] ):
+    def __init__(self, supervised_calculator : SupervisedSequantialLangageSimilarityCalculator , training_args : Dict ,
+                 comparaison_args : Dict, loop_delay : int , classifier_models :List[WindowClassifierModel] ):
         Thread.__init__(self)
+        self.comparaison_args = comparaison_args
+        self.training_args = training_args
+        self.supervised_reference_calculator = supervised_calculator
         self.classifier_models = classifier_models
         self.loop_delay = loop_delay
-        self.calculator_type = kwargs_calculator['initialize_engine']['model_type']
-        self.training_args = kwargs_calculator['initialize_engine']['training_args']
-        self.comparaison_args = kwargs_calculator['generate_result']
-        del kwargs_calculator['initialize_engine']['model_type']
-        del kwargs_calculator['initialize_engine']['training_args']
-        sequential_model = self.calculator_type
-        self.reference_calculator : MetaSequencialLangageSimilarityCalculator  = sequential_model(**kwargs_calculator['initialize_engine'])
 
-    @staticmethod
-    def log_reponse(group, nb_groups):
-        pass
 
     @staticmethod
     def log_error():
@@ -146,12 +154,18 @@ class NoveltiesDetectionThread(Thread):
         PROCESS_LOCKER.acquire()
         if READY_TO_CONSUME == True:
             if len(WINDOW_DATA) != 0:
-                self.reference_calculator.treat_Window(data_window, **self.training_args)
-                similarities = self.reference_calculator.calcule_similarity_topics_W_W(**self.comparaison_args)
-                for topic_similarity , classifier in similarities , self.classifier_models:
-                    group = classifier.predict(topic_similarity)
-                    NoveltiesDetectionThread.log_reponse(group, len(classifier))
-                WINDOW_DATA  = []
+                self.supervised_reference_calculator.treat_Window(data_window, **self.training_args)
+                self.supervised_reference_calculator.print_novelties(n_to_print=10)
+                similarities , _ = self.supervised_reference_calculator.calcule_similarity_topics_W_W(**self.comparaison_args)
+                print("@" * 30)
+                for topic_id , (similarity_score , classifier) in enumerate(zip(similarities , self.classifier_models)):
+                    group_id = classifier.predict(similarity_score)
+                    classifier.update(similarity_score)
+                    topic = self.supervised_reference_calculator.labels_idx[topic_id]
+                    print(f"Rarety level : {group_id} / {len(classifier)} for the topic: {topic}.  ")
+                # empty and reinitialization of WINDOW_DATA
+                del WINDOW_DATA
+                WINDOW_DATA = []
                 READY_TO_CONSUME = False
             else:
                 NoveltiesDetectionThread.log_error()
@@ -169,8 +183,10 @@ def startServer():
     Starts server
     :return:
     '''
+    stuff = initialize_calculator(**config["claculator_initialization"])
+    config["service"].update(stuff)
     extractor = CollectThread(config["rss_feed_config_file"],config["output_path"],config["loop_delay"])
-    detector = NoveltiesDetectionThread(**config['train'])
+    detector = NoveltiesDetectionThread(**config["service"])
     extractor.start()
     detector.start()
     extractor.join()

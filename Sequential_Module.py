@@ -50,6 +50,7 @@ class MetaSequencialLangageSimilarityCalculator:
     def __len__(self):
         return self.nb_windows
 
+
     @check_size
     def treat_Window(self, data_window, **kwargs):
         pass
@@ -199,7 +200,7 @@ class MetaSequencialLangageSimilarityCalculator:
         return (np.nan , np.nan)
 
 
-    def print_novelties(self , **kwargs):
+    def print_novelties(self, n_to_print=10, **kwargs):
         pass
 
 

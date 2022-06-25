@@ -154,5 +154,5 @@ class GuidedLDA(GuidedEngine , LDA):
                         print(keyindex[0])
         if normalize_eta:
             eta = np.divide(eta, eta.sum(axis=0))  # normalize so that the probabilities sum to 1 over all topics
-        # we can remove this line for other test
+        # we can remove this line for other tmp
         return eta
