@@ -1,8 +1,7 @@
-from kwargsGen import KwargsGenerator
-from ExperienceGen import ExperiencesGenerator
-from multiprocessing import Pool
-from config_arguments import LOG_PATH
-from data_utils import ExperiencesResults
+from Experience.kwargsGen import KwargsGenerator
+from Experience.ExperienceGen import ExperiencesGenerator
+from Experience.config_arguments import LOG_PATH
+from Experience.data_utils import ExperiencesResults
 import pickle
 import argparse
 import logging

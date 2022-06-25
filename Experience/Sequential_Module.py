@@ -1,9 +1,9 @@
 import random
 from typing import List, Callable, Dict
-from data_utils import TimeLineArticlesDataset
+from Experience.data_utils import TimeLineArticlesDataset
 from gensim import corpora
-from data_processing import filterDictionnary
-import Engine
+from Experience.data_processing import filterDictionnary
+from Experience import Engine
 import numpy as np
 from collections import Counter
 import functools
@@ -419,10 +419,10 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
         return topWordsTopic
 
 
-class LDASequantialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityCalculator):
+class LDASequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityCalculator):
 
     def __init__(self, **kwargs):
-        super(LDASequantialSimilarityCalculator, self).__init__(**kwargs)
+        super(LDASequentialSimilarityCalculator, self).__init__(**kwargs)
         self.engine = Engine.LDA
 
     @check_size
@@ -472,9 +472,9 @@ class GuidedCoreXSequentialSimilarityCalculator(GuidedSequantialLangageSimilarit
         self.engine = Engine.GuidedCoreX
 
 
-class NoSuperviedCoreXSequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityCalculator):
+class CoreXSequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityCalculator):
     def __init__(self, **kwargs):
-        super(NoSuperviedCoreXSequentialSimilarityCalculator, self).__init__(**kwargs)
+        super(CoreXSequentialSimilarityCalculator, self).__init__(**kwargs)
         self.engine = Engine.CoreX
 
 

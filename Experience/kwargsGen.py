@@ -6,11 +6,11 @@ from Sequential_Module import (MetaSequencialLangageSimilarityCalculator,
                                LFIDFSequentialSimilarityCalculator,
                                GuidedCoreXSequentialSimilarityCalculator,
                                GuidedLDASequentialSimilarityCalculator,
-                               LDASequantialSimilarityCalculator,
-                               NoSuperviedCoreXSequentialSimilarityCalculator,
+                               LDASequentialSimilarityCalculator,
+                               CoreXSequentialSimilarityCalculator,
                                )
 import math
-from config_arguments import THEMATICS, NB_HOURS, PROCESSOR, LABELS_IDX, SEED, DATA_PATH
+from Experience.config_arguments import THEMATICS, NB_HOURS, PROCESSOR, LABELS_IDX, SEED, DATA_PATH
 from data_utils import Thematic
 from data_processing import ProcessorText , absoluteThresholding , linearThresholding , exponentialThresholding
 
@@ -65,13 +65,13 @@ class LFIDFCalculatorKwargs(SupervisedCalculatorKwargs):
 class LDACalculatorKwargs(MetaCalculatorKwargs):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.calculator_type = LDASequantialSimilarityCalculator
+        self.calculator_type = LDASequentialSimilarityCalculator
 
 
 class CoreXCalculatorKwargs(MetaCalculatorKwargs):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.calculator_type = NoSuperviedCoreXSequentialSimilarityCalculator
+        self.calculator_type = CoreXSequentialSimilarityCalculator
 
 
 class KwargsExperiences:

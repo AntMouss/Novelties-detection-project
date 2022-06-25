@@ -1,5 +1,5 @@
 import random
-from config_arguments import LOG_PATH
+from Experience.config_arguments import LOG_PATH
 from typing import List, Tuple
 import Sequential_Module
 from data_utils import (TimeLineArticlesDataset,
@@ -8,7 +8,7 @@ from data_utils import (TimeLineArticlesDataset,
                         ExperiencesMetadata,
                         ExperiencesResults,
                         ExperiencesResult)
-from data_analysis import Sampler , Analyser
+from src.Experience.data_analysis import Analyser
 import logging
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename=LOG_PATH , level=logging.INFO)

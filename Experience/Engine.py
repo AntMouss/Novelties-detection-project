@@ -4,7 +4,7 @@ from gensim import corpora
 from gensim.models import LdaModel
 import scipy.sparse as ss
 from corextopic import corextopic as ct
-from data_utils import DocumentsWordsCounter, LabelsWordsCounter
+from Experience.data_utils import DocumentsWordsCounter, LabelsWordsCounter
 
 
 class Engine:

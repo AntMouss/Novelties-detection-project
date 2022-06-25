@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Tuple
 import math
 import ijson
-from data_processing import ProcessorText
+from Experience.data_processing import ProcessorText
 import pandas as pd
 
 

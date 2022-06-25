@@ -6,9 +6,9 @@ import sys
 import os
 from threading import Thread , Lock
 import schedule
-from RSSCollector import RSSCollect
-from Sequential_Module import MetaSequencialLangageSimilarityCalculator , SupervisedSequantialLangageSimilarityCalculator
-from WindowClassification import WindowClassifierModel
+from Experience.RSSCollector import RSSCollect
+from Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator , SupervisedSequantialLangageSimilarityCalculator
+from Experience.WindowClassification import WindowClassifierModel
 
 # Creation of the service with Flask
 app = Flask(__name__)
@@ -198,7 +198,7 @@ if __name__ == '__main__':
     rootDir = ''
     if len(sys.argv) > 1:
         rootDir=sys.argv[1]
-    with open(os.path.join(rootDir, "config/config_service.json"), "r") as f:
+    with open(os.path.join(rootDir, "../config/config_service.json"), "r") as f:
         config = json.load(f)
 
     startServer()
