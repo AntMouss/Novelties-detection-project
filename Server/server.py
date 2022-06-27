@@ -76,7 +76,7 @@ def initialize_calculator(kwargs_calculator):
     supervised_calculator_type = kwargs_calculator['initialize_engine']['model_type']
     training_args = kwargs_calculator['initialize_engine']['training_args']
     comparaison_args = kwargs_calculator['generate_result']
-    del kwargs_calculator['initialize_engine']['model_type']
+    del kwargs_calculator['initialize_engine']['calculator_type']
     del kwargs_calculator['initialize_engine']['training_args']
     sequential_model = supervised_calculator_type
     supervised_calculator: MetaSequencialLangageSimilarityCalculator = sequential_model(
@@ -84,7 +84,8 @@ def initialize_calculator(kwargs_calculator):
     return {
         "supervised_calculator" : supervised_calculator ,
         "comparaison_args" : comparaison_args ,
-        "training_args"  : training_args}
+        "training_args"  : training_args
+    }
 
 
 class CollectThread(Thread):

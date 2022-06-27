@@ -255,7 +255,8 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
         total_previous_Top_words = dict(ChainMap(*previousTopWordsTopics))
         total_new_Top_words = dict(ChainMap(*newTopWordsTopics))
         total_similarity_score , _  = self.compute_similarity(total_new_Top_words , total_previous_Top_words , soft=soft)
-
+        if total_new_Top_words == np.nan:
+            total_similarity_score = 0.0
         for new_topic in range(self.nb_topics):
             for previous_topic in range(self.nb_topics):
                 similarity_score , (novelties , habbits , disappearances) = self.compute_similarity(newTopWordsTopics[new_topic] , previousTopWordsTopics[previous_topic] , soft=soft)
@@ -369,7 +370,9 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
             novelties.append(novelties_topic)
             habbits.append(habbits_topic)
             disappearances.append(disappearances_topic)
-        return np.array(similarities) , (novelties , habbits , disappearances)
+            similarities = np.array(similarities)
+            similarities = np.nan_to_num(similarities)
+        return similarities , (novelties , habbits , disappearances)
 
 
     def print_novelties(self , n_to_print = 10, **kwargs):
