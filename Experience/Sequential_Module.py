@@ -7,6 +7,7 @@ from Experience import Engine
 import numpy as np
 from collections import Counter
 import functools
+from collections import ChainMap
 
 
 def check_size(func):
@@ -170,7 +171,7 @@ class MetaSequencialLangageSimilarityCalculator:
             similarity_score = sum([cluster1[word] for word in intersection])/total
         else:
             similarity_score = len(intersection) / len(cluster1)
-        return similarity_score,difference ,  intersection , disappearance
+        return similarity_score, (difference ,  intersection , disappearance)
 
     def compare_Windows_Sequentialy(self, first_w=0, last_w=0, ntop=100, back=3, **kwargs):
 
@@ -179,7 +180,6 @@ class MetaSequencialLangageSimilarityCalculator:
         if last_w == 0:
             last_w = len(self.models)
         res = []
-        mode = ''
         for i in range(first_w + 1, last_w):
             window_res = []
             for j in range(back):
@@ -194,7 +194,7 @@ class MetaSequencialLangageSimilarityCalculator:
                     break
             window_res = np.array(window_res)
             res.append(np.mean(window_res , axis=0))
-        return res
+        return np.array(res)
 
 
     def calcule_similarity_topics_W_W(self, reproduction_threshold, ntop=100, previous_window=0, new_window=1,
@@ -252,11 +252,14 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
         # list of sets of top words per topics in jth window
         newTopWordsTopics = self.getTopWordsTopics(self.models[new_window], ntop=ntop, **kwargs)
         # the number of topics is static so we can use self.nb_topics for iterate
+        total_previous_Top_words = dict(ChainMap(*previousTopWordsTopics))
+        total_new_Top_words = dict(ChainMap(*newTopWordsTopics))
+        total_similarity_score , _  = self.compute_similarity(total_new_Top_words , total_previous_Top_words , soft=soft)
+
         for new_topic in range(self.nb_topics):
             for previous_topic in range(self.nb_topics):
-                similarity_score , novelties , habbits , disappearances = self.compute_similarity(newTopWordsTopics[new_topic] , previousTopWordsTopics[previous_topic] , soft=soft)
+                similarity_score , (novelties , habbits , disappearances) = self.compute_similarity(newTopWordsTopics[new_topic] , previousTopWordsTopics[previous_topic] , soft=soft)
                 if similarity_score >= reproduction_threshold:
-                    total_similarity_score += similarity_score
                     links[new_topic].append(previous_topic)
                     relationship_novelties_matrix[new_topic][previous_topic] = novelties
                     relationship_habbits_matrix[new_topic][previous_topic] = habbits
@@ -273,14 +276,10 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
     def print_novelties(self, n_to_print=10, **kwargs):
         """
 
-        @param topic_id:
-        @param habbits: set of words intersection between 2 windows.
-        @param novelties: set of words difference from the current window different to the previous window.
-        @param n_to_print: number of maximum words to print
-        @param kwargs:
+
         """
         last_window_idx = len(self)
-        similarity, (links , novelties_matrix, habbits_matrix) = self.calcule_similarity_topics_W_W(
+        similarity, (links , novelties_matrix, habbits_matrix , disappearances_matrix) = self.calcule_similarity_topics_W_W(
             previous_window=last_window_idx - 1, new_window=last_window_idx, **kwargs)
         print(f"Information from new window calculate by the Sequantial Calculator : {id(self)}")
         print(f"Similarity score with the last window = {similarity}")
@@ -289,6 +288,7 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
             for parent_topic_id in links[topic_id]:
                 novelties = novelties_matrix[topic_id][parent_topic_id]
                 habbits = habbits_matrix[topic_id][parent_topic_id]
+                disappearances = disappearances_matrix[topic_id][parent_topic_id]
                 print(f"parent id {parent_topic_id}")
                 print("-" * 30)
                 print(f" Novelties for the topic :")
@@ -296,6 +296,9 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
                 print("-" * 30)
                 print(f" Habbits for the topic :")
                 print(*habbits[:n_to_print], sep='\n')
+                print("*" * 30)
+                print(f" DISAPPEARENCES for the topic :")
+                print(*disappearances[:n_to_print], sep='\n')
                 print("*" * 30)
             print("#" * 30)
             print("#" * 30)
@@ -360,7 +363,7 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
         habbits = []
         disappearances = []
         for topic_id in range(self.nb_topics):
-            similarity_score , novelties_topic , habbits_topic , disappearances_topic = self.compute_similarity(
+            similarity_score , (novelties_topic , habbits_topic , disappearances_topic) = self.compute_similarity(
                 newTopWordsTopics[topic_id], previousTopWordsTopics[topic_id], soft=soft)
             similarities.append(similarity_score)
             novelties.append(novelties_topic)

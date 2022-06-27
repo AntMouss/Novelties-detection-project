@@ -1,7 +1,7 @@
 import random
 from Experience.config_arguments import LOG_PATH
 from typing import List, Tuple
-from Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator
+from Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator , NoSupervisedSequantialLangageSimilarityCalculator
 from data_utils import (TimeLineArticlesDataset,
                         EditedTimeLineArticlesDataset,
                         Thematic,
@@ -116,6 +116,10 @@ class ExperiencesGenerator:
         try:
             self.info["nb_topics"] = kwargs['initialize_engine']['nb_topics']
             self.calculator_type = kwargs['initialize_engine']['calculator_type']
+            if issubclass(type(self.calculator_type), NoSupervisedSequantialLangageSimilarityCalculator):
+                self.info["mode"] = "u"
+            else:
+                self.info["mode"] = "s"
             self.training_args = kwargs['initialize_engine']['training_args']
             del kwargs['initialize_engine']['calculator_type']
             del kwargs['initialize_engine']['training_args']
@@ -137,7 +141,6 @@ class ExperiencesGenerator:
 
         try:
             # delete topic_id key for use compareTopicsSequentialy that is like compareTopicSequentialy for all topics
-            del kwargs["generate_result"]["topic_id"]
             for calculator_ref , calculator_with in self.generate_calculator(**kwargs):
                 res_w = calculator_with.compare_Windows_Sequentialy(**kwargs["generate_result"])
                 res_wout = calculator_ref.compare_Windows_Sequentialy(**kwargs["generate_result"])

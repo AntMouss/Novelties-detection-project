@@ -97,19 +97,17 @@ class KwargsDataset:
 
 
 class KwargsResults:
-    def __init__(self, topic_id: int, first_w: int, last_w: int, ntop: int,
+    def __init__(self, first_w: int, last_w: int, ntop: int,
                   remove_seed_words: bool , back : int ):
         self.back = back
         self.remove_seed_words = remove_seed_words
         self.ntop = ntop
         self.last_w = last_w
         self.first_w = first_w
-        self.topic_id = topic_id
 
 class KwargsNoSupervisedResults(KwargsResults):
-    def __init__(self, topic_id: int, first_w: int, last_w: int,
-                 ntop: int, remove_seed_words: bool, back: int , reproduction_threshold : float):
-        super().__init__(topic_id, first_w, last_w, ntop, remove_seed_words, back)
+    def __init__(self,reproduction_threshold : float , **kwargs):
+        super().__init__(**kwargs)
         self.reproduction_threshold = reproduction_threshold
 
 
@@ -147,9 +145,7 @@ class KwargsCoreXCalculatorGenerator:
 
 class KwargsModelGenerator(MetaKwargsGenerator):
 
-    def __new__(cls , kwargs_calculator_type : Type[MetaCalculatorKwargs] = None):
-        if kwargs_calculator_type is None:
-            kwargs_calculator_type = random.choice(KWARGS["kwargs_calculator_type"])
+    def __new__(cls , kwargs_calculator_type : Type[MetaCalculatorKwargs]):
         kwargs_dictionnary = {}
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("nb_topics"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("thresholding_fct_above" ))
@@ -235,7 +231,6 @@ class KwargsResultsGenerator:
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("remove_seed_words"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("last_w"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("first_w"))
-        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("topic_id"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("ntop"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("back"))
         if mode == "s":
@@ -257,7 +252,8 @@ class KwargsAnalyseGenerator:
 class FullKwargsGenerator:
 
     def __new__(cls , kwargs_calculator_type : Type[MetaCalculatorKwargs] = None):
-
+        if kwargs_calculator_type is None:
+            kwargs_calculator_type = random.choice(KWARGS["kwargs_calculator_type"])
         full_kwargs = {}
         full_kwargs["initialize_dataset"] = KwargsDatasetGenerator().__dict__
         end_date = full_kwargs["initialize_dataset"]["end"]
@@ -276,6 +272,10 @@ class FullKwargsGenerator:
 class KwargsGenerator:
     def __init__(self , n : int):
         self.n = n
+
+    def __len__(self):
+        return self.n
+
     def __iter__(self):
         for i in range(self.n):
             yield FullKwargsGenerator()
@@ -289,7 +289,7 @@ KWARGS = {
     LDACalculatorKwargs,
     CoreXCalculatorKwargs],
     #32, 48, 64
-    "nb_experiences": [3 , 5],
+    "nb_experiences": [32],
     "thematics": [THEMATICS],
     "min_thematic_size": [1000,2000],
     "min_size_exp": [i for i in range(2,4)],
@@ -314,20 +314,20 @@ KWARGS = {
     "back": [2,3,4,5,6],
     "soft": [True, False],
     "random_state": [42],
-    "overrate": [10 ** i for i in range(2, 7)],
+    "overrate": [10 ** i for i in range(4, 7)],
     "anchor_strength": [i for i in range(3, 30)],
     "trim": [0, 0.05, 0.1],
     "risk" : [0.05],
     #absoluteThresholding , linearThresholding
-    "thresholding_fct_above" : [exponentialThresholding],
+    "thresholding_fct_above" : [exponentialThresholding , linearThresholding],
     #absoluteThresholding
     "thresholding_fct_bellow" : [linearThresholding],
     "absolute_value_above":[2000 , 10000 , 20000],
     "absolute_value_bellow" : [1, 3 , 10],
     "relative_value_above" : [0.7 , 0.5 , 0.25],
     "relative_value_bellow" : [0.05 , 0.01 , 0.001 , 0.0005 , 0.0001],
-    "limit" : [0.7 , 0.5 , 0.25],
-    "pente" : [50 , 100 , 500 , 1000],
+    "limit" : [0.7 , 0.5],
+    "pente" : [100 , 500 , 1000],
     "passes" : [1 , 2 , 4 , 7],
    "reproduction_threshold"  : [0.1 , 0.2 , 0.3]
 }

@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import List, Tuple
 import math
 import ijson
+import numpy as np
 from Experience.data_processing import ProcessorText , transformS
 import pandas as pd
 
@@ -58,7 +59,7 @@ class ExperiencesMetadata(Data):
 
 class ExperiencesResult(Data):
 
-    def __init__(self, metadata : ExperiencesMetadata, similarity : Tuple[List], label_counter_w : List[dict] = None
+    def __init__(self, metadata : ExperiencesMetadata, similarity : Tuple[np.ndarray , np.ndarray], label_counter_w : List[dict] = None
                  , label_counter_ref : List[dict] = None):
         self.label_counter_ref = label_counter_ref
         self.label_counter_w = label_counter_w
@@ -71,6 +72,9 @@ class ExperiencesResults(Data):
     def __init__(self , results : List[ExperiencesResult], info : dict):
         self.info = info
         self.results = results
+
+    def __len__(self):
+        return len(self.results)
 
 
 

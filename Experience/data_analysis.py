@@ -1,3 +1,5 @@
+import functools
+
 import numpy as np
 import copy
 from Experience.data_utils import ExperiencesResults , Alerte
@@ -23,6 +25,11 @@ class Sampler:
         self.results = results.results
         self.info = results.info
 
+    def __len__(self):
+        if self.info["mode"] == "u":
+            return 1
+        else:
+            return self.info["nb_topics"]
 
     @property
     def samples(self):
@@ -30,19 +37,20 @@ class Sampler:
         topic_samples = {
             "before": [],
             "after": [],
-            "middle": [],
+            "between": [],
             "in": [],
             "out": [],
             "inside": []
         }
-        samples = [copy.deepcopy(topic_samples) for _ in range(self.info["nb_topics"])]
+        samples = [copy.deepcopy(topic_samples) for _ in range(len(self))]
         for result in self.results:
             similarity = result.similarity
-            for topic_id , (topic_res_w , topic_res_wout) in enumerate(zip(similarity['with'] , similarity['without'])):
-                tmp = np.abs(np.array(topic_res_w) - np.array(topic_res_wout))
-                for window_id , similarity_score in enumerate(tmp):
+            difference_matrix = abs(similarity['with'] - similarity['without'])
+            for window_id, difference_scores in enumerate(difference_matrix):
+                for topic_id , difference_score in enumerate(difference_scores):
                     key = Sampler.choose_key(window_id, result.metadata.ranges)
-                    samples[topic_id][key].append(similarity_score)
+                    samples[topic_id][key].append(difference_score)
+
         return samples
 
 
@@ -61,7 +69,7 @@ class Sampler:
                     return 'in'
                 elif entry < idx_window < out:
                     return 'inside'
-            return 'middle'
+            return 'between'
 
 
 class Analyser:
@@ -73,6 +81,13 @@ class Analyser:
         self.samples = Sampler(self.results).samples
         self.nb_topics = len(self.samples)
         self.types_window = list(self.samples[0].keys())
+
+    @property
+    def pvalue_matrix(self):
+        matrix = []
+        for topic_id in range(self.nb_topics):
+            matrix.append(self.topic_pvalue_matrix(topic_id, trim=self.trim))
+        return matrix
 
     @check_topic_id
     def topic_pvalue_matrix(self , topic_id , trim = 0 ):
@@ -89,13 +104,6 @@ class Analyser:
                 pvalue_matrix[j][i] = pvalue
         return pvalue_matrix
 
-
-    @property
-    def pvalue_matrix(self):
-        matrix = []
-        for topic_id in range(self.nb_topics):
-            matrix.append(self.topic_pvalue_matrix(topic_id , trim=self.trim))
-        return matrix
 
     @check_topic_id
     def test_hypothesis_topic_injection(self, topic_id : int, type_window1 : str, type_window2 : str
@@ -115,7 +123,7 @@ class Analyser:
     def multi_test_hypothesis_topic_injection(self, test_normality = True):
 
         target_window_types = ['in' , 'out']
-        other_window_types = ['inside' , 'middle' , 'after' , 'before']
+        other_window_types = ['inside' , 'between' , 'after' , 'before']
         for topic_id in range (self.nb_topics):
             for target_window in target_window_types:
                 for other_window in other_window_types:
@@ -125,13 +133,15 @@ class Analyser:
                         yield alert
 
     @check_topic_id
+    @functools.lru_cache(maxsize=2)
     def test_hypothesis_normal_distribution(self , topic_id):
         # "without" key is linked to the result that we obtained with the reference model that isn't
         # contain topic injection
         #we assume that the distribution of similarity is invariant acoording to the label
         # so we flat the similarity["without"]
-        similarity_samples = [list(itertools.chain.from_iterable(result.similarity["without"][topic_id])) for result in self.results.results]
-        similarity_samples = list(itertools.chain.from_iterable(similarity_samples))
+        similarity_samples = self.results.results[0].similarity["without"]
+        similarity_samples = np.transpose(similarity_samples)
+        similarity_samples = list(similarity_samples[topic_id])
         _ , pvalue = normaltest(similarity_samples)
         # we assume that we take the same risk for normality hypothesis and topic injection hypothesis
         if pvalue >= self.risk:

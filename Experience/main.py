@@ -1,3 +1,5 @@
+from multiprocessing import Pool
+
 from Experience.kwargsGen import KwargsGenerator
 from Experience.ExperienceGen import ExperiencesGenerator
 from Experience.config_arguments import LOG_PATH
@@ -11,15 +13,16 @@ l = Lock()
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename=LOG_PATH , level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-parser = argparse.ArgumentParser(description="pass config_file and save_path",
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("dest", help="Destination location")
-args = parser.parse_args()
-config = vars(args)
-
-SAVE_PATH = config["dest"]
-NB_CALCULATORS = 30
+#
+# parser = argparse.ArgumentParser(description="pass config_file and save_path",
+#                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+# parser.add_argument("dest", help="Destination location")
+# args = parser.parse_args()
+# config = vars(args)
+#
+# SAVE_PATH = config["dest"]
+SAVE_PATH = "/home/mouss/PycharmProjects/novelty_detection/results/wesh.pck"
+NB_CALCULATORS = 15
 RESULTATS = {}
 
 
@@ -28,7 +31,7 @@ def save(process_id , kwargs , alerts):
     with open(SAVE_PATH , "wb") as f:
         f.write(pickle.dumps(RESULTATS))
 
-def process(**kwargs):
+def process(kwargs):
 
     try:
         process_id = id(kwargs)
@@ -47,13 +50,12 @@ def process(**kwargs):
         pass
 
 
-# def main():
-#     kwargs_generator = KwargsGenerator(NB_MODELS)
-#     with Pool(processes=5) as p:
-#         p.map(process, kwargs_generator)
+def main():
+    global NB_CALCULATORS
+    kwargs_generator = KwargsGenerator(NB_CALCULATORS)
+    with Pool(3) as p:
+        p.map(process, kwargs_generator)
 
 
 if __name__ == '__main__':
-    kwargs_generator = KwargsGenerator(NB_CALCULATORS)
-    for kwargs in kwargs_generator:
-        process(**kwargs)
+    main()
