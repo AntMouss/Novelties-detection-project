@@ -787,3 +787,28 @@ def addProcessedText(  dataBasePath_source , databasePath_destination   ):
         if nb_articles % 50000:
             with open(databasePath_destination, 'w') as f:
                 f.write(json.dumps(data2))
+
+def transformU(articles , processor : ProcessorText = None , process_done = True):
+
+    texts = []
+
+    for article in articles:
+        if process_done:
+            text = article['process_text']
+        else:
+            text =processor.processText(article['text'])
+        texts.append(text)
+    return texts
+
+
+def transformS(articles , processor : ProcessorText = None , process_done = True):
+
+    res = []
+    for article in articles:
+        if process_done:
+            res.append((article['process_text'] , article['label'][0]))
+        else:
+            res.append((processor.processText(article['text']) , article['label'][0]))
+    texts , labels = list(zip(*res))
+    labels = list(labels)
+    return texts , labels

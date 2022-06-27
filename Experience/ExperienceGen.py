@@ -1,14 +1,14 @@
 import random
 from Experience.config_arguments import LOG_PATH
 from typing import List, Tuple
-import Sequential_Module
+from Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator
 from data_utils import (TimeLineArticlesDataset,
                         EditedTimeLineArticlesDataset,
                         Thematic,
                         ExperiencesMetadata,
                         ExperiencesResults,
                         ExperiencesResult)
-from src.Experience.data_analysis import Analyser
+from Experience.data_analysis import Analyser
 import logging
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename=LOG_PATH , level=logging.INFO)
@@ -111,13 +111,13 @@ class ExperiencesGenerator:
             logger.debug(f"Exception occurred in Timeline Generation: {e}", exc_info=True)
 
 
-    def generate_calculator(self, **kwargs) -> Tuple[Sequential_Module.MetaSequencialLangageSimilarityCalculator]:
+    def generate_calculator(self, **kwargs) -> Tuple[MetaSequencialLangageSimilarityCalculator]:
 
         try:
             self.info["nb_topics"] = kwargs['initialize_engine']['nb_topics']
-            self.calculator_type = kwargs['initialize_engine']['model_type']
+            self.calculator_type = kwargs['initialize_engine']['calculator_type']
             self.training_args = kwargs['initialize_engine']['training_args']
-            del kwargs['initialize_engine']['model_type']
+            del kwargs['initialize_engine']['calculator_type']
             del kwargs['initialize_engine']['training_args']
             for reference_timeline , timeline_w in self.generate_timelines(**kwargs):
                 sequential_calculator = self.calculator_type

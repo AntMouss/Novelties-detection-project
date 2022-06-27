@@ -40,7 +40,8 @@ class CoreX(Engine):
         self.words = [ word for word in self.document_words_counter.columns]
         self.documents_matrix = self.document_words_counter.to_numpy(dtype = bool)
         self.documents_matrix = ss.csc_matrix(self.documents_matrix)
-        self.core = ct.Corex(n_hidden=self.nb_topics, words=self.words, max_iter=200, verbose=False, seed=1)
+        self.core = ct.Corex(n_hidden=self.nb_topics, max_iter=200, verbose=False, seed=1)
+        self.core.fit(self.documents_matrix, words=self.words)
 
     def get_topic_terms(self,topic_id : int, topn=100):
         res = self.core.get_topics(n_words=topn , topic=topic_id)

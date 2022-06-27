@@ -1,18 +1,16 @@
-from typing import List, Callable, Dict
+from typing import List, Callable, Dict, Type
 import random
-from Sequential_Module import (MetaSequencialLangageSimilarityCalculator,
+import math
+from Experience.Sequential_Module import (MetaSequencialLangageSimilarityCalculator,
                                GuidedSequantialLangageSimilarityCalculator,
                                SupervisedSequantialLangageSimilarityCalculator,
                                LFIDFSequentialSimilarityCalculator,
                                GuidedCoreXSequentialSimilarityCalculator,
                                GuidedLDASequentialSimilarityCalculator,
                                LDASequentialSimilarityCalculator,
-                               CoreXSequentialSimilarityCalculator,
-                               )
-import math
-from Experience.config_arguments import THEMATICS, NB_HOURS, PROCESSOR, LABELS_IDX, SEED, DATA_PATH
-from data_utils import Thematic
-from data_processing import ProcessorText , absoluteThresholding , linearThresholding , exponentialThresholding
+                               CoreXSequentialSimilarityCalculator)
+from Experience.data_processing import  absoluteThresholding , linearThresholding , exponentialThresholding
+from Experience.config_arguments import *
 
 
 class MetaCalculatorKwargs:
@@ -40,13 +38,30 @@ class GuidedCalculatorKwargs(SupervisedCalculatorKwargs):
         self.calculator_type = GuidedSequantialLangageSimilarityCalculator
         self.seed = seed
 
-
-class GuidedLDACalculatorKwargs(GuidedCalculatorKwargs):
-    def __init__(self, overrate , passes , **kwargs):
+class LFIDFCalculatorKwargs(SupervisedCalculatorKwargs):
+    def __init__(self,**kwargs):
         super().__init__(**kwargs)
-        self.model_type = GuidedLDASequentialSimilarityCalculator
-        self.training_args["overrate"] = overrate
+        self.calculator_type = LFIDFSequentialSimilarityCalculator
+
+
+class LDACalculatorKwargs(MetaCalculatorKwargs):
+    def __init__(self, passes, **kwargs):
+        super().__init__(**kwargs)
+        self.calculator_type = LDASequentialSimilarityCalculator
         self.training_args["passes"] = passes
+
+
+class CoreXCalculatorKwargs(MetaCalculatorKwargs):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.calculator_type = CoreXSequentialSimilarityCalculator
+
+
+class GuidedLDACalculatorKwargs(GuidedCalculatorKwargs , LDACalculatorKwargs):
+    def __init__(self, overrate ,  **kwargs):
+        super().__init__(**kwargs)
+        self.calculator_type = GuidedLDASequentialSimilarityCalculator
+        self.training_args["overrate"] = overrate
 
 
 class GuidedCoreXCalculatorKwargs(GuidedCalculatorKwargs):
@@ -55,23 +70,6 @@ class GuidedCoreXCalculatorKwargs(GuidedCalculatorKwargs):
         self.calculator_type = GuidedCoreXSequentialSimilarityCalculator
         self.training_args["anchor_strength"] = anchor_strength
 
-
-class LFIDFCalculatorKwargs(SupervisedCalculatorKwargs):
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-        self.calculator_type = LFIDFSequentialSimilarityCalculator
-
-
-class LDACalculatorKwargs(MetaCalculatorKwargs):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.calculator_type = LDASequentialSimilarityCalculator
-
-
-class CoreXCalculatorKwargs(MetaCalculatorKwargs):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.calculator_type = CoreXSequentialSimilarityCalculator
 
 
 class KwargsExperiences:
@@ -100,13 +98,20 @@ class KwargsDataset:
 
 class KwargsResults:
     def __init__(self, topic_id: int, first_w: int, last_w: int, ntop: int,
-                  remove_seed_words: bool , back : int):
+                  remove_seed_words: bool , back : int ):
         self.back = back
         self.remove_seed_words = remove_seed_words
         self.ntop = ntop
         self.last_w = last_w
         self.first_w = first_w
         self.topic_id = topic_id
+
+class KwargsNoSupervisedResults(KwargsResults):
+    def __init__(self, topic_id: int, first_w: int, last_w: int,
+                 ntop: int, remove_seed_words: bool, back: int , reproduction_threshold : float):
+        super().__init__(topic_id, first_w, last_w, ntop, remove_seed_words, back)
+        self.reproduction_threshold = reproduction_threshold
+
 
 class KwargsAnalyse:
     def __init__(self , trim : int , risk = 0.05 ):
@@ -125,10 +130,26 @@ class MetaKwargsGenerator:
             return {key_name: random.choice(KWARGS[kwarg])}
 
 
+class KwargsGuidedLDACalculatorGenerator:
+    pass
+
+class KwargsGuidedCoreXCalculatorGenerator:
+    pass
+
+class KwargsLFIDFCalculatorGenerator:
+    pass
+
+class KwargsLDACalculatorGenerator:
+    pass
+
+class KwargsCoreXCalculatorGenerator:
+    pass
+
 class KwargsModelGenerator(MetaKwargsGenerator):
 
-    def __new__(cls):
-        kwargs_calculator_type = random.choice(KWARGS["kwargs_calculator_type"])
+    def __new__(cls , kwargs_calculator_type : Type[MetaCalculatorKwargs] = None):
+        if kwargs_calculator_type is None:
+            kwargs_calculator_type = random.choice(KWARGS["kwargs_calculator_type"])
         kwargs_dictionnary = {}
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("nb_topics"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("thresholding_fct_above" ))
@@ -140,15 +161,16 @@ class KwargsModelGenerator(MetaKwargsGenerator):
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("passes"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("seed"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("labels_idx"))
-        if kwargs_calculator_type.__name__ == 'GuidedCoreXCalculatorKwargs':
+        elif kwargs_calculator_type.__name__ == 'GuidedCoreXCalculatorKwargs':
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("anchor_strength"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("seed"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("labels_idx"))
-        if kwargs_calculator_type.__name__ == 'LFIDFCalculatorKwargs':
+        elif kwargs_calculator_type.__name__ == 'LFIDFCalculatorKwargs':
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("labels_idx"))
-        if kwargs_calculator_type.__name__ == 'CoreXCalculatorKwargs':
+        elif kwargs_calculator_type.__name__ == 'CoreXCalculatorKwargs':
             pass
-        if kwargs_calculator_type.__name__ == 'LDACalculatorKwargs':
+        elif kwargs_calculator_type.__name__ == 'LDACalculatorKwargs':
+            kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("passes"))
             pass
         return kwargs_calculator_type(**kwargs_dictionnary)
 
@@ -182,7 +204,7 @@ class KwargsModelGenerator(MetaKwargsGenerator):
 
 
 class KwargsExperiencesGenerator:
-    def __new__(cls , timeline_size):
+    def __new__(cls , timeline_size : int ):
         kwargs_dictionnary = {}
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("boost"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("cheat"))
@@ -208,7 +230,7 @@ class KwargsDatasetGenerator:
 
 
 class KwargsResultsGenerator:
-    def __new__(cls):
+    def __new__(cls, mode : str = "u"):
         kwargs_dictionnary = {}
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("remove_seed_words"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("last_w"))
@@ -216,7 +238,11 @@ class KwargsResultsGenerator:
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("topic_id"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("ntop"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("back"))
-        return KwargsResults(**kwargs_dictionnary)
+        if mode == "s":
+            return KwargsResults(**kwargs_dictionnary)
+        else:
+            kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("reproduction_threshold"))
+            return KwargsNoSupervisedResults(**kwargs_dictionnary)
 
 
 class KwargsAnalyseGenerator:
@@ -230,7 +256,7 @@ class KwargsAnalyseGenerator:
 
 class FullKwargsGenerator:
 
-    def __new__(cls):
+    def __new__(cls , kwargs_calculator_type : Type[MetaCalculatorKwargs] = None):
 
         full_kwargs = {}
         full_kwargs["initialize_dataset"] = KwargsDatasetGenerator().__dict__
@@ -239,8 +265,11 @@ class FullKwargsGenerator:
         delta = full_kwargs["initialize_dataset"]["delta"]
         timeline_size = math.ceil(( end_date- start_date) / (delta*3600))
         full_kwargs["experience"] = KwargsExperiencesGenerator(timeline_size).__dict__
-        full_kwargs["initialize_engine"] = KwargsModelGenerator().__dict__
-        full_kwargs["generate_result"] = KwargsResultsGenerator().__dict__
+        full_kwargs["initialize_engine"] = KwargsModelGenerator(kwargs_calculator_type).__dict__
+        if issubclass(kwargs_calculator_type , SupervisedCalculatorKwargs):
+            full_kwargs["generate_result"] = KwargsResultsGenerator(mode='s').__dict__
+        else:
+            full_kwargs["generate_result"] = KwargsResultsGenerator(mode='u').__dict__
         full_kwargs["analyse"] = KwargsAnalyseGenerator().__dict__
         return full_kwargs
 
@@ -254,7 +283,11 @@ class KwargsGenerator:
 
 KWARGS = {
     #GuidedLDAModelKwargs,LFIDFModelKwargs,GuidedCoreXKwargs
-    "kwargs_calculator_type": [GuidedCoreXCalculatorKwargs],
+    "kwargs_calculator_type": [GuidedLDACalculatorKwargs,
+    GuidedCoreXCalculatorKwargs,
+    LFIDFCalculatorKwargs,
+    LDACalculatorKwargs,
+    CoreXCalculatorKwargs],
     #32, 48, 64
     "nb_experiences": [3 , 5],
     "thematics": [THEMATICS],
@@ -263,8 +296,8 @@ KWARGS = {
     "max_size_exp_rel": [0.1, 0.2, 0.3],
     "cheat": [False],
     "boost": [0],
-    "start": [1622376100],
-    "end": [1622376100 + NB_HOURS * 3600],
+    "start": [START_DATE],
+    "end": [END_DATE],
     "path": [DATA_PATH],
     "lookback": [i for i in range(5, 100, 5)],
     "delta": [1],
@@ -285,14 +318,16 @@ KWARGS = {
     "anchor_strength": [i for i in range(3, 30)],
     "trim": [0, 0.05, 0.1],
     "risk" : [0.05],
-    "thresholding_fct_above" : [absoluteThresholding , linearThresholding , exponentialThresholding],
-    "thresholding_fct_bellow" : [absoluteThresholding , linearThresholding],
+    #absoluteThresholding , linearThresholding
+    "thresholding_fct_above" : [exponentialThresholding],
+    #absoluteThresholding
+    "thresholding_fct_bellow" : [linearThresholding],
     "absolute_value_above":[2000 , 10000 , 20000],
     "absolute_value_bellow" : [1, 3 , 10],
     "relative_value_above" : [0.7 , 0.5 , 0.25],
     "relative_value_bellow" : [0.05 , 0.01 , 0.001 , 0.0005 , 0.0001],
     "limit" : [0.7 , 0.5 , 0.25],
     "pente" : [50 , 100 , 500 , 1000],
-    "passes" : [1 , 2 , 4 , 7]
-
+    "passes" : [1 , 2 , 4 , 7],
+   "reproduction_threshold"  : [0.1 , 0.2 , 0.3]
 }

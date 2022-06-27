@@ -1,49 +1,22 @@
-import json
+import pickle
 from datetime import datetime
 from typing import List, Tuple
 import math
 import ijson
-from Experience.data_processing import ProcessorText
+from Experience.data_processing import ProcessorText , transformS
 import pandas as pd
-
-
-
-def transformU(articles , processor : ProcessorText = None , process_done = True):
-
-    texts = []
-
-    for article in articles:
-        if process_done:
-            text = article['process_text']
-        else:
-            text =processor.processText(article['text'])
-        texts.append(text)
-    return texts
-
-
-def transformS(articles , processor : ProcessorText = None , process_done = False):
-
-    res = []
-    for article in articles:
-        if process_done:
-            res.append((article['text_processed'] , article['label'][0]))
-        else:
-            res.append((processor.processText(article['text']) , article['label'][0]))
-    texts , labels = list(zip(*res))
-    labels = list(labels)
-    return texts , labels
 
 
 class Data:
 
     def save(self , path):
-        with open(path , 'w') as f:
-            f.write(json.dumps(self.__dict__))
+        with open(path , 'wb') as f:
+            f.write(pickle.dumps(self.__dict__))
 
-
-    def load(self , path):
-        with open(path , 'r') as f:
-            data = json.load(f)
+    @staticmethod
+    def load(path):
+        with open(path , 'rb') as f:
+            data = pickle.load(f)
         return Data(**data)
 
 
@@ -159,7 +132,6 @@ class TimeLineArticlesDataset(ArticlesDataset):
         @param delta: duration of each window
         @param look_back: number of article of the previous window that we agregate to the current window if look_back < 1
         the look back is relative (percentage of the last window)
-        @param mode: supervised 's' return texts , labels . unsupervised 'u' return texts
         @param kwargs:
         """
         super().__init__(**kwargs)
