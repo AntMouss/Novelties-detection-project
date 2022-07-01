@@ -1,69 +1,37 @@
+import os.path
 from typing import List, Dict
-from flask import Flask, request
-from flask_restplus import Api, Resource, fields
 import json
-import sys
-import os
 from threading import Thread , Lock
 import schedule
-from Experience.RSSCollector import RSSCollect
+from Collection.RSSCollector import RSSCollect
 from Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator , SupervisedSequantialLangageSimilarityCalculator
 from Experience.WindowClassification import WindowClassifierModel
+from Collection.data_processing import transformS
+import argparse
+import pickle
+from serverRSSfeeds import app
 
-# Creation of the service with Flask
-app = Flask(__name__)
-api = Api(app)
-name_space = api.namespace('RSSNewsExtractor', description='Extract news from RSS feeds and store them into JSON file')
+parser = argparse.ArgumentParser(description="pass config_file with model , kwargs_calculator paths",
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("config_path", help="paths of the model and kwargs calculator")
+parser.add_argument("root_path" , help="root path of the project")
+args = parser.parse_args()
+args = vars(args)
+config_path = args["config_path"]
+ROOT = args["root_path"]
+config_path = os.path.join(ROOT , config_path)
+with open(config_path , 'r') as f:
+    config = json.load(f)
 
-# Model for required data to request the server
-url_element = api.model("RSS URL",
-                        {"url": fields.String(required=True,
-                                              description="URL of the RSS feed to add",
-                                              help="URL cannot be empty"),
-                         "label": fields.List(fields.String(required=False,
-                                                            description="Type(s) of the RSS feed"))})
-model = api.model('RSSNewsExtractor Model',
-                  {'rss_feed': fields.List(fields.Nested(url_element))})
-
-
-@api.route("/AddRSSFeedSource")
-class RSSNewsExtractor(Resource):
-    """
-    Rest interface to add rss feed to the extractor
-    """
-    def get(self):
-        return 'DELETE Not available for this service', 404
-
-    @api.expect(model)
-    def post(self):
-        try:
-            # Add rss feed to existing rss feed list
-            with open("rssfeed_FUN.json", "r") as f:
-                rss_feed_url = json.load(f)
-            rss_feed_url["rss_feed_url"] = rss_feed_url["rss_feed_url"] + request.json['rss_feed']
-            with open("rssfeed_FUN.json", "w") as f:
-                f.write(json.dumps(rss_feed_url))
-        except KeyError as e:
-            name_space.abort(500, e.__doc__, status="Could not retrieve information", statusCode="500")
-        except Exception as e:
-            name_space.abort(400, e.__doc__, status="Could not retrieve information", statusCode="400")
-
-    @api.expect(model)
-    def put(self):
-        try:
-            # Add rss feed to existing rss feed list
-            with open("rssfeed_FUN.json", "r") as f:
-                rss_feed_url = json.load(f)
-            rss_feed_url["rss_feed_url"] = rss_feed_url["rss_feed_url"] + request.json['rss_feed']
-            with open("rssfeed_FUN.json", "w") as f:
-                f.write(json.dumps(rss_feed_url))
-        except KeyError as e:
-            name_space.abort(500, e.__doc__, status="Could not retrieve information", statusCode="500")
-        except Exception as e:
-            name_space.abort(400, e.__doc__, status="Could not retrieve information", statusCode="400")
-
-    def delete(self):
-        return 'DELETE Not available for this service', 404
+MODEL_PATH = os.path.join(ROOT , config["model_path"])
+KWARGS_CALCULATOR_PATH = os.path.join(ROOT , config["kwargs_calculator_path"])
+PROCESSOR_PATH = os.path.join(ROOT , config["processor_path"])
+LOOP_DELAY_PROCESS = config["loop_delay_process"] #minutes
+LOOP_DELAY_COLLECT = config["loop_delay_collect"]
+RSS_FEEDS_PATH = os.path.join(ROOT, config["rss_feeds_path"])
+OUTPUT_PATH = config["output_path"]
+HOST = config["host"]
+PORT = config["port"]
 
 
 WINDOW_DATA = []
@@ -88,16 +56,34 @@ def initialize_calculator(kwargs_calculator):
     }
 
 
+def load_stuff() -> Dict:
+    """
+
+    @return:
+    """
+    global model
+    global LOOP_DELAY_PROCESS
+    with open(MODEL_PATH , "rb") as f:
+        model = pickle.load(f)
+    with open(KWARGS_CALCULATOR_PATH , "rb") as f:
+        kwargs_calculator_path = pickle.load(f)
+    with open(PROCESSOR_PATH , "rb") as f:
+        processor = pickle.load(f)
+    stuff = initialize_calculator(kwargs_calculator_path)
+    stuff.update({"classifier_models" : model , "loop_delay" : LOOP_DELAY_PROCESS , "processor" : processor})
+    return stuff
+
+
 class CollectThread(Thread):
     """
     Service to periodically collect information from the selected sources
     """
-    def __init__(self,rss_feed_config_file,output_path , delta):
+    def __init__(self,rss_feed_config_file,output_path ,processor, delta):
         Thread.__init__(self)
-        self.delta = delta * 60 #convert hours to minutes
+        self.delta = delta
         self.rss_feed_config=rss_feed_config_file
         self.output_path=output_path
-        self.rssCollect=RSSCollect(self.rss_feed_config, self.output_path)
+        self.rssCollect=RSSCollect(self.rss_feed_config, self.output_path , processor=processor)
         self.loop_delay , self.nb_loop = self._init_loop_delay()
         self.count = 0
 
@@ -148,14 +134,15 @@ class NoveltiesDetectionThread(Thread):
     def log_error():
         print("no articles collected during his windows")
 
-    def process(self , data_window):
+    def process(self ):
         global WINDOW_DATA
         global READY_TO_CONSUME
         global PROCESS_LOCKER
         PROCESS_LOCKER.acquire()
         if READY_TO_CONSUME == True:
             if len(WINDOW_DATA) != 0:
-                self.supervised_reference_calculator.treat_Window(data_window, **self.training_args)
+                data = transformS(WINDOW_DATA, process_already_done=True)
+                self.supervised_reference_calculator.treat_Window(data, **self.training_args)
                 self.supervised_reference_calculator.print_novelties(n_to_print=10)
                 similarities , _ = self.supervised_reference_calculator.calcule_similarity_topics_W_W(**self.comparaison_args)
                 print("@" * 30)
@@ -184,22 +171,24 @@ def startServer():
     Starts server
     :return:
     '''
-    stuff = initialize_calculator(**config["claculator_initialization"])
-    config["service"].update(stuff)
-    extractor = CollectThread(config["rss_feed_config_file"],config["output_path"],config["loop_delay"])
-    detector = NoveltiesDetectionThread(**config["service"])
+    global RSS_FEEDS_PATH
+    global OUTPUT_PATH
+    global LOOP_DELAY_COLLECT
+    stuff : Dict = load_stuff()
+    extractor = CollectThread(RSS_FEEDS_PATH,OUTPUT_PATH,LOOP_DELAY_COLLECT)
+    detector = NoveltiesDetectionThread(**stuff)
     extractor.start()
     detector.start()
     extractor.join()
     detector.join()
     print("Running Rest RSSNewsExtractor server")
-    app.run(config["host"], port=config["port"], debug=False)
+    app.run(HOST, port=PORT, debug=False)
 
 if __name__ == '__main__':
-    rootDir = ''
-    if len(sys.argv) > 1:
-        rootDir=sys.argv[1]
-    with open(os.path.join(rootDir, "../config/config_service.json"), "r") as f:
-        config = json.load(f)
+    # rootDir = ''
+    # if len(sys.argv) > 1:
+    #     rootDir=sys.argv[1]
+    # with open(os.path.join(rootDir, "../config/config_service.json"), "r") as f:
+    #     config = json.load(f)
 
     startServer()

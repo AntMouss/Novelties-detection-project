@@ -2,7 +2,7 @@ import random
 from typing import List, Callable, Dict
 from Experience.data_utils import TimeLineArticlesDataset
 from gensim import corpora
-from Experience.data_processing import filterDictionnary
+from Collection.data_processing import filterDictionnary
 from Experience import Engine
 import numpy as np
 from collections import Counter

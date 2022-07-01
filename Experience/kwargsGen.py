@@ -9,7 +9,7 @@ from Experience.Sequential_Module import (MetaSequencialLangageSimilarityCalcula
                                GuidedLDASequentialSimilarityCalculator,
                                LDASequentialSimilarityCalculator,
                                CoreXSequentialSimilarityCalculator)
-from Experience.data_processing import  absoluteThresholding , linearThresholding , exponentialThresholding
+from Collection.data_processing import  absoluteThresholding , linearThresholding , exponentialThresholding
 from Experience.config_arguments import *
 
 

@@ -788,12 +788,12 @@ def addProcessedText(  dataBasePath_source , databasePath_destination   ):
             with open(databasePath_destination, 'w') as f:
                 f.write(json.dumps(data2))
 
-def transformU(articles , processor : ProcessorText = None , process_done = True):
+def transformU(articles, processor : ProcessorText = None, process_already_done = True):
 
     texts = []
 
     for article in articles:
-        if process_done:
+        if process_already_done:
             text = article['process_text']
         else:
             text =processor.processText(article['text'])
@@ -801,11 +801,11 @@ def transformU(articles , processor : ProcessorText = None , process_done = True
     return texts
 
 
-def transformS(articles , processor : ProcessorText = None , process_done = True):
+def transformS(articles, processor : ProcessorText = None, process_already_done = True):
 
     res = []
     for article in articles:
-        if process_done:
+        if process_already_done:
             res.append((article['process_text'] , article['label'][0]))
         else:
             res.append((processor.processText(article['text']) , article['label'][0]))

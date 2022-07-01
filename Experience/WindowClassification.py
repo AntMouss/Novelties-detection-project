@@ -2,6 +2,7 @@ from typing import List
 import numpy as np
 from scipy import stats
 from collections import deque
+import pickle
 
 
 class WindowClassifierModel:
@@ -58,4 +59,19 @@ class WindowClassifierModel:
             return self.groups[-1]
         else:
             return np.nan
+
+
+    def save(self , path):
+        with open(path , "wb") as f:
+            data = self.__dict__
+            f.write(pickle.dumps(data))
+
+    @staticmethod
+    def load(path):
+        with open(path , "rb") as f:
+            data_arg = pickle.load(f)
+        return WindowClassifierModel(**data_arg)
+
+
+
 
