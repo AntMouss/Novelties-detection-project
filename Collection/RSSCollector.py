@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from datetime import datetime
 import logging
 import threading
-from Collection.data_processing import extract_text , ProcessorText
+from Collection.data_processing import extract_text , ProcessorText , dateToDateTime
 import sys
 import validators
 import pathlib
@@ -49,7 +49,7 @@ class RSSCollect():
     fullDatasetFile="fullDataSet.json"
     HTML_HEADER = '<html><body>'
     HTML_TAIL="</body></html>"
-
+    listOfFields = ["title", "url", "text", "label", "rss", "updated", "date", "summary", "content"]
 
     def __init__(self, sourcesList, rootOutputFolder , processor : ProcessorText):
         '''
@@ -65,9 +65,10 @@ class RSSCollect():
         self.logFolderPath = os.path.join(rootOutputFolder , self.log_folder)
         self.log_performance_path = os.path.join(self.logFolderPath , self.log_performance_file)
         self.log_error_path = os.path.join(self.logFolderPath , self.log_error_file)
+        self.global_remove_tags = []
 
 
-    def treatNewsFeedList(self, collectFullHtml=True, collectRssImage=True, collectArticleImages=True):
+    def treatNewsFeedList(self, **kwargs):
         '''
         Collects the information from the news feeds
         :param collectFullHtml: If the full
@@ -89,105 +90,115 @@ class RSSCollect():
 
         if not os.path.exists(self.sourcesList):
             logging.warning(f"ERROR: RSS sources list file not found!{self.sourcesList} ")
-            print("ERROR: RSS sources list file not found! ", self.sourcesList)
+            raise Exception("ERROR: RSS sources list file not found! ", self.sourcesList)
+
 
         with open(self.sourcesList, "r") as f:
             rss_config = json.load(f)
         url_rss = rss_config["rss_feed_url"]
+        self.global_remove_tags = rss_config["global_remove_tags"]
         listOfReadEntries = []
 
         for i in range(len(url_rss)):
             print(i)
             label = url_rss[i]["label"]
             url = url_rss[i]["url"]
-            remove_tag_list = url_rss[i]["toRemove"] + rss_config['global']
+            if "remove_tags" in url_rss[i].keys():
+                remove_tag_list = url_rss[i]["remove_tags"] + self.global_remove_tags
+            else:
+                remove_tag_list = self.global_remove_tags
             try:
                 # Get information from the rss config file
-                listOfReadEntries += self.treatRSSEntry(label, url, remove_tag_list,
-                                                                            collectFullHtml, collectRssImage,
-                                                                            collectArticleImages)
+                listOfReadEntries += self.treatRSSEntry(label, url , remove_tag_list,**kwargs)
                 self.saveProcessedNewsHashes(self.hashs)
-                self.evaluateCollect(listOfReadEntries,url,collectArticleImages,collectRssImage)
+                self.evaluateCollect(listOfReadEntries,url,**kwargs)
 
             except Exception as e:
 
                 self.updateLogError(e , 1 , url)
                 pass
-
         # Add the news information (if there's new news) in the database
         print("RSS news extraction end")
         lock.release()
+        return listOfReadEntries
 
 
-    def treatRSSEntry(self, label, rss, remove_tag_list, collectFullHtml=True, collectRssImage=True, collectArticleImages=True):
+    def treatRSSEntry(self, label : list, rss_url : str, remove_tags_list : list,
+                      collectFullHtml=True, collectRssImage=True, collectArticleImages=True):
         '''
         Treats a given Rss entry
         :param label:
-        :param rss:
+        :param rss_url:
         :return: list of readed feed information
         '''
         try:
             h = HTML2Text()
             h.ignore_links = True  # Ignore links like <a...>
             # Get global information from the rss feed
-            rss_feed = feedparser.parse(rss)
+            rss_feed = feedparser.parse(rss_url)
             if "updated" in rss_feed.keys():
                 feed_date = rss_feed["updated"]
             else:
                 feed_date= ""
-            feedList={}
+            feedList=[]
         except Exception as e:
-            self.updateLogError(e , 1 , rss)
+            self.updateLogError(e, 1, rss_url)
             return []
         # For each news in the rss feed
         j=0
         for entry in rss_feed.entries:
             j+=1
             try:
-                id = urlId(entry["link"])
-                if id in self.hashs:
-                    # print(f"il a déjà vu {entry['link']}")
+                article_id = urlId(entry["link"])
+                if article_id in self.hashs:
                     continue
-                domain = urlparse(rss).netloc
-                folderName = os.path.join(domain, id[:5], id)
+                domain = urlparse(rss_url).netloc
+                folderName = os.path.join(domain, article_id[:5], article_id)
                 targetDir = os.path.join(self.dayOutputFolder, folderName)
                 os.makedirs(targetDir, exist_ok=True)
             except Exception as e:
                 self.updateLogError(e, 2, entry['link'])
-
                 continue
 
             try:
                 # Check if the article is already in the database
-
-
                 # Extract information from the website
                 r = requests.get(entry["link"], timeout=10)  # Get HTML from links
                 if r.status_code!=200:
                     continue
                 soup = BeautifulSoup(r.text, "lxml")  # Parse HTML
                 article = soup.find("article")  # Get article in HTML
+                article_copy = article.__copy__()
                 if article is not None:
-                    article_copy = article.__copy__()
-                    text = extract_text(article, remove_tag_list, clean=False)
-                    cleansed_text = extract_text(article, remove_tag_list, clean=True)
+                    text = extract_text(article, remove_tags_list, clean=False)
+                    cleansed_text = extract_text(article, remove_tags_list, clean=True)
                     process_text = ProcessorText.processText(cleansed_text)
                     htmlCollected = True
                 else:
-                    text = ""
-                    cleansed_text = ""
-                    process_text = ""
+                    text = None
+                    cleansed_text = None
+                    process_text = None
                     htmlCollected = False
 
                 # Complete the news information for the database
-                feed = {"title": entry["title"], "url": entry["link"], "text": text, "cleansed_text": cleansed_text,
-                        "label": label, "rss": rss, "process_text" : process_text,
-                        "updated": False , 'htmlCollected': htmlCollected}
+                feed = {"title": entry["title"],
+                        "url": entry["link"],
+                        "text": text,
+                        "cleansed_text": cleansed_text,
+                        "label": label,
+                        "rss": rss_url,
+                        "process_text" : process_text,
+                        "updated": False ,
+                        "htmlCollected": htmlCollected,
+                        "id" : article_id
+                        }
 
                 if "published" in entry.keys():
                     feed["date"] = entry["published"]
                 else:
                     feed["date"] = feed_date
+
+                feed["timeStamp"] = dateToDateTime(feed["date"] , timeStamp=True)
 
                 if "summary" in entry.keys():
                     feed["summary"] = entry["summary"]
@@ -199,6 +210,9 @@ class RSSCollect():
                         feed["content"] = entry["content"][0]["value"]
                 else:
                     feed["content"] = ""
+
+                feed['domainName'] = urlparse(feed['url']).netloc
+
 
             except Exception as e:
 
@@ -245,15 +259,12 @@ class RSSCollect():
                     pass
 
             with open(os.path.join(targetDir, self.targetDataFile), "w") as f:
-                json.dump(feed, f)
+                json.dump(article, f)
 
-            feedList[id] = feed
-            self.hashs.append(id)
-
+            feedList.append(feed)
+            self.hashs.append(article_id)
 
         return feedList
-
-
 
 
     def treatRssImages (self, entry_rss, targetDir, link) :
@@ -288,17 +299,12 @@ class RSSCollect():
                             mediaName = self.downloadMedia(link["href"], targetDir,link)
                             if mediaName != '':
                                 collectedImagesNames.append(mediaName)
-
         return collectedImagesNames
-
-
-
 
 
     def treatGetArticleImages(self,article,targetDir , link):
         '''
         Treats the case where we need to download a media content from the RSS feed
-        :param entry:
         :param targetDir:
         :return:
         '''
@@ -386,8 +392,6 @@ class RSSCollect():
     def saveProcessedNewsHashes(self, hashs):
         '''
         Save news hashes
-        :param new_news:
-        :param news:
         :return:
         '''
         hashFile = os.path.join(self.rootHashFolder, self.standardHashsFile)
@@ -441,7 +445,6 @@ class RSSCollect():
             f.write(msg_perf + "\n")
 
 
-
     def evaluateCollect(self, listOfReadEntry, url_rss,collectImageArticle,collectRssImage):
         """
         read the output of our feedlist and evaluate the percentage of field empty and no collected rss
@@ -450,7 +453,6 @@ class RSSCollect():
         """
         date = datetime.now()
         msg_perf = f"{str(date)} ---- {url_rss} \n"
-        listOfFields=["title","url","text","label","rss","updated","date","summary","content"]
         # print(f"we received {nb_feed} articles from {url_rss}")
 
         msg_perf = msg_perf + f"{len(listOfReadEntry)} articles collected \n"
@@ -468,11 +470,11 @@ class RSSCollect():
                     elif collectImageArticle:
                         countImage+=len(feed["images"])
 
-                    for field in listOfFields:
+                    for field in self.listOfFields:
                         if not feed[field]:#the field is empty
                             countField+=1
 
-                msg_perf = msg_perf + f" {countField / (len(listOfFields) * len(listOfReadEntry)) * 100} % of field empty \n"
+                msg_perf = msg_perf + f" {countField / (len(self.listOfFields) * len(listOfReadEntry)) * 100} % of field empty \n"
                 msg_perf = msg_perf + f"{countImage} images \n"
             except KeyError as e:
                 # msg_err = f"{str(date) : }"
@@ -481,17 +483,17 @@ class RSSCollect():
             except Exception as e:
                 # logging.warning(f"New Error Evaluation type 3: {str(e), url_rss}")
                 pass
-
         self.updateLogPerf(msg_perf )
+
 
 
 rootOutputFolder="/home/mouss/tmpTest18"
 
 if __name__ == '__main__':
 
-
-    RSS_URL_file="rssfeed_news_test.json"
-    rssc = RSSCollect(RSS_URL_file,rootOutputFolder)
+    processor = ProcessorText()
+    RSS_URL_file="../tmp/rssfeed_news_test.json"
+    rssc = RSSCollect(RSS_URL_file,rootOutputFolder , processor = processor)
     rssc.treatNewsFeedList(collectFullHtml=True, collectRssImage=False,collectArticleImages=False)
 
 

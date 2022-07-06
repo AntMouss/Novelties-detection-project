@@ -1,4 +1,3 @@
-import requests
 from flask import Flask, request
 from flask_restx import Api, Resource, fields
 import json
@@ -85,4 +84,3 @@ if __name__ == '__main__':
 
     payload = {"rss_feed": [{"url": "tarace.com", "label": ["politique"]}]}
     app.run(HOST, port=PORT, debug=True)
-    #r = requests.post("http://127.0.0.1:5000/AddRSSFeedSource", data=payload)

@@ -4,52 +4,38 @@ import json
 from datetime import datetime
 import locale
 from urllib.parse import urlparse
-from tqdm import tqdm
 import requests
 from nltk.tokenize import word_tokenize
 from langdetect import detect
 import simplemma
 import stopwordsiso
 import copy
-import re
 from bs4 import BeautifulSoup
-from html2text import HTML2Text
 import sys
-import signal
-from threading import Thread
 import functools
+import signal
+from contextlib import contextmanager
+from Collection.data_cleaning import extract_text
+
+@contextmanager
+def timeout(time):
+    # Register a function to raise a TimeoutError on the signal.
+    signal.signal(signal.SIGALRM, raise_timeout)
+    # Schedule the signal to be sent after ``time``.
+    signal.alarm(time)
+
+    try:
+        yield
+    except TimeoutError:
+        pass
+    finally:
+        # Unregister the signal so it won't be triggered
+        # if the timeout is not reached.
+        signal.signal(signal.SIGALRM, signal.SIG_IGN)
 
 
-
-def timeout(timeout):
-    """
-    use this function for time out certain function like"process , because signal.SIGALRM doesn't work on window
-    @param timeout:
-    @return:
-    """
-    def deco(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            res = [Exception('function [%s] timeout [%s seconds] exceeded!' % (func.__name__, timeout))]
-            def newFunc():
-                try:
-                    res[0] = func(*args, **kwargs)
-                except Exception as e:
-                    res[0] = e
-            t = Thread(target=newFunc)
-            t.daemon = True
-            try:
-                t.start()
-                t.join(timeout)
-            except Exception as je:
-                print ('error starting thread')
-                raise je
-            ret = res[0]
-            if isinstance(ret, BaseException):
-                raise ret
-            return ret
-        return wrapper
-    return deco
+def raise_timeout(signum, frame):
+    raise TimeoutError
 
 
 
@@ -58,49 +44,6 @@ def fileToObject(filepath):
         JsonFile = json.load(f)
 
     return JsonFile
-
-
-def stringToList(string):
-    return string.split()
-
-
-def addID(articles):
-    dictArticlesWithID = {}  # dictionnary that contain articles with the added ID
-    for i in range(len(articles)):
-        dictArticlesWithID["article_" + str(i)] = articles[i]
-    return dictArticlesWithID
-
-
-def addDomainName(articles):
-    for article in articles:
-        article['domainName'] = urlparse(article['url']).netloc
-
-    return articles
-
-
-
-
-
-def findArticle(listOfWord, JsonOfArticles):
-    foundArticles = []
-    for word in listOfWord:
-        for Article in JsonOfArticles:
-            if word in Article["title"]:
-                foundArticles.append(Article)
-
-    sorted_Articles = sorted(foundArticles, key=lambda x: x['tstpdate'])
-
-    listete = []
-    for article in sorted_Articles:
-        listete.append(article['tstpdate'] - 1620290000.0)
-
-    return sorted_Articles
-
-
-def dateToDatetimeInArticles(articles):
-
-
-    return [dateToDateTime(article['date']) for article in articles]
 
 
 
@@ -145,23 +88,6 @@ def addTimestampField(article):
     return article
 
 
-def FileToArticleList(pathname, string):
-    jsonFile = fileToObject(pathname)
-    jsonFile = dateToDatetimeInArticles(jsonFile)
-    listOfWords = stringToList(string)
-
-    return findArticle(listOfWords, jsonFile)
-
-
-def imputeEmptyLabel(filePath):
-    data = fileToObject(filePath)
-    for key in data.keys():
-        if len(data[key]['label']) == 0:
-            data[key]['label'] += ['no label']
-    with open(filePath, 'w') as f:
-        f.write(json.dumps(data))
-
-
 def getDataPathList(ROOT_FOLDER, targetFileName):
     """
 
@@ -186,40 +112,6 @@ def getDataPathList(ROOT_FOLDER, targetFileName):
     return listpath
 
 
-
-def makeTable(label, domain, dataBaseFile, tableFile):
-    # take dataBase file json with id index and domain name include in keys
-    tabDomain = []
-    tabLabel = {}
-    tableId = {}
-    with open(dataBaseFile, "r") as fi:
-        data = json.load(fi)
-        a = 0
-        try:
-            for id in data.keys():
-
-                domainKey = data[id][domain]
-                labelKey = data[id][label]
-                if len(labelKey) == 0:
-                    labelKey.append('no label')
-                # this domain Name never pasted
-                if domainKey not in tabDomain:
-                    tableId[domainKey] = {}
-                    tabLabel[domainKey] = []
-                    tabDomain.append(domainKey)
-                if labelKey[0] not in tabLabel[domainKey]:
-                    tableId[domainKey][labelKey[0]] = []
-                    tabLabel[domainKey].append(labelKey[0])
-
-                tableId[domainKey][labelKey[0]].append(id)
-                a = a + 1
-
-
-        except Exception as e:
-            print(e)
-
-    with open(tableFile, 'w') as fo:
-        fo.write(json.dumps(tableId))
 
 
 class MergerDataJson:
@@ -380,8 +272,6 @@ class imputerData:
                     fo.write(json.dumps(data))
 
 
-
-
 class ProcessorText:
     """
     we use this class for text processing
@@ -395,7 +285,7 @@ class ProcessorText:
         self.specialWords3 = []
         self.undesirableChar = ['/' , '=' , '#' , '&']
 
-    def tokenizeText(self, text):
+    def tokenizeText(self, text : str):
         return word_tokenize(text , language='french')
         # return [word for word in text.lower().split()]
 
@@ -456,33 +346,29 @@ class ProcessorText:
         return word.lower()
 
     @functools.lru_cache(maxsize=100)
-    def processText(self, text, lematize=True ,filtreStopWords=True , filtreSmallWords=True , filtreNumber = True ):
+    def processText(self, text : str,timeout_value : int = 10,**kwargs ):
+
+        with timeout(timeout_value):
+            lang = ProcessorText.detectLanguage(text)
+            text = self.tokenizeText(text)
+            textProcessed=[]
+
+            if lang == 'fr':
+                for word in text:
+                    word = self.processWord(word, self.frenchData, **kwargs)
+                    # to remove None type words
+                    if isinstance(word , str):
+                        textProcessed.append(word)
+                return textProcessed
+            else:
+                return None
 
 
-        lang = ProcessorText.detectLanguage(text)
-        text = self.tokenizeText(text)
-        textProcessed=[]
-
-        if lang == 'fr':
-            # return [self.processWord(word, self.frenchData, lemmatize=lematize, filtreStopWords=filtreStopWords,
-            #                          filtreSmallWords=filtreSmallWords) for word in text]
-            for word in text:
-                word = self.processWord(word, self.frenchData, lemmatize=lematize, filtreStopWords=filtreStopWords,
-                                     filtreSmallWords=filtreSmallWords , filtreNumber = filtreNumber)
-                # to remove None type words
-                if isinstance(word , str):
-                    textProcessed.append(word)
-            return textProcessed
-        else:
-            return []
-
-
-
-    def processTexts(self, texts, lematize=True , filtreStopWords=True , filtreSmallWords=True , filtreNumber = True ):
+    def processTexts(self, texts,**kwargs):
 
         textsProcessed = []
         for i, text in enumerate(texts):
-            textprocessed = self.processText(text , lematize=lematize , filtreStopWords=filtreStopWords , filtreSmallWords=filtreSmallWords , filtreNumber=filtreNumber)
+            textprocessed = self.processText(text , **kwargs)
             # to remove None type text
             if isinstance(textprocessed , list):
                 textsProcessed.append(textprocessed)
@@ -554,40 +440,11 @@ def filterDictionnary(dictionnary, filterStopwords=False, total_filter=False, fi
                 pass
 
     if bad_ids is not None:
-
         dictionnary_output.filter_tokens(bad_ids=bad_ids)
-
-
 
     return dictionnary_output
 
 
-
-
-def extract_text( articlePage, remove_list  , clean = False):
-
-    h = HTML2Text()
-    h.ignore_links = True
-    if clean:
-        for tag in remove_list:
-            try:
-                if len(tag["id"]) == 0:
-                    if len(tag["class"]) == 0:
-                        for element in articlePage.find_all(tag["tag"]):
-                            element.decompose()
-                    else:
-                        for i, element in enumerate(articlePage.find_all(tag["tag"], class_=tag["class"])):
-                            element.decompose()
-                else:
-                    articlePage.find(id=tag["id"]).decompose()
-            except AttributeError:
-                pass
-            except Exception as e:
-                pass
-    text = h.handle(str(articlePage))  # Get only the text in the tag article
-    text = re.sub("\n|#", " ", text)  # Clean the text, cette ligne ne fonctionne plus et détruit le code
-    text = re.sub("_|>|<|!\[.*?\]|\(https:.*?\)", "", text)
-    return text
 
 
 
@@ -704,13 +561,7 @@ def imputeFieldAfterCollect (rootDatabase, configPath,fileName = 'data.json', ht
                     if nb_articles % 2000 == 0:
                         count += 1
                         print((f"{count}/{total_count}"))
-
-
-
             #we find the according rss url by this way that is not conventionnal
-
-
-
 
         except Exception as e:
             exc_tb = sys.exc_info()[2]
@@ -719,74 +570,6 @@ def imputeFieldAfterCollect (rootDatabase, configPath,fileName = 'data.json', ht
             pass
 
 
-def remove_empty_articles(timeWindow_data):
-    """
-        use this function for remove the text that we ignore (english article texts for example)
-        @param timeWindow_data: data on timeWindow format -->  for each articles {label :  text processed } sorted by time and splitted according to the size of the time-window
-        """
-
-    for window in timeWindow_data:
-        for article in window[1]:
-            if len(article[1]) == 0 :
-                window[1].remove(article)
-    return timeWindow_data
-
-
-
-def handler(signum, frame):
-    """"
-    use this function for raise exception when time out is reached just on linux
-    """
-    raise Exception
-
-
-def addProcessedText(  dataBasePath_source , databasePath_destination   ):
-
-
-    data2 = []
-    # data_for_dictionnary = []
-    # dictionnary_test = gensim.corpora.Dictionary()
-    with open(dataBasePath_source , 'r') as f:
-        data = json.load(f)
-    count = 0
-    nb_articles = 0
-    processor = ProcessorText()
-    func = timeout(timeout=10)(ProcessorText.processText)
-
-    for article in tqdm(data):
-        if len(article['cleansed_text']) > 1    and article['cleansed_text'] != 'None ':
-            textToProcess = article['cleansed_text']
-        elif len(article['summary']) != 0:
-            textToProcess = article['summary']
-            textToProcess = re.sub("\n|#", " ", textToProcess)  # Clean the text, cette ligne ne fonctionne plus et détruit le code
-            textToProcess = re.sub("_|>|<|!\[.*?\]|\(https:.*?\)", "", textToProcess)
-        elif len(article['content']) != 0:
-            textToProcess = article['content']
-            textToProcess = re.sub("\n|#", " ",textToProcess)  # Clean the text, cette ligne ne fonctionne plus et détruit le code
-            textToProcess = re.sub("_|>|<|!\[.*?\]|\(https:.*?\)", "", textToProcess)
-        elif len(article['title']) != 0:
-            textToProcess = article['title']
-            textToProcess = re.sub("\n|#", " ",textToProcess)  # Clean the text, cette ligne ne fonctionne plus et détruit le code
-            textToProcess = re.sub("_|>|<|!\[.*?\]|\(https:.*?\)", "", textToProcess)
-
-        # #linux
-        # signal.signal(signal.SIGALRM, handler)
-        # signal.alarm(10)
-
-        #window
-        try:
-
-            process_text = processor.processText(textToProcess)
-        except Exception as e:
-            nb_articles += 1
-            continue
-        article['process_text'] = process_text
-        data2.append(article)
-        #data_for_dictionnary.append(process_text)
-        nb_articles += 1
-        if nb_articles % 50000:
-            with open(databasePath_destination, 'w') as f:
-                f.write(json.dumps(data2))
 
 def transformU(articles, processor : ProcessorText = None, process_already_done = True):
 
@@ -812,3 +595,20 @@ def transformS(articles, processor : ProcessorText = None, process_already_done 
     texts , labels = list(zip(*res))
     labels = list(labels)
     return texts , labels
+
+
+# if __name__ == '__main__':
+#
+#     page_path = "/home/mouss/tmpTest11/rss2021728/www.courrier-picard.fr/8dca1/8dca11055bc1930b3e812bd3a14d5c69/news.html"
+#     tags_path ="/home/mouss/PycharmProjects/novelty_detection/tmp/remove_tags.json"
+#     output_path = "/home/mouss/PycharmProjects/novelty_detection/tmp/output.html"
+#     with open(page_path , "r") as f:
+#         page = f.read()
+#     with open(tags_path , "r") as f:
+#         tags = json.load(f)["remove_tags"]
+#         spec_tags = tags[-1]
+#         global_tags = tags[0]
+#         final_tags = spec_tags + global_tags
+#     output = cleanHTML(page=page ,tags_to_remove=final_tags)
+#     with open(output_path , "w" , encoding="utf-8") as f:
+#         f.write(output)
