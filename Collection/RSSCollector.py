@@ -10,7 +10,8 @@ from urllib.parse import urlparse
 from datetime import datetime
 import logging
 import threading
-from Collection.data_processing import extract_text , ProcessorText , dateToDateTime
+from Collection.data_processing import ProcessorText , dateToDateTime
+from Collection.data_cleaning import extract_text
 import sys
 import validators
 import pathlib

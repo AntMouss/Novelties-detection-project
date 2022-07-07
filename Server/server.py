@@ -9,7 +9,9 @@ from Experience.WindowClassification import WindowClassifierModel
 from Collection.data_processing import transformS
 import argparse
 import pickle
-from serverRSSfeeds import app
+from flask import Blueprint, Flask
+from flask_restx import Api
+from Server.apis.rss_feed_api.namespaces import namesp
 
 parser = argparse.ArgumentParser(description="pass config_file with model , kwargs_calculator paths",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -182,7 +184,26 @@ def startServer():
     extractor.join()
     detector.join()
     print("Running Rest RSSNewsExtractor server")
-    app.run(HOST, port=PORT, debug=False)
+
+
+def startAPIs():
+    blueprint = Blueprint("api", __name__, url_prefix="/api/v1")
+    api = Api(
+        blueprint,
+        version="1.0",
+        validate=False,
+    )
+    injected_object = {'rss_feed_path': RSS_FEEDS_PATH}
+    # inject the objects containing logic here
+    for res in namesp.resources:
+        res.kwargs['resource_class_kwargs'] = injected_object
+        print(res)
+    # finally add namespace to api
+    api.add_namespace(namesp)
+    app = Flask('test')
+    app.register_blueprint(blueprint)
+    app.run(HOST, port=PORT, debug=True)
+
 
 if __name__ == '__main__':
     # rootDir = ''
@@ -191,4 +212,5 @@ if __name__ == '__main__':
     # with open(os.path.join(rootDir, "../config/config_service.json"), "r") as f:
     #     config = json.load(f)
 
-    startServer()
+
+    startAPIs()
