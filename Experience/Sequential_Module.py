@@ -8,6 +8,7 @@ import numpy as np
 from collections import Counter
 import functools
 from collections import ChainMap
+from collections import deque
 
 
 def check_size(func):
@@ -22,8 +23,12 @@ def check_size(func):
 class MetaSequencialLangageSimilarityCalculator:
 
     def __init__(self, nb_topics: int, thresholding_fct_above: Callable,
-                 thresholding_fct_bellow: Callable, kwargs_above: Dict, kwargs_bellow: Dict):
+                 thresholding_fct_bellow: Callable, kwargs_above: Dict, kwargs_bellow: Dict ,memory_length : int = None ):
 
+        if memory_length is None:
+            self.models = []
+        else:
+            self.models = deque(maxlen=memory_length)
         self.kwargs_bellow = kwargs_bellow
         self.kwargs_above = kwargs_above
         self.thresholding_fct_above = thresholding_fct_above
@@ -35,11 +40,10 @@ class MetaSequencialLangageSimilarityCalculator:
         self.bad_words = []
         self.info = {"engine_type": self.engine.__name__, 'nb_topics': self.nb_topics}
         self.res = {}
-        self.models = []
         self.info_file = 'info.json'
         self.resFileName = 'res.json'
         self.semi_dictionnaryFileName = '_semiDict'
-        self.nb_windows = 0
+        self.nb_windows = len(self.models)
         self.dateFile = 'date.json'
         self.date_window_idx = {}
         self.predefinedBadWords = ['...', 'commenter', 'réagir', 'envoyer', 'mail', 'partager', 'publier', 'lire',
@@ -72,7 +76,6 @@ class MetaSequencialLangageSimilarityCalculator:
                 self.updateResults(end_date_window, window_dictionnary, model, no_window)
             self.date_window_idx[end_date_window] = no_window
             self.models.append(model)
-            self.nb_windows += 1
 
 
     def updateResults(self, end_date, dictionnary_window: corpora.Dictionary, model: Engine.Engine, no_window: int,

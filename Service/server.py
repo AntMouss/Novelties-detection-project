@@ -11,16 +11,18 @@ import argparse
 import pickle
 from flask import Blueprint, Flask
 from flask_restx import Api
-from Server.apis.rss_feed_api.namespaces import namesp
+from Service.apis.rss_feed_api.namespaces import namesp
 
 parser = argparse.ArgumentParser(description="pass config_file with model , kwargs_calculator paths",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("-l", "--length", default=20, type=int, help="Length of time series length cache")
 parser.add_argument("config_path", help="paths of the model and kwargs calculator")
 parser.add_argument("root_path" , help="root path of the project")
 args = parser.parse_args()
 args = vars(args)
 config_path = args["config_path"]
 ROOT = args["root_path"]
+LENGTH_CACHE = args["length"]
 config_path = os.path.join(ROOT , config_path)
 with open(config_path , 'r') as f:
     config = json.load(f)
@@ -68,10 +70,11 @@ def load_stuff() -> Dict:
     with open(MODEL_PATH , "rb") as f:
         model = pickle.load(f)
     with open(KWARGS_CALCULATOR_PATH , "rb") as f:
-        kwargs_calculator_path = pickle.load(f)
+        kwargs_calculator = pickle.load(f)
+        kwargs_calculator.update({"memory_length" : LENGTH_CACHE})
     with open(PROCESSOR_PATH , "rb") as f:
         processor = pickle.load(f)
-    stuff = initialize_calculator(kwargs_calculator_path)
+    stuff = initialize_calculator(kwargs_calculator)
     stuff.update({"classifier_models" : model , "loop_delay" : LOOP_DELAY_PROCESS , "processor" : processor})
     return stuff
 
@@ -104,7 +107,6 @@ class CollectThread(Thread):
         COLLECT_LOCKER.acquire()
         if READY_TO_CONSUME == False:
             new_data = self.rssCollect.treatNewsFeedList()
-            new_data = [article for _ , article in new_data]
             WINDOW_DATA += new_data
             self.count += 1
         if self.count == self.nb_loop:
@@ -195,9 +197,9 @@ def startAPIs():
     )
     injected_object = {'rss_feed_path': RSS_FEEDS_PATH}
     # inject the objects containing logic here
-    for res in namesp.resources:
-        res.kwargs['resource_class_kwargs'] = injected_object
-        print(res)
+    for ressource in namesp.resources:
+        ressource.kwargs['resource_class_kwargs'] = injected_object
+        print(ressource)
     # finally add namespace to api
     api.add_namespace(namesp)
     app = Flask('test')

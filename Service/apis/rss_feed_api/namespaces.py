@@ -1,7 +1,7 @@
 from flask import request
 from flask_restx import Resource , Namespace
 import json
-from Server.apis.rss_feed_api.Models import rss_requests_model , tags_requests_model , tag_element , url_element
+from Service.apis.rss_feed_api.Models import rss_requests_model , tags_requests_model , tag_element , url_element
 
 
 namesp = Namespace('RSSNewsDocument',
@@ -25,7 +25,7 @@ class RSSNewsSource(Resource):
 
 
     def get(self):
-        return 'DELETE Not available for this service', 404
+        return 'GET Not available for this service', 404
 
     @namesp.expect(rss_requests_model , validate = True)
     def post(self):
@@ -74,7 +74,7 @@ class RSSNewsRemovingTags(Resource):
 
 
     def get(self):
-        return 'DELETE Not available for this service', 404
+        return 'GET Not available for this service', 404
 
     @namesp.expect(tags_requests_model , validate = True)
     def post(self):
