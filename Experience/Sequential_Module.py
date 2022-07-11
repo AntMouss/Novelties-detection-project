@@ -1,9 +1,10 @@
+import copy
 import random
 from typing import List, Callable, Dict
 from Experience.data_utils import TimeLineArticlesDataset
 from gensim import corpora
 from Collection.data_processing import filterDictionnary
-from Experience import Engine
+from Experience import Engine_module
 import numpy as np
 from collections import Counter
 import functools
@@ -33,7 +34,7 @@ class MetaSequencialLangageSimilarityCalculator:
         self.kwargs_above = kwargs_above
         self.thresholding_fct_above = thresholding_fct_above
         self.thresholding_fct_bellow = thresholding_fct_bellow
-        self.engine = Engine.Engine
+        self.engine = Engine_module.Engine
         self.semi_filtred_dictionnary = corpora.Dictionary()
         self.nb_topics = nb_topics
         self.seedFileName = '_seed.json'
@@ -43,7 +44,6 @@ class MetaSequencialLangageSimilarityCalculator:
         self.info_file = 'info.json'
         self.resFileName = 'res.json'
         self.semi_dictionnaryFileName = '_semiDict'
-        self.nb_windows = len(self.models)
         self.dateFile = 'date.json'
         self.date_window_idx = {}
         self.predefinedBadWords = ['...', 'commenter', 'réagir', 'envoyer', 'mail', 'partager', 'publier', 'lire',
@@ -53,7 +53,7 @@ class MetaSequencialLangageSimilarityCalculator:
 
 
     def __len__(self):
-        return self.nb_windows
+        return len(self.models)
 
 
     @check_size
@@ -71,17 +71,18 @@ class MetaSequencialLangageSimilarityCalculator:
             print(f"numero of window: {i} -- random state: {random_state}")
             model, window_dictionnary = self.treat_Window(data_windows, **kwargs)
             # for bound window to the right glda model we use no_window
-            no_window = i
+            window_idx = i
             if update_res:
-                self.updateResults(end_date_window, window_dictionnary, model, no_window)
-            self.date_window_idx[end_date_window] = no_window
+                self.updateResults(end_date_window, window_dictionnary, model, window_idx)
+            self.date_window_idx[end_date_window] = window_idx
             self.models.append(model)
 
 
-    def updateResults(self, end_date, dictionnary_window: corpora.Dictionary, model: Engine.Engine, no_window: int,
+    def updateResults(self, end_date, dictionnary_window: corpora.Dictionary, window_idx: int,
                       ntop: int = 100):
 
-        topWordsTopics = self.getTopWordsTopics(model, ntop=ntop, exclusive=False)
+        # for comprehension numero of window
+        topWordsTopics = self.getTopWordsTopics(window_idx, ntop=ntop, exclusive=False)
         for word, word_id in dictionnary_window.token2id.items():
             if word not in self.res.keys():
                 self.res[word] = {}
@@ -90,7 +91,7 @@ class MetaSequencialLangageSimilarityCalculator:
                 self.res[word]['appearances'] = []
             appearance = {}
             appearance['date_end_window'] = end_date
-            appearance['no_window'] = no_window
+            appearance['no_window'] = window_idx
             appearance['isBadWord'] = (word in self.bad_words)
             appearance['df_in_window'] = dictionnary_window.dfs[word_id]
             appearance['cf_in_window'] = dictionnary_window.cfs[word_id]
@@ -127,15 +128,15 @@ class MetaSequencialLangageSimilarityCalculator:
         self.bad_words += self.predefinedBadWords
 
 
-    def getTopWordsTopics(self, model: Engine.Engine = None, ntop: int = 100, exclusive=False, **kwargs):
+    def getTopWordsTopics(self, model_idx: int, ntop: int = 100, exclusive=False, **kwargs):
         """
         :param ntop: number of keywords that the model return by topic
         :param exclusive: if we want that the keywors being exclusive to the topic
         return: list of list id of words in the dictionnary, one list by gldaModel so one list by time intervall
         """
         topWordsTopics = []
-        for topic_id in range(model.nb_topics):
-            topWordsTopic = self.getTopWordsTopic(topic_id, model, ntop, **kwargs)
+        for topic_id in range(self.nb_topics):
+            topWordsTopic = self.getTopWordsTopic(topic_id, model_idx, ntop, **kwargs)
             topWordsTopics.append(topWordsTopic)
 
         if exclusive == False:
@@ -145,8 +146,8 @@ class MetaSequencialLangageSimilarityCalculator:
             return self.exclusiveWordsPerTopics(topWordsTopics)
 
 
-    def getTopWordsTopic(self, topic_id, model: Engine.Engine = None, ntop: int = 100, **kwargs):
-
+    def getTopWordsTopic(self, topic_id, model_idx: int, ntop: int = 100, **kwargs):
+        model = self.models[model_idx]
         # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
         topWords = model.get_topic_terms(topic_id=topic_id, topn=ntop)
         topWordsTopic = {topWord[0]: topWord[1] for topWord in topWords.items()}
@@ -156,10 +157,12 @@ class MetaSequencialLangageSimilarityCalculator:
     def exclusiveWordsPerTopics(topWordsTopics: List[dict]):
 
         topWordsTopics_tmp = [set(topWordsTopic.keys()) for topWordsTopic in topWordsTopics]
-        for i in range(len(topWordsTopics)):
-            for j in range(i, len(topWordsTopics)):
-                topWordsTopics_tmp[i] = topWordsTopics_tmp[i].difference(topWordsTopics_tmp[j])
-                topWordsTopics_tmp[j] = topWordsTopics_tmp[j].difference(topWordsTopics_tmp[i])
+        topWordsTopics_tmp_ref = copy.deepcopy(topWordsTopics_tmp)
+        for i in range(len(topWordsTopics) - 1):
+            for j in range(i + 1, len(topWordsTopics)):
+                intersection = topWordsTopics_tmp_ref[i].intersection(topWordsTopics_tmp_ref[j])
+                topWordsTopics_tmp[i] = topWordsTopics_tmp[i].difference(intersection)
+                topWordsTopics_tmp[j] = topWordsTopics_tmp[j].difference(intersection)
         return [{word: topWordsTopics[i][word] for word in topWordsTopics_tmp[i]} for i in range(len(topWordsTopics))]
 
 
@@ -223,7 +226,7 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
         self.updateBadwords()
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
-        model = self.engine(texts=texts, **kwargs)
+        model = self.engine(texts=texts , nb_topics=self.nb_topics, **kwargs)
         return model, window_dictionnary_f
 
     @functools.lru_cache(maxsize=3)
@@ -313,7 +316,7 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
 
     def __init__(self, labels_idx, **kwargs):
         super(SupervisedSequantialLangageSimilarityCalculator, self).__init__(**kwargs)
-        self.engine = Engine.SupervisedEngine
+        self.engine = Engine_module.SupervisedEngine
         self.labels_idx = labels_idx
         self.label_articles_counter = []
 
@@ -337,7 +340,7 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
         self.updateBadwords()
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
-        model = self.engine(texts=texts, labels=labels, labels_idx=self.labels_idx, **kwargs)
+        model = self.engine(texts=texts, labels=labels , nb_topics=self.nb_topics, labels_idx=self.labels_idx, **kwargs)
         return model, window_dictionnary_f
 
 
@@ -373,8 +376,8 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
             novelties.append(novelties_topic)
             habbits.append(habbits_topic)
             disappearances.append(disappearances_topic)
-            similarities = np.array(similarities)
-            similarities = np.nan_to_num(similarities)
+        similarities = np.array(similarities)
+        similarities = np.nan_to_num(similarities)
         return similarities , (novelties , habbits , disappearances)
 
 
@@ -409,7 +412,7 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
 
     def __init__(self, seed: dict, **kwargs):
         super(GuidedSequantialLangageSimilarityCalculator, self).__init__(**kwargs)
-        self.engine = Engine.GuidedEngine
+        self.engine = Engine_module.GuidedEngine
         self.seed = seed
 
     @check_size
@@ -428,13 +431,14 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
         self.updateBadwords()
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
-        model = self.engine(texts=texts, seed=self.seed, **kwargs)
+        model = self.engine(texts=texts,nb_topics=self.nb_topics, seed=self.seed, **kwargs)
         return model, window_dictionnary_f
 
 
-    def getTopWordsTopic(self, topic_id, model: Engine = None, ntop: int = 100, remove_seed_words: bool = True):
+    def getTopWordsTopic(self, topic_id, model_idx: int, ntop: int = 100, remove_seed_words: bool = True):
 
         # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
+        model = self.models[model_idx]
         topWordsTopic = model.get_topic_terms(topic_id=topic_id, topn=ntop)
         topic = self.labels_idx[topic_id]
         if remove_seed_words:
@@ -448,7 +452,7 @@ class LDASequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityC
 
     def __init__(self, **kwargs):
         super(LDASequentialSimilarityCalculator, self).__init__(**kwargs)
-        self.engine = Engine.LDA
+        self.engine = Engine_module.LDA
 
     @check_size
     def treat_Window(self, texts, **kwargs):
@@ -461,7 +465,7 @@ class LDASequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityC
         self.updateBadwords()
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
-        model = self.engine(texts=texts, dictionnary=window_dictionnary_f, **kwargs)
+        model = self.engine(texts=texts,nb_topics=self.nb_topics, dictionnary=window_dictionnary_f, **kwargs)
         return model, window_dictionnary_f
 
 
@@ -469,7 +473,7 @@ class GuidedLDASequentialSimilarityCalculator(GuidedSequantialLangageSimilarityC
 
     def __init__(self, **kwargs):
         super(GuidedLDASequentialSimilarityCalculator, self).__init__(**kwargs)
-        self.engine = Engine.GuidedLDA
+        self.engine = Engine_module.GuidedLDA
 
     @check_size
     def treat_Window(self, data_window, **kwargs):
@@ -484,7 +488,7 @@ class GuidedLDASequentialSimilarityCalculator(GuidedSequantialLangageSimilarityC
         self.updateBadwords()
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
-        model = self.engine(texts=texts,seed=self.seed, dictionnary=window_dictionnary_f, **kwargs)
+        model = self.engine(texts=texts,nb_topics=self.nb_topics,seed=self.seed, dictionnary=window_dictionnary_f, **kwargs)
         return model, window_dictionnary_f
 
 
@@ -492,24 +496,24 @@ class GuidedCoreXSequentialSimilarityCalculator(GuidedSequantialLangageSimilarit
 
     def __init__(self, **kwargs):
         super(GuidedCoreXSequentialSimilarityCalculator, self).__init__(**kwargs)
-        self.engine = Engine.GuidedCoreX
+        self.engine = Engine_module.GuidedCoreX
 
 
 class CoreXSequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityCalculator):
     def __init__(self, **kwargs):
         super(CoreXSequentialSimilarityCalculator, self).__init__(**kwargs)
-        self.engine = Engine.CoreX
+        self.engine = Engine_module.CoreX
 
 
 class SupervisedCoreXSequentialSimilarityCalculator(SupervisedSequantialLangageSimilarityCalculator):
 
     def __init__(self, **kwargs):
         super(SupervisedCoreXSequentialSimilarityCalculator, self).__init__(**kwargs)
-        self.engine = Engine.SupervisedCoreX
+        self.engine = Engine_module.SupervisedCoreX
 
 
 class LFIDFSequentialSimilarityCalculator(SupervisedSequantialLangageSimilarityCalculator):
 
     def __init__(self, **kwargs):
         super(LFIDFSequentialSimilarityCalculator, self).__init__(**kwargs)
-        self.engine = Engine.LFIDF
+        self.engine = Engine_module.LFIDF

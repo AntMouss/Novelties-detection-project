@@ -16,6 +16,9 @@ class Engine:
         self.nb_topics = nb_topics
         self.core = None
 
+    def __len__(self):
+        return self.nb_topics
+
     def get_topic_terms(self,topic_id : int, topn=100):
         pass
 
@@ -155,5 +158,5 @@ class GuidedLDA(GuidedEngine , LDA):
                         print(keyindex[0])
         if normalize_eta:
             eta = np.divide(eta, eta.sum(axis=0))  # normalize so that the probabilities sum to 1 over all topics
-        # we can remove this line for other tmp
+        # we can remove this line for other tmp_test_obj
         return eta

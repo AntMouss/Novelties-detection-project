@@ -600,8 +600,8 @@ def transformS(articles, processor : ProcessorText = None, process_already_done 
 # if __name__ == '__main__':
 #
 #     page_path = "/home/mouss/tmpTest11/rss2021728/www.courrier-picard.fr/8dca1/8dca11055bc1930b3e812bd3a14d5c69/news.html"
-#     tags_path ="/home/mouss/PycharmProjects/novelty_detection/tmp/remove_tags.json"
-#     output_path = "/home/mouss/PycharmProjects/novelty_detection/tmp/output.html"
+#     tags_path ="/home/mouss/PycharmProjects/novelty_detection/tmp_test_obj/remove_tags.json"
+#     output_path = "/home/mouss/PycharmProjects/novelty_detection/tmp_test_obj/output.html"
 #     with open(page_path , "r") as f:
 #         page = f.read()
 #     with open(tags_path , "r") as f:

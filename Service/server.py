@@ -3,21 +3,20 @@ from typing import List, Dict
 import json
 from threading import Thread , Lock
 import schedule
-from Collection.RSSCollector import RSSCollect
-from Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator , SupervisedSequantialLangageSimilarityCalculator
+from Collection import RSSCollect
+from Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator
 from Experience.WindowClassification import WindowClassifierModel
 from Collection.data_processing import transformS
 import argparse
 import pickle
-from flask import Blueprint, Flask
-from flask_restx import Api
-from Service.apis.rss_feed_api.namespaces import namesp
+from Service.utils import initialize_calculator , createApp
 
 parser = argparse.ArgumentParser(description="pass config_file with model , kwargs_calculator paths",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("-l", "--length", default=20, type=int, help="Length of time series length cache")
 parser.add_argument("config_path", help="paths of the model and kwargs calculator")
 parser.add_argument("root_path" , help="root path of the project")
+parser.add_argument("-l", "--length", default=20, type=int, help="Length of time series length cache")
+
 args = parser.parse_args()
 args = vars(args)
 config_path = args["config_path"]
@@ -43,21 +42,6 @@ READY_TO_CONSUME = False
 COLLECT_LOCKER = Lock()
 PROCESS_LOCKER = Lock()
 
-
-def initialize_calculator(kwargs_calculator):
-    supervised_calculator_type = kwargs_calculator['initialize_engine']['model_type']
-    training_args = kwargs_calculator['initialize_engine']['training_args']
-    comparaison_args = kwargs_calculator['generate_result']
-    del kwargs_calculator['initialize_engine']['calculator_type']
-    del kwargs_calculator['initialize_engine']['training_args']
-    sequential_model = supervised_calculator_type
-    supervised_calculator: MetaSequencialLangageSimilarityCalculator = sequential_model(
-        **kwargs_calculator['initialize_engine'])
-    return {
-        "supervised_calculator" : supervised_calculator ,
-        "comparaison_args" : comparaison_args ,
-        "training_args"  : training_args
-    }
 
 
 def load_stuff() -> Dict:
@@ -179,32 +163,19 @@ def startServer():
     global OUTPUT_PATH
     global LOOP_DELAY_COLLECT
     stuff : Dict = load_stuff()
-    extractor = CollectThread(RSS_FEEDS_PATH,OUTPUT_PATH,LOOP_DELAY_COLLECT)
+    extractor = CollectThread(RSS_FEEDS_PATH,OUTPUT_PATH,stuff["processor"],delta=LOOP_DELAY_COLLECT)
     detector = NoveltiesDetectionThread(**stuff)
     extractor.start()
     detector.start()
     extractor.join()
     detector.join()
+    #horrible
+    injected_object_apis =[RSS_FEEDS_PATH] + [stuff[key] for key in ["supervised_calculator"]]
+    app = createApp(injected_object_apis)
+    app.run(HOST, port=PORT, debug=True)
     print("Running Rest RSSNewsExtractor server")
 
 
-def startAPIs():
-    blueprint = Blueprint("api", __name__, url_prefix="/api/v1")
-    api = Api(
-        blueprint,
-        version="1.0",
-        validate=False,
-    )
-    injected_object = {'rss_feed_path': RSS_FEEDS_PATH}
-    # inject the objects containing logic here
-    for ressource in namesp.resources:
-        ressource.kwargs['resource_class_kwargs'] = injected_object
-        print(ressource)
-    # finally add namespace to api
-    api.add_namespace(namesp)
-    app = Flask('test')
-    app.register_blueprint(blueprint)
-    app.run(HOST, port=PORT, debug=True)
 
 
 if __name__ == '__main__':
@@ -213,6 +184,4 @@ if __name__ == '__main__':
     #     rootDir=sys.argv[1]
     # with open(os.path.join(rootDir, "../config/config_service.json"), "r") as f:
     #     config = json.load(f)
-
-
-    startAPIs()
+    pass

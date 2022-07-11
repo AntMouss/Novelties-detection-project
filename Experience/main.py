@@ -5,7 +5,6 @@ from Experience.ExperienceGen import ExperiencesGenerator
 from Experience.config_arguments import LOG_PATH
 from Experience.data_utils import ExperiencesResults
 import pickle
-import argparse
 import logging
 from threading import Lock
 

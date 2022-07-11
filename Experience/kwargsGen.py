@@ -2,16 +2,16 @@ from typing import List, Callable, Dict, Type
 import random
 import math
 from Experience.Sequential_Module import (MetaSequencialLangageSimilarityCalculator,
-                               GuidedSequantialLangageSimilarityCalculator,
-                               SupervisedSequantialLangageSimilarityCalculator,
-                               LFIDFSequentialSimilarityCalculator,
-                               GuidedCoreXSequentialSimilarityCalculator,
-                               GuidedLDASequentialSimilarityCalculator,
-                               LDASequentialSimilarityCalculator,
-                               CoreXSequentialSimilarityCalculator)
+                                          GuidedSequantialLangageSimilarityCalculator,
+                                          SupervisedSequantialLangageSimilarityCalculator,
+                                          LFIDFSequentialSimilarityCalculator,
+                                          GuidedCoreXSequentialSimilarityCalculator,
+                                          GuidedLDASequentialSimilarityCalculator,
+                                          LDASequentialSimilarityCalculator,
+                                          CoreXSequentialSimilarityCalculator)
 from Collection.data_processing import  absoluteThresholding , linearThresholding , exponentialThresholding
-from Experience.config_arguments import *
-
+from Experience.config_arguments import (
+    Thematic , ProcessorText , THEMATICS , START_DATE , END_DATE , DATA_PATH , PROCESSOR , LABELS_IDX , SEED)
 
 class MetaCalculatorKwargs:
     def __init__(self, nb_topics: int , thresholding_fct_above: Callable,

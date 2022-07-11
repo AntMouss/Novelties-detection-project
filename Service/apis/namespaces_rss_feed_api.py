@@ -1,7 +1,7 @@
 from flask import request
 from flask_restx import Resource , Namespace
 import json
-from Service.apis.rss_feed_api.Models import rss_requests_model , tags_requests_model , tag_element , url_element
+from Service.apis.Models import rss_requests_model , tags_requests_model , tag_element , url_element
 
 
 namesp = Namespace('RSSNewsDocument',

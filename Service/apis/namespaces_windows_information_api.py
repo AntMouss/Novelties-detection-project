@@ -1,16 +1,18 @@
+import json
 from flask_restx import Resource , Namespace
 from Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator , NoSupervisedSequantialLangageSimilarityCalculator
+from flask import jsonify , make_response
 
 namesp = Namespace('WindowInformation',
                    description='api to get information about window (revelant words and topics)', validate=True)
 parser = namesp.parser()
-parser.add_argument("ntop", type=int, help="number of top world used for similarity computation", location="form")
-parser.add_argument("oth_kwargs", type=dict, help="other key words arguments like 'remove_seed_words' , 'exclusive'...", location="form")
+parser.add_argument("ntop", type=int, default = 100 , help="number of top world used for similarity computation", location="form")
+parser.add_argument("other_kwargs", type=str , default = "{}", help="other key words arguments like 'remove_seed_words' , 'exclusive'...", location="form")
 
 
 @namesp.route("/<string:window_id>")
 @namesp.doc(responses = {404: "Window not found"})
-class RSSNewsSource(Resource):
+class WindowInformationApi(Resource):
     """
     Rest interface to get result from specific window
     """
@@ -24,18 +26,26 @@ class RSSNewsSource(Resource):
     @namesp.doc(parser = parser)
     def get(self , window_id):
         try:
+            window_id = int(window_id)
             request_kwargs = parser.parse_args()
+            o_kwargs = request_kwargs["other_kwargs"]
+            o_kwargs = json.loads(o_kwargs)
+            if request_kwargs["ntop"] > 500:
+                raise Exception
             total_kwargs = {"ntop" : request_kwargs["ntop"]}
-            total_kwargs.update(request_kwargs["other_kwargs"])
-            revelants_words = self.supervised_calculator.getTopWordsTopics(window_id , **total_kwargs)
+            total_kwargs.update(o_kwargs)
+            revelants_words = self.supervised_calculator.getTopWordsTopics(window_id, **total_kwargs)
             label_counter = self.supervised_calculator.label_articles_counter[window_id]
             micro_topics = self.micro_topics_finder.getTopWordsTopics(window_id , **total_kwargs)
-            result = {
+            res = {
                 "revelant_words_supervised" : revelants_words,
                 "label_counter" : label_counter,
                 "micro_topics" : micro_topics
             }
-            return result , 200
+            return make_response(jsonify(res), 200)
+        except IndexError as e:
+            print(e)
+            namesp.abort(404, e.__doc__, status="this window_id doesn't match with any windows", statusCode="404")
         except Exception as e:
             print(e)
             namesp.abort(400, e.__doc__, status="Could not retrieve information", statusCode="400")
