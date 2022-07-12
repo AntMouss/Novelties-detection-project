@@ -13,8 +13,8 @@ from novelties_detection.Service.utils import initialize_calculator , createApp
 
 parser = argparse.ArgumentParser(description="pass config_file with model , kwargs_calculator paths",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("config_path", help="paths of the model and kwargs calculator")
 parser.add_argument("root_path" , help="root path of the project")
+parser.add_argument("config_path", help="paths of the model and kwargs calculator")
 parser.add_argument("-l", "--length", default=20, type=int, help="Length of time series length cache")
 
 args = parser.parse_args()

@@ -1,15 +1,17 @@
+import logging
 import random
-from novelties_detection.Experience.config_arguments import LOG_PATH
 from typing import List, Tuple
-from novelties_detection.Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator , NoSupervisedSequantialLangageSimilarityCalculator
-from data_utils import (TimeLineArticlesDataset,
+from novelties_detection.Experience.data_utils import (TimeLineArticlesDataset,
                         EditedTimeLineArticlesDataset,
                         Thematic,
                         ExperiencesMetadata,
                         ExperiencesResults,
                         ExperiencesResult)
+from novelties_detection.Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator, \
+    NoSupervisedSequantialLangageSimilarityCalculator
+from novelties_detection.Experience.config_arguments import LOG_PATH
 from novelties_detection.Experience.data_analysis import Analyser
-import logging
+from novelties_detection.Experience.Exception_utils import *
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename=LOG_PATH , level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,12 +30,12 @@ class ExperiencesMetadataGenerator:
         self.thematics = thematics
         self.min_thematic_size = min_thematic_size
         if max_size_exp_rel >= 1:
-            raise Exception("max_size_exp_rel need to be inferior to 1")
+            raise MetadataGenerationException("max_size_exp_rel need to be inferior to 1")
         else:
             self.max_size_exp_abs = int(self.timeline_size * max_size_exp_rel)
         self.min_size_exp = min_size_exp
         if self.min_size_exp >= self.max_size_exp_abs or self.min_thematic_size < 2:
-            raise Exception("min_size_exp should be superior to 1 and inferior to max_size_exp_abs")
+            raise MetadataGenerationException("min_size_exp should be superior to 1 and inferior to max_size_exp_abs")
 
     @staticmethod
     def verifSide(start, size, total_size, ranges):
@@ -74,7 +76,7 @@ class ExperiencesMetadataGenerator:
                     print(f"fail : {fail}")
             # sort ranges
             if len(experience['ranges']) == 0:
-                raise Exception("metadata have no ranges in 'ranges' attributes "
+                raise MetadataGenerationException("metadata have no ranges in 'ranges' attributes "
                                 ", probably because timeline_size is too small")
             experience['ranges'].sort(key=lambda tup: tup[0])
 
@@ -109,6 +111,7 @@ class ExperiencesGenerator:
 
         except Exception as e:
             logger.debug(f"Exception occurred in Timeline Generation: {e}", exc_info=True)
+            raise TimelinesGenerationException("Exception occurred in Timeline Generation" , e)
 
 
     def generate_calculator(self, **kwargs) -> Tuple[MetaSequencialLangageSimilarityCalculator]:
@@ -134,7 +137,8 @@ class ExperiencesGenerator:
                 yield self.reference_calculator , sq_calculator_w
 
         except Exception as e:
-            logger.debug(f"Exception occurred in Model Generation: {e}", exc_info=True)
+            logger.debug(f"Exception occurred in Calculator Generation: {e}", exc_info=True)
+            raise CalculatorGenerationException("Exception occurred in Calculator Generation")
 
 
     def generate_results(self , **kwargs):
@@ -153,6 +157,7 @@ class ExperiencesGenerator:
                 self.new_experience = {}
         except Exception as e:
             logger.debug(f"Exception occurred in Results Generation: {e}", exc_info=True)
+            raise ResultsGenerationException("Exception occurred in Results Generation")
 
 
     @staticmethod
@@ -164,7 +169,8 @@ class ExperiencesGenerator:
                 alerts.append(alert)
             return alerts
         except Exception as e:
-            logger.debug(f"Exception occurred in Alert Generation: {e}", exc_info=True)
+            logger.debug(f"Exception occurred during results analyse: {e}", exc_info=True)
+            raise AnalyseException("Exception occurred during results analyse")
 
 
 

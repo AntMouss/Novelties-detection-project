@@ -45,11 +45,11 @@ supervised_dataset = TimeLineArticlesDataset(path=DATA_PATH,
 unsupervised_dataset = TimeLineArticlesDataset(path=DATA_PATH,
                                                end=END_DATE, start=START_DATE, lookback=10, transform_fct=transformU)
 
-with open("//tmp_test_obj/data_window.pck", "rb") as f:
+with open("/home/mouss/PycharmProjects/novelties-detection-git/tmp_test_obj/data_window.pck", "rb") as f:
     supervised_data_window = pickle.load(f)
     unsupervised_data_window = (supervised_data_window[0], supervised_data_window[1][0])
 
-
+@pytest.mark.parametrize([])
 def test_kwargs_generator():
     full_kwargs = FullKwargsGenerator()
     assert type(full_kwargs) == dict

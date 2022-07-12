@@ -1,5 +1,5 @@
 import functools
-
+from scipy.special import rel_entr
 import numpy as np
 import copy
 from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte
@@ -82,27 +82,17 @@ class Analyser:
         self.nb_topics = len(self.samples)
         self.types_window = list(self.samples[0].keys())
 
-    @property
-    def pvalue_matrix(self):
-        matrix = []
-        for topic_id in range(self.nb_topics):
-            matrix.append(self.topic_pvalue_matrix(topic_id, trim=self.trim))
-        return matrix
 
     @check_topic_id
-    def topic_pvalue_matrix(self , topic_id , trim = 0 ):
+    def topic_pvalue_KL_divergence(self , topic_id : int , idx_window1 : int, idx_window2 : int, trim = 0 ):
 
         topic_samples = self.samples[topic_id]
-        nb_windows = len(self.types_window)
-        pvalue_matrix = np.zeros((nb_windows , nb_windows))
-        for i in range(nb_windows):
-            a = topic_samples[self.types_window[i]]
-            for j in range(i , nb_windows):
-                b = topic_samples[self.types_window[j]]
-                _ , pvalue = ttest_ind(a , b , trim=trim)
-                pvalue_matrix[i][j] = pvalue
-                pvalue_matrix[j][i] = pvalue
-        return pvalue_matrix
+        a = topic_samples[self.types_window[idx_window1]]
+        b = topic_samples[self.types_window[idx_window2]]
+        _ , pvalue = ttest_ind(a , b , trim=trim)
+        kl_divergence = sum(rel_entr(a, b))
+        return pvalue , kl_divergence
+
 
 
     @check_topic_id
@@ -114,8 +104,8 @@ class Analyser:
                             f"the differents type:\n'{self.types_window}'")
         idx1 = self.types_window.index(type_window1)
         idx2 = self.types_window.index(type_window2)
-        pvalue = self.pvalue_matrix[topic_id][idx1][idx2]
-        if pvalue < self.risk:
+        pvalue , score = self.topic_pvalue_KL_divergence(topic_id , idx1 , idx2 , self.trim)
+        if pvalue < self.risk and (test_normality == False or (test_normality and is_normal)) :
             return Alerte(topic_id , risk=self.risk , windows=[type_window1 , type_window2]
                           , pvalue= pvalue , is_normal=is_normal)
 
