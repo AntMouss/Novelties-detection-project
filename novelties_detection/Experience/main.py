@@ -1,0 +1,60 @@
+from multiprocessing import Pool
+
+from novelties_detection.Experience.kwargsGen import KwargsGenerator
+from novelties_detection.Experience.ExperienceGen import ExperiencesGenerator
+from novelties_detection.Experience.config_arguments import LOG_PATH
+from novelties_detection.Experience.data_utils import ExperiencesResults
+import pickle
+import logging
+from threading import Lock
+
+l = Lock()
+
+logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename=LOG_PATH , level=logging.INFO)
+logger = logging.getLogger(__name__)
+#
+# parser = argparse.ArgumentParser(description="pass config_file and save_path",
+#                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+# parser.add_argument("dest", help="Destination location")
+# args = parser.parse_args()
+# config = vars(args)
+#
+# SAVE_PATH = config["dest"]
+SAVE_PATH = "//results/wesh.pck"
+NB_CALCULATORS = 15
+RESULTATS = {}
+
+
+def save(process_id , kwargs , alerts):
+    RESULTATS[process_id] = {"kwargs" : kwargs, "alerts" : alerts}
+    with open(SAVE_PATH , "wb") as f:
+        f.write(pickle.dumps(RESULTATS))
+
+def process(kwargs):
+
+    try:
+        process_id = id(kwargs)
+        experienceGenerator = ExperiencesGenerator()
+        experienceGenerator.generate_results(**kwargs)
+        assert (len(experienceGenerator.experiences_res) != 0)
+        experiences_results = ExperiencesResults(experienceGenerator.experiences_res , experienceGenerator.info)
+        alerts = ExperiencesGenerator.analyse_results(experiences_results , **kwargs["analyse"])
+        assert (alerts is not None)
+        l.acquire()
+        save(process_id , kwargs , alerts)
+        l.release()
+        if len(alerts) != 0:
+            logger.info(f"Hypothesis confirmed for process id : {process_id}")
+    except AssertionError:
+        pass
+
+
+def main():
+    global NB_CALCULATORS
+    kwargs_generator = KwargsGenerator(NB_CALCULATORS)
+    with Pool(3) as p:
+        p.map(process, kwargs_generator)
+
+
+if __name__ == '__main__':
+    main()
