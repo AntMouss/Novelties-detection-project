@@ -1,43 +1,33 @@
-import json
-import numpy as np
-from flask_restx import Namespace
-from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator
+from novelties_detection.Service.apis.utils import load_ressources , NumpyEncoder
+from novelties_detection.Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator
 from flask import Blueprint, Flask
 from flask_restx import Api
 from novelties_detection.Service.apis import nsp_windows_api , nsp_interface_api , nsp_rss_feed_api
 
 
-class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        if isinstance(obj, np.floating):
-            return float("{:.4f}".format(obj))
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return json.JSONEncoder.default(self, obj)
 
 
-def load_ressources(namespace : Namespace, object : dict):
-    for ressource in namespace.resources:
-        ressource.kwargs['resource_class_kwargs'] = object
-    return namespace
-
-
-def initialize_calculator(kwargs_calculator):
-    supervised_calculator_type = kwargs_calculator['initialize_engine']['model_type']
+def initialize_calculator(kwargs_calculator , n = 0):
+    calculator_type = kwargs_calculator['initialize_engine']['calculator_type']
     training_args = kwargs_calculator['initialize_engine']['training_args']
+    #for testing
+    if n == 1:
+        kwargs_calculator["initialize_engine"]["labels_idx"] = ["sport" , "crime"]
+        kwargs_calculator["initialize_engine"]["seed"] = {"sport" : ["cyclisme" , "marathon" , "tour" , "Mbappe" , "football"] , "crime" : ["violence" , "conjuguale" , "arme"]}
+        kwargs_calculator["initialize_engine"]["nb_topics"] = 2
     comparaison_args = kwargs_calculator['generate_result']
     del kwargs_calculator['initialize_engine']['calculator_type']
     del kwargs_calculator['initialize_engine']['training_args']
-    sequential_model = supervised_calculator_type
-    supervised_calculator: SupervisedSequantialLangageSimilarityCalculator = sequential_model(
+    sequential_model = calculator_type
+    supervised_calculator: MetaSequencialLangageSimilarityCalculator = sequential_model(
         **kwargs_calculator['initialize_engine'])
     return {
-        "supervised_calculator" : supervised_calculator ,
+        "calculator" : supervised_calculator ,
         "comparaison_args" : comparaison_args ,
         "training_args"  : training_args
     }
+
+
 
 
 def createApp(injected_object_apis : list):

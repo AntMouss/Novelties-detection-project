@@ -9,7 +9,7 @@ def extract_text(articlePage, tags, clean = False) -> str:
     @rtype: basestring
     """
     h = HTML2Text()
-    h.ignore_links = True
+    h.ignore_links = True  # Ignore links like <a...>
     if clean:
         text = cleanHTML(articlePage , tags)
     else:
@@ -22,8 +22,6 @@ def extract_text(articlePage, tags, clean = False) -> str:
 
 def cleanHTML(page , tags_to_remove):
 
-    soup = BeautifulSoup(page, "lxml")  # Parse HTML
-    page = soup.find("article")
     for tag in tags_to_remove:
         try:
             if "id" in tag.keys():

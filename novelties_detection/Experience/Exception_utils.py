@@ -24,3 +24,7 @@ class AnalyseException(SelectionException):
     def __init__(self , message):
         super(AnalyseException, self).__init__(message)
 
+
+class CompareWindowsException(Exception):
+    pass
+

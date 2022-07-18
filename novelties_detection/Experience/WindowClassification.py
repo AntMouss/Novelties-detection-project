@@ -19,7 +19,9 @@ class WindowClassifierModel:
         @param train_similarity_scores: similarity from the calculator similarity module in percent.
         """
         if classification_centiles is None:
-            classification_centiles = np.array([0.02, 0.1, 0.3, 0.6, 0.9, 0.98])
+            classification_centiles = np.array([2, 10, 30, 60, 90, 98])
+        else:
+            classification_centiles = np.array(classification_centiles)
         self.nb_historic = nb_historic
         self.scores_historic = train_similarity_scores[:self.nb_historic]
         self.scores_historic = deque(self.scores_historic, maxlen=self.nb_historic)
@@ -28,7 +30,7 @@ class WindowClassifierModel:
         self.centiles_values = []
         self.groups = [i + 1 for i in range(len(classification_centiles) + 1)]
         self.classification_centiles = classification_centiles
-        for centile in self.classification_centiles:
+        for centile in self.classification_centiles / 100:
             value = stats.norm.ppf(centile, loc=self.mean, scale=self.std)
             self.centiles_values.append(value)
 
@@ -60,18 +62,42 @@ class WindowClassifierModel:
         else:
             return np.nan
 
+    def print(self , similarity_score):
+            predict_group = self.predict(similarity_score)
+            if predict_group == 1:
+                sup_centile = self.classification_centiles[predict_group-1]
+                inf_centile = 0
+            elif predict_group == len(self):
+                sup_centile = 1
+                inf_centile = self.classification_centiles[predict_group-1]
+            else:
+                sup_centile = self.classification_centiles[predict_group-1]
+                inf_centile = self.classification_centiles[predict_group-2]
+            print(f"value between centile {inf_centile} and centile {sup_centile}")
+
+
+
+
+
 
     def save(self , path):
         with open(path , "wb") as f:
-            data = self.__dict__
-            f.write(pickle.dumps(data))
+            f.write(pickle.dumps(self))
 
     @staticmethod
     def load(path):
         with open(path , "rb") as f:
-            data_arg = pickle.load(f)
-        return WindowClassifierModel(**data_arg)
+            classifier = pickle.load(f)
+        return classifier
 
 
 
 
+# if __name__ == '__main__':
+#
+#     path = "/home/mouss/PycharmProjects/novelties-detection-git/model/model.pck"
+#     fake_samples = np.random.normal(0.32 , 0.1 , 110)
+#     model = WindowClassifierModel(fake_samples)
+#     model.save(path)
+#     del model
+#     model = WindowClassifierModel.load(path)

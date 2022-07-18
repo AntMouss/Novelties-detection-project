@@ -16,6 +16,7 @@ import functools
 import signal
 from contextlib import contextmanager
 from novelties_detection.Collection.data_cleaning import extract_text
+import wrapt_timeout_decorator
 
 @contextmanager
 def timeout(time):
@@ -345,23 +346,24 @@ class ProcessorText:
 
         return word.lower()
 
+
     @functools.lru_cache(maxsize=100)
-    def processText(self, text : str,timeout_value : int = 10,**kwargs ):
+    @wrapt_timeout_decorator.timeout(10)
+    def processText(self, text : str,**kwargs ):
 
-        with timeout(timeout_value):
-            lang = ProcessorText.detectLanguage(text)
-            text = self.tokenizeText(text)
-            textProcessed=[]
+        lang = ProcessorText.detectLanguage(text)
+        text = self.tokenizeText(text)
+        textProcessed=[]
 
-            if lang == 'fr':
-                for word in text:
-                    word = self.processWord(word, self.frenchData, **kwargs)
-                    # to remove None type words
-                    if isinstance(word , str):
-                        textProcessed.append(word)
-                return textProcessed
-            else:
-                return None
+        if lang == 'fr':
+            for word in text:
+                word = self.processWord(word, self.frenchData, **kwargs)
+                # to remove None type words
+                if isinstance(word , str):
+                    textProcessed.append(word)
+            return textProcessed
+        else:
+            return None
 
 
     def processTexts(self, texts,**kwargs):
@@ -597,18 +599,3 @@ def transformS(articles, processor : ProcessorText = None, process_already_done 
     return texts , labels
 
 
-# if __name__ == '__main__':
-#
-#     page_path = "/home/mouss/tmpTest11/rss2021728/www.courrier-picard.fr/8dca1/8dca11055bc1930b3e812bd3a14d5c69/news.html"
-#     tags_path ="/home/mouss/PycharmProjects/novelties-detection-git/tmp_test_obj/remove_tags.json"
-#     output_path = "/home/mouss/PycharmProjects/novelties-detection-git/tmp_test_obj/output.html"
-#     with open(page_path , "r") as f:
-#         page = f.read()
-#     with open(tags_path , "r") as f:
-#         tags = json.load(f)["remove_tags"]
-#         spec_tags = tags[-1]
-#         global_tags = tags[0]
-#         final_tags = spec_tags + global_tags
-#     output = cleanHTML(page=page ,tags_to_remove=final_tags)
-#     with open(output_path , "w" , encoding="utf-8") as f:
-#         f.write(output)

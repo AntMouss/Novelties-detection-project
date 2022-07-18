@@ -26,6 +26,7 @@ class WindowInformationApi(Resource):
     @namesp.doc(parser = parser)
     def get(self , window_id):
         try:
+            res = {}
             window_id = int(window_id)
             request_kwargs = parser.parse_args()
             o_kwargs = request_kwargs["other_kwargs"]
@@ -35,13 +36,14 @@ class WindowInformationApi(Resource):
             total_kwargs = {"ntop" : request_kwargs["ntop"]}
             total_kwargs.update(o_kwargs)
             revelants_words = self.supervised_calculator.getTopWordsTopics(window_id, **total_kwargs)
+            res["revelant_words_supervised"] = revelants_words
             label_counter = self.supervised_calculator.label_articles_counter[window_id]
-            micro_topics = self.micro_topics_finder.getTopWordsTopics(window_id , **total_kwargs)
-            res = {
-                "revelant_words_supervised" : revelants_words,
-                "label_counter" : label_counter,
-                "micro_topics" : micro_topics
-            }
+            res["label_counter"] = label_counter
+            if self.micro_topics_finder is not None:
+                micro_topics = self.micro_topics_finder.getTopWordsTopics(window_id , **total_kwargs)
+                res["micro_topics"] = micro_topics
+
+
             return make_response(jsonify(res), 200)
         except IndexError as e:
             print(e)

@@ -5,6 +5,7 @@ from novelties_detection.Experience.data_utils import TimeLineArticlesDataset
 from gensim import corpora
 from novelties_detection.Collection.data_processing import filterDictionnary
 from novelties_detection.Experience import Engine_module
+from novelties_detection.Experience.Exception_utils import CompareWindowsException
 import numpy as np
 from collections import Counter
 import functools
@@ -73,9 +74,8 @@ class MetaSequencialLangageSimilarityCalculator:
             # for bound window to the right glda model we use no_window
             window_idx = i
             if update_res:
-                self.updateResults(end_date_window, window_dictionnary, model, window_idx)
+                self.updateResults(end_date_window, window_dictionnary, window_idx)
             self.date_window_idx[end_date_window] = window_idx
-            self.models.append(model)
 
 
     def updateResults(self, end_date, dictionnary_window: corpora.Dictionary, window_idx: int,
@@ -191,10 +191,9 @@ class MetaSequencialLangageSimilarityCalculator:
             for j in range(back):
                 try:
                     similarities, _  = self.calcule_similarity_topics_W_W(
-                        ntop=ntop, previous_window=i - 1 - j, new_window=i, **kwargs)
-                    if np.isnan(np.sum(similarities)):
-                        print('fix this')
-                        raise Exception
+                        ntop=ntop, previous_window_idx=i - 1 - j, new_window_idx=i, **kwargs)
+                    similarities = np.array(similarities)
+                    similarities = np.nan_to_num(similarities)
                     window_res.append(similarities)
                 except Exception as e:
                     break
@@ -203,12 +202,12 @@ class MetaSequencialLangageSimilarityCalculator:
         return np.array(res)
 
 
-    def calcule_similarity_topics_W_W(self, reproduction_threshold, ntop=100, previous_window=0, new_window=1,
+    def calcule_similarity_topics_W_W(self,previous_window : int, new_window : int, reproduction_threshold, ntop=100,
                                       soft=False, **kwargs):
         return (np.nan , np.nan)
 
 
-    def print_novelties(self, n_to_print=10, **kwargs):
+    def print_novelties(self, n_words_to_print=10, **kwargs):
         pass
 
 
@@ -227,24 +226,25 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts , nb_topics=self.nb_topics, **kwargs)
+        self.models.append(model)
         return model, window_dictionnary_f
 
     @functools.lru_cache(maxsize=3)
-    def calcule_similarity_topics_W_W(self, reproduction_threshold, ntop=100, previous_window=0, new_window=1,
-                                      soft=False, **kwargs):
+    def calcule_similarity_topics_W_W(self, previous_window_idx: int, new_window_idx: int, reproduction_threshold,
+                                      ntop=100, soft=False, **kwargs):
         """
 
         @param reproduction_threshold: threshold from which we considerate that the 2 topics from two differents
         windows match
         @param ntop: number of top revelant words from the window engine
-        @param previous_window: number of the first window to compare
-        @param new_window: number of the second window to compare
+        @param previous_window_idx: number of the first window to compare
+        @param new_window_idx: number of the second window to compare
         @param soft: take the brut score (1pt for one commun word) or the soft score (score delivered by the engine)
         @param kwargs:
         @return:
         """
-        if previous_window < 0 or new_window < 0:
-            raise Exception("index should be positives")
+        if previous_window_idx < 0 or new_window_idx < 0:
+            raise CompareWindowsException("index should be positives")
         total_similarity_score = 0
         links = [[] for _ in range(self.nb_topics)]
         # 'no_relationship' because this novelties are from "new topic" that aren't reproducte itself (similarity_score < reproduction_threshold)
@@ -254,9 +254,9 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
         relationship_novelties_matrix = np.zeros((self.nb_topics , self.nb_topics) , dtype=list)
         relationship_habbits_matrix = np.zeros((self.nb_topics, self.nb_topics), dtype=list)
         relationship_disappearances_matrix = np.zeros((self.nb_topics, self.nb_topics), dtype=list)
-        previousTopWordsTopics = self.getTopWordsTopics(self.models[previous_window], ntop=ntop, **kwargs)
+        previousTopWordsTopics = self.getTopWordsTopics(previous_window_idx, ntop=ntop, **kwargs)
         # list of sets of top words per topics in jth window
-        newTopWordsTopics = self.getTopWordsTopics(self.models[new_window], ntop=ntop, **kwargs)
+        newTopWordsTopics = self.getTopWordsTopics(new_window_idx, ntop=ntop, **kwargs)
         # the number of topics is static so we can use self.nb_topics for iterate
         total_previous_Top_words = dict(ChainMap(*previousTopWordsTopics))
         total_new_Top_words = dict(ChainMap(*newTopWordsTopics))
@@ -278,16 +278,16 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
         #total_score when the threshold isn't exceed
         # note that we compute a total_score for all the window in the no supervised case
         #malus = np.sum(persist)
-        return np.array([total_similarity_score]) , (links , relationship_novelties_matrix , relationship_habbits_matrix , relationship_disappearances_matrix)
+        return [total_similarity_score] , (links , relationship_novelties_matrix , relationship_habbits_matrix , relationship_disappearances_matrix)
 
-    def print_novelties(self, n_to_print=10, **kwargs):
+    def print_novelties(self, n_words_to_print=10, **kwargs):
         """
 
 
         """
         last_window_idx = len(self)
         similarity, (links , novelties_matrix, habbits_matrix , disappearances_matrix) = self.calcule_similarity_topics_W_W(
-            previous_window=last_window_idx - 1, new_window=last_window_idx, **kwargs)
+            previous_window_idx=last_window_idx - 1, new_window_idx=last_window_idx, **kwargs)
         print(f"Information from new window calculate by the Sequantial Calculator : {id(self)}")
         print(f"Similarity score with the last window = {similarity}")
         for topic_id in range(self.nb_topics):
@@ -299,13 +299,13 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
                 print(f"parent id {parent_topic_id}")
                 print("-" * 30)
                 print(f" Novelties for the topic :")
-                print(*novelties[:n_to_print], sep='\n')
+                print(*novelties[:n_words_to_print], sep='\n')
                 print("-" * 30)
                 print(f" Habbits for the topic :")
-                print(*habbits[:n_to_print], sep='\n')
+                print(*habbits[:n_words_to_print], sep='\n')
                 print("*" * 30)
                 print(f" DISAPPEARENCES for the topic :")
-                print(*disappearances[:n_to_print], sep='\n')
+                print(*disappearances[:n_words_to_print], sep='\n')
                 print("*" * 30)
             print("#" * 30)
             print("#" * 30)
@@ -341,18 +341,19 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts, labels=labels , nb_topics=self.nb_topics, labels_idx=self.labels_idx, **kwargs)
+        self.models.append(model)
         return model, window_dictionnary_f
 
 
     # use lru cache for avoid useless call method in compareTopicSequentialy method . lazy way to avoid code refaction of the compareTopicSequentialy method
     @functools.lru_cache(maxsize=3)
-    def calcule_similarity_topics_W_W(self, ntop=100, previous_window=0, new_window=1, soft=False,
+    def calcule_similarity_topics_W_W(self, previous_window_idx : int, new_window_idx : int, ntop=100, soft=False,
                                       **kwargs):
         """
 
         @param ntop: number of top revelant words from the window engine
-        @param previous_window: number of the first window to compare
-        @param new_window: number of the second window to compare
+        @param previous_window_idx: number of the first window to compare
+        @param new_window_idx: number of the second window to compare
         @param soft: take the brut score (1pt for one commun word) or the soft score (score delivered by the engine)
         @param kwargs:
         @return: List of percentage of similarity between the two windows (one value by topic)
@@ -360,11 +361,11 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
          the similarity just for the words that are exclusive to the topic
          (no exclusive words are removed and not used during the similarity computing).
         """
-        if previous_window < 0 or new_window < 0:
-            raise Exception("index should be positives")
-        previousTopWordsTopics = self.getTopWordsTopics(self.models[previous_window], ntop=ntop, **kwargs)
+        if previous_window_idx < 0 or new_window_idx < 0:
+            raise CompareWindowsException("index should be positives")
+        previousTopWordsTopics = self.getTopWordsTopics(previous_window_idx, ntop=ntop, **kwargs)
         # list of sets of top words per topics in jth window
-        newTopWordsTopics = self.getTopWordsTopics(self.models[new_window], ntop=ntop, **kwargs)
+        newTopWordsTopics = self.getTopWordsTopics(new_window_idx, ntop=ntop, **kwargs)
         similarities = []
         novelties = []
         habbits = []
@@ -376,36 +377,42 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
             novelties.append(novelties_topic)
             habbits.append(habbits_topic)
             disappearances.append(disappearances_topic)
-        similarities = np.array(similarities)
-        similarities = np.nan_to_num(similarities)
         return similarities , (novelties , habbits , disappearances)
 
 
-    def print_novelties(self , n_to_print = 10, **kwargs):
+    def print_novelties(self, n_words_to_print = 10, **kwargs):
         """
-
-        @param topic_id:
-        @param habbits: set of words intersection between 2 windows.
-        @param novelties: set of words difference from the current window different to the previous window.
-        @param n_to_print: number of maximum words to print
+        print novleties (revelant words by labels ) from the last windows data linked to the last engine model
+        @param n_words_to_print: number of maximum words to print
         @param kwargs:
         """
-        last_window_idx = len(self)
-        res = self.calcule_similarity_topics_W_W(
-            previous_window= last_window_idx - 1 ,new_window= last_window_idx , **kwargs)
-        print(f"Information from new window calculate by the Sequantial Calculator : {id(self)}")
-        for topic_id , (similarity , novelties , habbits) in zip(range(self.nb_topics),res):
-
-            print(f"similarity score for the topic {self.labels_idx[topic_id]}  : {similarity} ")
-            print("-"*30)
-            print(f" Novelties for the topic {self.labels_idx[topic_id]}  :")
-            print(*novelties[:n_to_print] , sep='\n')
-            print("-"*30)
-            print(f" Habbits for the topic {self.labels_idx[topic_id]}  :")
-            print(*habbits[:n_to_print], sep='\n')
-            print("*" * 30)
-        print("#" * 30)
-        print("#" * 30)
+        if len(self) == 0:
+            raise Exception("there is no engine load in self.models")
+        elif len(self) == 1:
+            print("no novelties yet...")
+        else:
+            last_window_idx = len(self) - 1
+            similarities , (novelties , habbits , disapearrances) = self.calcule_similarity_topics_W_W(
+                previous_window_idx=last_window_idx - 1 , new_window_idx= last_window_idx , **kwargs)
+            print(f"Information from new window calculate by the Sequantial Calculator : {id(self)}")
+            for topic_id in range (self.nb_topics):
+                similarity = similarities[topic_id]
+                nov = list(novelties[topic_id])
+                habb = list(habbits[topic_id])
+                disap = list(disapearrances[topic_id])
+                print(f"similarity score for the topic {self.labels_idx[topic_id]}  : {similarity} ")
+                print("-"*30)
+                print(f" Novelties for the topic {self.labels_idx[topic_id]}  :")
+                print(*nov[:n_words_to_print], sep='\n')
+                print("-"*30)
+                print(f" Habbits for the topic {self.labels_idx[topic_id]}  :")
+                print(*habb[:n_words_to_print], sep='\n')
+                print("*" * 30)
+                print(f" Disapearrances for the topic {self.labels_idx[topic_id]}  :")
+                print(*disap[:n_words_to_print], sep='\n')
+                print("*" * 30)
+            print("#" * 30)
+            print("#" * 30)
 
 
 class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSimilarityCalculator):
@@ -414,6 +421,9 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
         super(GuidedSequantialLangageSimilarityCalculator, self).__init__(**kwargs)
         self.engine = Engine_module.GuidedEngine
         self.seed = seed
+        if len(seed) != self.nb_topics:
+            raise Exception("the number of topics in the seed need to be same as the number of topics that we"
+                            "declared in the init function ")
 
     @check_size
     def treat_Window(self, data_windows: tuple, **kwargs):
@@ -432,6 +442,7 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts,nb_topics=self.nb_topics, seed=self.seed, **kwargs)
+        self.models.append(model)
         return model, window_dictionnary_f
 
 
@@ -466,6 +477,7 @@ class LDASequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityC
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts,nb_topics=self.nb_topics, dictionnary=window_dictionnary_f, **kwargs)
+        self.models.append(model)
         return model, window_dictionnary_f
 
 
@@ -489,6 +501,7 @@ class GuidedLDASequentialSimilarityCalculator(GuidedSequantialLangageSimilarityC
         window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts,nb_topics=self.nb_topics,seed=self.seed, dictionnary=window_dictionnary_f, **kwargs)
+        self.models.append(model)
         return model, window_dictionnary_f
 
 

@@ -1,5 +1,7 @@
 import os
 import json
+from typing import List, Dict
+
 from html2text import HTML2Text
 import feedparser
 from bs4 import BeautifulSoup
@@ -58,6 +60,7 @@ class RSSCollect():
         :param sourcesList: File where the sources are stored
         :param rootOutputFolder: Folder where we will save the results
         '''
+        self.processor = processor
         self.sourcesList = sourcesList
         self.dayOutputFolder = os.path.join(rootOutputFolder, self.dayFolderName)
         self.rootHashFolder=os.path.join(rootOutputFolder, self.hashFolderName)
@@ -112,7 +115,6 @@ class RSSCollect():
                 # Get information from the rss config file
                 listOfReadEntries += self.treatRSSEntry(label, url , remove_tag_list,**kwargs)
                 self.saveProcessedNewsHashes(self.hashs)
-                self.evaluateCollect(listOfReadEntries,url,**kwargs)
 
             except Exception as e:
 
@@ -133,8 +135,6 @@ class RSSCollect():
         :return: list of readed feed information
         '''
         try:
-            h = HTML2Text()
-            h.ignore_links = True  # Ignore links like <a...>
             # Get global information from the rss feed
             rss_feed = feedparser.parse(rss_url)
             if "updated" in rss_feed.keys():
@@ -157,55 +157,31 @@ class RSSCollect():
                 folderName = os.path.join(domain, article_id[:5], article_id)
                 targetDir = os.path.join(self.dayOutputFolder, folderName)
                 os.makedirs(targetDir, exist_ok=True)
+                r = requests.get(entry["link"], timeout=10)  # Get HTML from links
+                if r.status_code != 200:
+                    continue
             except Exception as e:
                 self.updateLogError(e, 2, entry['link'])
                 continue
 
             try:
-                # Check if the article is already in the database
-                # Extract information from the website
-                r = requests.get(entry["link"], timeout=10)  # Get HTML from links
-                if r.status_code!=200:
-                    continue
-                soup = BeautifulSoup(r.text, "lxml")  # Parse HTML
-                article = soup.find("article")  # Get article in HTML
-                article_copy = article.__copy__()
-                if article is not None:
-                    text = extract_text(article, remove_tags_list, clean=False)
-                    cleansed_text = extract_text(article, remove_tags_list, clean=True)
-                    process_text = ProcessorText.processText(cleansed_text)
-                    htmlCollected = True
-                else:
-                    text = None
-                    cleansed_text = None
-                    process_text = None
-                    htmlCollected = False
-
                 # Complete the news information for the database
                 feed = {"title": entry["title"],
                         "url": entry["link"],
-                        "text": text,
-                        "cleansed_text": cleansed_text,
                         "label": label,
                         "rss": rss_url,
-                        "process_text" : process_text,
-                        "updated": False ,
-                        "htmlCollected": htmlCollected,
-                        "id" : article_id
+                        "updated": False,
+                        "id": article_id
                         }
-
                 if "published" in entry.keys():
                     feed["date"] = entry["published"]
                 else:
                     feed["date"] = feed_date
-
-                feed["timeStamp"] = dateToDateTime(feed["date"] , timeStamp=True)
-
+                feed["timeStamp"] = dateToDateTime(feed["date"], timeStamp=True)
                 if "summary" in entry.keys():
                     feed["summary"] = entry["summary"]
                 else:
                     feed["summary"] = ""
-
                 if "content" in entry.keys():
                     if "value" in entry["content"][0].keys():
                         feed["content"] = entry["content"][0]["value"]
@@ -213,12 +189,17 @@ class RSSCollect():
                     feed["content"] = ""
 
                 feed['domainName'] = urlparse(feed['url']).netloc
-
+                # Check if the article is already in the database
+                # Extract information from the website
+                soup = BeautifulSoup(r.text, "lxml")  # Parse HTML
+                article = soup.find("article")# Get article in HTML
+                text_fields , article_copy = self.treatArticle(article , remove_tags_list)
+                feed.update(text_fields)
 
             except Exception as e:
-
                 self.updateLogError(e, 2, entry['link'])
                 continue
+
 
             try:
                 if collectRssImage:
@@ -229,20 +210,16 @@ class RSSCollect():
                 pass
 
 
-
             try: #on gère pas les erreurs de treatArticleImages
-
                 if collectArticleImages:
                     feed["images"]=[]
                     article,collectedImagesNames=self.treatGetArticleImages(article,targetDir , entry['link'])
                     feed["images"]=collectedImagesNames
-
             except Exception as e:
                 exc_tb = sys.exc_info()[2]
                 exc_line = exc_tb.tb_lineno
                 pass
                 # Saves the full html text
-
 
 
             if article is not None:
@@ -255,17 +232,54 @@ class RSSCollect():
                 except UnicodeError as e:
                     print(e)
                     pass
-
                 except:
                     pass
 
             with open(os.path.join(targetDir, self.targetDataFile), "w") as f:
-                json.dump(article, f)
+                json.dump(feed, f)
 
             feedList.append(feed)
             self.hashs.append(article_id)
 
+        self.evaluateCollect(
+            feedList, rss_url, collectRssImage=collectRssImage ,
+            collectImageArticle=collectArticleImages)
         return feedList
+
+
+    def treatArticle(self , article , remove_tags_list):
+        """
+        this function treat the text content of the requests we want to fetch the text inside the article tag
+        and clean the useless tag and process the final text to have text already processed and stocked
+        note that we made copy because during the cleaning we modified the html object and we want to save the original
+        html so we make copy to save original html latter in the top level function
+        @param article:
+        @param remove_tags_list:
+        @return: dict with the text field , article copy
+        """
+        if article is not None:
+            article_copy = article.__copy__()
+            text = extract_text(article, remove_tags_list, clean=False)
+            cleansed_text = extract_text(article, remove_tags_list, clean=True)
+            try:
+                process_text = self.processor.processText(cleansed_text)
+            except TimeoutError:
+                process_text = None
+                pass
+            htmlCollected = True
+        else:
+            article_copy = article
+            text = None
+            cleansed_text = None
+            process_text = None
+            htmlCollected = False
+        return {
+            "text" : text,
+            "cleansed_text" : cleansed_text,
+            "process_text" : process_text,
+            "htmlCollected" : htmlCollected
+
+        } , article_copy
 
 
     def treatRssImages (self, entry_rss, targetDir, link) :
@@ -446,7 +460,7 @@ class RSSCollect():
             f.write(msg_perf + "\n")
 
 
-    def evaluateCollect(self, listOfReadEntry, url_rss,collectImageArticle,collectRssImage):
+    def evaluateCollect(self, listOfReadEntry : List[Dict], url_rss : str,collectImageArticle : bool,collectRssImage : bool):
         """
         read the output of our feedlist and evaluate the percentage of field empty and no collected rss
         and give the average of collected images per articles for each feed
@@ -462,13 +476,10 @@ class RSSCollect():
             countField=0
             countImage=0
             try:
-                for feed_id in listOfReadEntry:
-                    feed=listOfReadEntry[feed_id]
-                    if collectImageArticle and collectRssImage:
-                        countImage+=len(feed["rss_media"])+len(feed["images"])
-                    elif collectRssImage:
+                for feed in listOfReadEntry:
+                    if collectRssImage:
                         countImage+=len(feed["rss_media"])
-                    elif collectImageArticle:
+                    if collectImageArticle:
                         countImage+=len(feed["images"])
 
                     for field in self.listOfFields:
@@ -478,13 +489,10 @@ class RSSCollect():
                 msg_perf = msg_perf + f" {countField / (len(self.listOfFields) * len(listOfReadEntry)) * 100} % of field empty \n"
                 msg_perf = msg_perf + f"{countImage} images \n"
             except KeyError as e:
-                # msg_err = f"{str(date) : }"
-                # self.updateLog(f"New Key Error type 3:  {str(e),url_rss}")
                 pass
             except Exception as e:
-                # logging.warning(f"New Error Evaluation type 3: {str(e), url_rss}")
                 pass
-        self.updateLogPerf(msg_perf )
+        self.updateLogPerf(msg_perf)
 
 
 
