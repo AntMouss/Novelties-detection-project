@@ -24,17 +24,13 @@ def check_size(func):
 
 class MetaSequencialLangageSimilarityCalculator:
 
-    def __init__(self, nb_topics: int, thresholding_fct_above: Callable,
-                 thresholding_fct_bellow: Callable, kwargs_above: Dict, kwargs_bellow: Dict ,memory_length : int = None ):
+    def __init__(self, nb_topics: int, bad_words_args : dict ,memory_length : int = None ):
 
+        self.bad_words_args = bad_words_args
         if memory_length is None:
             self.models = []
         else:
             self.models = deque(maxlen=memory_length)
-        self.kwargs_bellow = kwargs_bellow
-        self.kwargs_above = kwargs_above
-        self.thresholding_fct_above = thresholding_fct_above
-        self.thresholding_fct_bellow = thresholding_fct_bellow
         self.engine = Engine_module.Engine
         self.semi_filtred_dictionnary = corpora.Dictionary()
         self.nb_topics = nb_topics
@@ -115,9 +111,13 @@ class MetaSequencialLangageSimilarityCalculator:
 
     def updateBadwords(self):
 
+        thresholding_fct_above = self.bad_words_args["thresholding_fct_above"]
+        thresholding_fct_bellow = self.bad_words_args["thresholding_fct_bellow"]
+        kwargs_above = self.bad_words_args["kwargs_above"]
+        kwargs_bellow = self.bad_words_args["kwargs_bellow"]
         nb_docs = self.semi_filtred_dictionnary.num_docs
-        abs_no_above = self.thresholding_fct_above(nb_docs=nb_docs, **self.kwargs_above)
-        abs_no_bellow = self.thresholding_fct_bellow(nb_docs=nb_docs, **self.kwargs_bellow)
+        abs_no_above = thresholding_fct_above(nb_docs=nb_docs, **kwargs_above)
+        abs_no_bellow = thresholding_fct_bellow(nb_docs=nb_docs, **kwargs_bellow)
         if abs_no_bellow >= abs_no_above:
             raise Exception("abs_no_bellow should be inferior to abs_no_above")
         if abs_no_above <= 0:

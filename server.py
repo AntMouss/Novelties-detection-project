@@ -1,4 +1,4 @@
-import os.path
+import os
 from typing import Dict
 import json
 import argparse
@@ -9,14 +9,13 @@ from novelties_detection.Experience.WindowClassification import WindowClassifier
 
 parser = argparse.ArgumentParser(description="pass config_file with model , kwargs_calculator paths",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("root_path" , help="root path of the project")
-parser.add_argument("config_path", help="paths of the model and kwargs calculator")
+parser.add_argument("config_path", default="config/default_config_service.json", help="paths of the model and kwargs calculator")
 parser.add_argument("-l", "--length", default=20, type=int, help="Length of time series length cache")
 
 args = parser.parse_args()
 args = vars(args)
+ROOT = os.getcwd()
 config_path = args["config_path"]
-ROOT = args["root_path"]
 LENGTH_CACHE = args["length"]
 config_path = os.path.join(ROOT , config_path)
 with open(config_path , 'r') as f:
@@ -78,6 +77,7 @@ def launch_app(stuff):
     app = createApp(injected_object_apis)
     app.run(HOST, port=PORT, debug=False)
     print("Running Server")
+
 
 def startServer():
     '''

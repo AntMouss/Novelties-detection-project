@@ -13,16 +13,21 @@ from novelties_detection.Collection.data_processing import  absoluteThresholding
 from novelties_detection.Experience.config_arguments import (
     Thematic , ProcessorText , THEMATICS , START_DATE , END_DATE , DATA_PATH , PROCESSOR , LABELS_IDX , SEED)
 
-class MetaCalculatorKwargs:
-    def __init__(self, nb_topics: int , thresholding_fct_above: Callable,
+class UpdateBadWordsKwargs:
+    def __init__(self,thresholding_fct_above: Callable,
                  thresholding_fct_bellow: Callable, kwargs_above: Dict, kwargs_bellow: Dict):
-        self.thresholding_fct_above = thresholding_fct_above
-        self.thresholding_fct_bellow = thresholding_fct_bellow
-        self.kwargs_above = kwargs_above
         self.kwargs_bellow = kwargs_bellow
+        self.kwargs_above = kwargs_above
+        self.thresholding_fct_bellow = thresholding_fct_bellow
+        self.thresholding_fct_above = thresholding_fct_above
+
+class MetaCalculatorKwargs:
+    def __init__(self, nb_topics: int , bad_words_args : UpdateBadWordsKwargs , training_args = None):
+        self.bad_words_args = bad_words_args.__dict__
         self.nb_topics = nb_topics
         self.calculator_type = MetaSequencialLangageSimilarityCalculator
-        self.training_args = {}
+        if training_args is None:
+            self.training_args = {}
 
 
 class SupervisedCalculatorKwargs(MetaCalculatorKwargs):
@@ -127,31 +132,21 @@ class MetaKwargsGenerator:
         else:
             return {key_name: random.choice(KWARGS[kwarg])}
 
-
-class KwargsGuidedLDACalculatorGenerator:
-    pass
-
-class KwargsGuidedCoreXCalculatorGenerator:
-    pass
-
-class KwargsLFIDFCalculatorGenerator:
-    pass
-
-class KwargsLDACalculatorGenerator:
-    pass
-
-class KwargsCoreXCalculatorGenerator:
-    pass
+class KwargsBadWordsGenerator:
+    def __new__(cls):
+        kwargs_dictionnary = {}
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("nb_topics"))
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("thresholding_fct_above"))
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("thresholding_fct_bellow"))
+        kwargs_dictionnary.update(KwargsModelGenerator.choose_kwargs_thresholding(
+            [kwargs_dictionnary["thresholding_fct_above"], kwargs_dictionnary["thresholding_fct_bellow"]]))
+        return UpdateBadWordsKwargs(**kwargs_dictionnary)
 
 class KwargsModelGenerator(MetaKwargsGenerator):
 
     def __new__(cls , kwargs_calculator_type : Type[MetaCalculatorKwargs]):
         kwargs_dictionnary = {}
-        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("nb_topics"))
-        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("thresholding_fct_above" ))
-        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("thresholding_fct_bellow" ))
-        kwargs_dictionnary.update(KwargsModelGenerator.choose_kwargs_thresholding(
-            [kwargs_dictionnary["thresholding_fct_above"] , kwargs_dictionnary["thresholding_fct_bellow"]]))
+        kwargs_dictionnary["bad_words_args"] = KwargsBadWordsGenerator()
         if kwargs_calculator_type.__name__ == 'GuidedLDACalculatorKwargs':
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("overrate"))
             kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("passes"))
