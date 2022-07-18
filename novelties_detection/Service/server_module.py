@@ -1,4 +1,3 @@
-import json
 from threading import Thread , Lock
 from typing import List , Dict
 import schedule
@@ -7,6 +6,9 @@ from novelties_detection.Experience.Sequential_Module import SupervisedSequantia
 from novelties_detection.Experience.WindowClassification import WindowClassifierModel
 from novelties_detection.Collection.data_processing import transformS
 from novelties_detection.Experience.Exception_utils import CompareWindowsException
+from datetime import datetime
+import logging
+logging.basicConfig(level=logging.INFO)
 
 
 WINDOW_DATA = []
@@ -14,6 +16,16 @@ COLLECT_IN_PROGRESS = False
 PROCESS_IN_PROGRESS = False
 COLLECT_LOCKER = Lock()
 PROCESS_LOCKER = Lock()
+
+
+def log_function(func):
+    def wrapper():
+        start_time = datetime.now()
+        logging.info(f"{func.__name__} begin at {start_time}")
+        func()
+        end_time = datetime.now()
+        logging.info(f"{func.__name__} finish at {end_time}  , collect duration : {start_time - end_time}")
+    return wrapper
 
 
 class CollectThread(Thread):
@@ -27,7 +39,7 @@ class CollectThread(Thread):
         self.output_path=output_path
         self.rssCollect=RSSCollect(self.rss_feed_config, self.output_path , processor=processor)
 
-
+    @log_function
     def update_window_data(self):
         global WINDOW_DATA
         global COLLECT_LOCKER
@@ -43,7 +55,7 @@ class CollectThread(Thread):
         COLLECT_LOCKER.release()
 
     def run(self):
-        self.update_window_data()
+        logging.info("Collect will start")
         schedule.every(self.loop_delay).minutes.do(self.update_window_data)
         while True:
             schedule.run_pending()
@@ -64,12 +76,11 @@ class NoveltiesDetectionThread(Thread):
         self.micro_calculator = micro_calculator
         self.classifier_models = classifier_models
         self.loop_delay = loop_delay
-        self.count = 0
 
 
     @staticmethod
     def log_error():
-        print("no articles collected during his windows")
+        logging.warning("no articles collected during his windows")
 
 
     def process(self , window_data):
@@ -93,24 +104,23 @@ class NoveltiesDetectionThread(Thread):
             similarities, _ = self.supervised_reference_calculator.calcule_similarity_topics_W_W(previous_window_idx , new_window_idx , **self.comparaison_args)
             print("@" * 30)
             for topic_id, (similarity_score, classifier) in enumerate(zip(similarities, self.classifier_models)):
-                group_id = classifier.print(similarity_score)
+                classifier.print(similarity_score)
+                group_id = classifier.predict(similarity_score)
                 classifier.update(similarity_score)
                 topic = self.supervised_reference_calculator.labels_idx[topic_id]
                 print(f"Rarety level : {group_id} / {len(classifier)} for the topic: {topic}.  ")
         except CompareWindowsException:
-            print("no comparaison possible yet because there are less than 2 windows treated")
+            logging.warning("no comparaison possible yet because there are less than 2 windows treated")
             pass
         except Exception as e:
             pass
 
-
+    @log_function
     def do_process(self):
         global WINDOW_DATA
         global PROCESS_LOCKER
         global PROCESS_IN_PROGRESS
         global COLLECT_IN_PROGRESS
-        with open(f"/home/mouss/PycharmProjects/novelties-detection-git/tmp_test_obj/data_window_test_{self.count}.json", "r") as f:
-            WINDOW_DATA = json.load(f)
         PROCESS_LOCKER.acquire()
         if COLLECT_IN_PROGRESS == False:
             PROCESS_IN_PROGRESS = True
@@ -123,11 +133,10 @@ class NoveltiesDetectionThread(Thread):
                 NoveltiesDetectionThread.log_error()
             PROCESS_IN_PROGRESS = False
         PROCESS_LOCKER.release()
-        self.count += 1
 
 
     def run(self):
-        self.do_process()
+        logging.info("Process will start")
         schedule.every(self.loop_delay).minutes.do(self.do_process)
         while True:
             schedule.run_pending()

@@ -1,5 +1,5 @@
 import os.path
-from typing import Dict, Tuple
+from typing import Dict
 import json
 import argparse
 import pickle
@@ -69,6 +69,16 @@ def load_stuff() -> Dict:
     return stuff
 
 
+def launch_app(stuff):
+    injected_object_apis = [
+        {"rss_feed_path": RSS_FEEDS_PATH},
+        {"calculator": stuff["supervised_calculator"]},
+        {"calculator": stuff["supervised_calculator"], "topics_finder": stuff["micro_calculator"]}
+    ]
+    app = createApp(injected_object_apis)
+    app.run(HOST, port=PORT, debug=False)
+    print("Running Server")
+
 def startServer():
     '''
     Starts server
@@ -81,18 +91,11 @@ def startServer():
     extractor = CollectThread(RSS_FEEDS_PATH,OUTPUT_PATH,stuff["processor"],loop_delay=LOOP_DELAY_COLLECT)
     del stuff["processor"]
     detector = NoveltiesDetectionThread(**stuff)
-    #extractor.start()
+    extractor.start()
     detector.start()
-    #extractor.join()
-    detector.join()
-    injected_object_apis =[
-        {"rss_feed_path": RSS_FEEDS_PATH} ,
-        {"calculator" : stuff["supervised_calculator"]} ,
-        {"calculator" : stuff["supervised_calculator"], "topics_finder" : stuff["micro_calculator"]}
-    ]
-    app = createApp(injected_object_apis)
-    app.run(HOST, port=PORT, debug=True)
-    print("Running Server")
+    launch_app(stuff)
+
+
 
 
 

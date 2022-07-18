@@ -2,6 +2,7 @@ import json
 from flask_restx import Resource , Namespace
 from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator , NoSupervisedSequantialLangageSimilarityCalculator
 from flask import jsonify , make_response
+from novelties_detection.Experience.Exception_utils import ServiceException
 
 namesp = Namespace('WindowInformation',
                    description='api to get information about window (revelant words and topics)', validate=True)
@@ -26,6 +27,8 @@ class WindowInformationApi(Resource):
     @namesp.doc(parser = parser)
     def get(self , window_id):
         try:
+            if len(self.supervised_calculator) == 0:
+                raise ServiceException("no window treated by this service yet... so service not available")
             res = {}
             window_id = int(window_id)
             request_kwargs = parser.parse_args()
@@ -45,6 +48,8 @@ class WindowInformationApi(Resource):
 
 
             return make_response(jsonify(res), 200)
+        except ServiceException as e:
+            namesp.abort(410, e.__doc__, status=e.__str__(), statusCode="410")
         except IndexError as e:
             print(e)
             namesp.abort(404, e.__doc__, status="this window_id doesn't match with any windows", statusCode="404")

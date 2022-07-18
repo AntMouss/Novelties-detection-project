@@ -28,3 +28,5 @@ class AnalyseException(SelectionException):
 class CompareWindowsException(Exception):
     pass
 
+class ServiceException(Exception):
+    pass
