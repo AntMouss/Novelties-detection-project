@@ -199,7 +199,7 @@ class MetaSequencialLangageSimilarityCalculator:
                     break
             window_res = np.array(window_res)
             res.append(np.mean(window_res , axis=0))
-        return np.array(res)
+        return np.transpose(np.array(res))
 
 
     def calcule_similarity_topics_W_W(self,previous_window : int, new_window : int, reproduction_threshold, ntop=100,

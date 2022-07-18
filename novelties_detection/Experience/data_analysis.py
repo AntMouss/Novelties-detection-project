@@ -130,7 +130,6 @@ class Analyser:
         #we assume that the distribution of similarity is invariant acoording to the label
         # so we flat the similarity["without"]
         similarity_samples = self.results.results[0].similarity["without"]
-        similarity_samples = np.transpose(similarity_samples)
         similarity_samples = list(similarity_samples[topic_id])
         _ , pvalue = normaltest(similarity_samples)
         # we assume that we take the same risk for normality hypothesis and topic injection hypothesis
