@@ -12,7 +12,6 @@ from novelties_detection.Experience.Sequential_Module import (
     LDASequentialSimilarityCalculator,
     CoreXSequentialSimilarityCalculator
 )
-from novelties_detection.Experience.config_arguments import START_DATE, END_DATE, DATA_PATH
 from novelties_detection.Experience.data_utils import TimeLineArticlesDataset
 from novelties_detection.Experience.kwargsGen import (
     FullKwargsGenerator,
@@ -38,6 +37,12 @@ kwargs_calculator_generators = [
     LDACalculatorKwargs,
     CoreXCalculatorKwargs
 ]
+
+
+DATA_PATH = '/home/mouss/data/final_database_50000_100000_process_without_key.json'
+NB_HOURS = 10
+START_DATE = 1622376100.0
+END_DATE = START_DATE + NB_HOURS * 3600
 
 
 supervised_dataset = TimeLineArticlesDataset(path=DATA_PATH,

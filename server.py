@@ -43,6 +43,10 @@ def load_stuff() -> Dict:
     """
     global LOOP_DELAY_PROCESS
     global LENGTH_CACHE
+    global MODEL_PATH
+    global KWARGS_CALCULATOR_PATH
+    global KWARGS_MICRO_CALCULATOR_PATH
+    global PROCESSOR_PATH
     with open(MODEL_PATH , "rb") as f:
         model : WindowClassifierModel = pickle.load(f)
     with open(KWARGS_CALCULATOR_PATH , "rb") as f:
@@ -53,7 +57,7 @@ def load_stuff() -> Dict:
         kwargs_micro_calculator["initialize_engine"]["memory_length"] = LENGTH_CACHE
     with open(PROCESSOR_PATH , "rb") as f:
         processor = pickle.load(f)
-    stuff : Dict = initialize_calculator(kwargs_calculator , n=1)
+    stuff : Dict = initialize_calculator(kwargs_calculator)
     micro_stuff : Dict = initialize_calculator(kwargs_micro_calculator)
     stuff.update({
         "classifier_models" : [model,model] , "loop_delay" : LOOP_DELAY_PROCESS , "processor" : processor,
@@ -66,7 +70,6 @@ def load_stuff() -> Dict:
     del stuff["comparaison_args"]["first_w"]
     del stuff["comparaison_args"]["last_w"]
     return stuff
-
 
 def launch_app(stuff):
     injected_object_apis = [

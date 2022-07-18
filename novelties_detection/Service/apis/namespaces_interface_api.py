@@ -1,3 +1,4 @@
+import numpy as np
 from flask_restx import Resource , Namespace
 from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator
 from novelties_detection.Experience.Exception_utils import ServiceException
