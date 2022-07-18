@@ -47,7 +47,7 @@ class WindowClassifierModel:
             self.mean = np.mean(self.scores_historic)
             self.std = np.std(self.scores_historic)
             self.centiles_values = []
-            for centile in self.classification_centiles:
+            for centile in self.classification_centiles / 100:
                 value = stats.norm.ppf(centile, loc=self.mean, scale=self.std)
                 self.centiles_values.append(value)
 
