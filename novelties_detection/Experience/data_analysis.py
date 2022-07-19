@@ -46,8 +46,9 @@ class Sampler:
         for result in self.results:
             similarity = result.similarity
             difference_matrix = abs(similarity['with'] - similarity['without'])
-            for window_id, difference_scores in enumerate(difference_matrix):
-                for topic_id , difference_score in enumerate(difference_scores):
+            for topic_id, difference_scores in enumerate(difference_matrix):
+                for window_id, difference_score in enumerate(difference_scores):
+
                     key = Sampler.choose_key(window_id, result.metadata.ranges)
                     samples[topic_id][key].append(difference_score)
 
