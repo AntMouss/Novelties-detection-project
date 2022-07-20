@@ -11,14 +11,14 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 
-WINDOW_DATA = []
+WINDOW_DATA = [] # contain the data of one temporal window
 COLLECT_IN_PROGRESS = False
 PROCESS_IN_PROGRESS = False
 COLLECT_LOCKER = Lock()
 PROCESS_LOCKER = Lock()
 
 
-def log_function(func):
+def log_time_function(func):
     def wrapper():
         start_time = datetime.now()
         logging.info(f"{func.__name__} begin at {start_time}")
@@ -32,14 +32,21 @@ class CollectThread(Thread):
     """
     Service to periodically collect information from the selected sources
     """
-    def __init__(self,rss_feed_config_file,output_path ,processor, loop_delay):
+    def __init__(self, rss_feed_source_path, output_path, processor, loop_delay):
+        """
+
+        @param rss_feed_source_path: path to json file that contain rss feed source like url , label and removing tags
+        @param output_path: path from Root Directory where we save information about articles (images , html , metadata)
+        @param processor: engine that process (preprocess) text for being ready to use
+        @param loop_delay: delay between two collect
+        """
         Thread.__init__(self)
         self.loop_delay = loop_delay
-        self.rss_feed_config=rss_feed_config_file
+        self.rss_feed_config=rss_feed_source_path
         self.output_path=output_path
         self.rssCollect=RSSCollect(self.rss_feed_config, self.output_path , processor=processor)
 
-    @log_function
+    @log_time_function
     def update_window_data(self):
         global WINDOW_DATA
         global COLLECT_LOCKER
@@ -63,11 +70,21 @@ class CollectThread(Thread):
 
 class NoveltiesDetectionThread(Thread):
     """
-    Service to detect novelties in the collect information flow
+    Service to detect and return novelties in the collect information flow
     """
     def __init__(self, supervised_calculator : SupervisedSequantialLangageSimilarityCalculator
                  , micro_calculator : NoSupervisedSequantialLangageSimilarityCalculator , training_args : Dict ,
                  comparaison_args : Dict, micro_training_args : Dict,  loop_delay : int , classifier_models :List[WindowClassifierModel] ):
+        """
+
+        @param supervised_calculator: supervised calculator to get novelties on the labels (topics) in the flow
+        @param micro_calculator: no supervised calculator to get more detail information about "micro-topic" in the flow
+        @param training_args: args use to treat new window
+        @param comparaison_args: args use to compute similarity between windows recursively
+        @param micro_training_args:
+        @param loop_delay: delay between two process
+        @param classifier_models: window classifier model to get the rarety level of the window (rarety of the similarity score with the previous one)
+        """
         Thread.__init__(self)
         self.micro_training_args = micro_training_args
         self.comparaison_args = comparaison_args
@@ -115,7 +132,7 @@ class NoveltiesDetectionThread(Thread):
         except Exception as e:
             pass
 
-    @log_function
+    @log_time_function
     def do_process(self):
         global WINDOW_DATA
         global PROCESS_LOCKER

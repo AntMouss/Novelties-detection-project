@@ -1,24 +1,31 @@
-import numpy as np
 from flask_restx import Resource , Namespace
 from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator
 from novelties_detection.Experience.Exception_utils import ServiceException
 from flask import jsonify , make_response
+from novelties_detection.Service.apis.utils import build_series
+from novelties_detection.Service.apis.config import N_TOP_DEFAULT , BACK_DEFAULT , MAX_N_TOP_WORDS , MIN_N_TOP_WORDS
 
 namesp = Namespace('ResultInterface',
-                   description='results generate by the calculator for the interface visualisation', validate=True)
+                   description='results generate by the calculator for the interface topic visualisation', validate=True)
 parser = namesp.parser()
-parser.add_argument("ntop", type=int , default = 100 , help="number of top world used for similarity computation", location="form")
-parser.add_argument("back", type=int,default = 1, help="number of backward windows used for similarity computation (moving mean)", location="form")
+parser.add_argument("ntop", type=int , default = N_TOP_DEFAULT , help="number of top world used for similarity computation", location="form")
+parser.add_argument("back", type=int,default = BACK_DEFAULT, help="number of backward windows used for similarity computation (moving mean)", location="form")
 #parser.add_argument("oth_kwargs", type=dict, help="other key words arguments like 'remove_seed_words' , 'exclusive'...", location="form")
 
 @namesp.route("")
 class ResultInterfaceAPI(Resource):
     """
-    Rest interface to get similarity result between windows sequentialy
+    Rest interface to get similarity result between windows sequentialy for each topic
     """
 
     def __init__(self, api=None, *args, **kwargs):
-        # sessions is a black box dependency
+        """
+        supervised calculator to return novelties about topics and words.
+        Able to compute similarity between to adjacent window
+        @param api:
+        @param args:
+        @param kwargs:
+        """
         self.calculator : SupervisedSequantialLangageSimilarityCalculator = kwargs['calculator']
         super().__init__(api, *args, **kwargs)
 
@@ -26,16 +33,18 @@ class ResultInterfaceAPI(Resource):
     def get(self):
         try:
             kwargs = parser.parse_args()
-            if kwargs["ntop"] >500:
-                raise ServiceException("ntop too big must be inferior or equal to 500")
+            if kwargs["ntop"] >MAX_N_TOP_WORDS or kwargs["ntop"] < MIN_N_TOP_WORDS :
+                raise ServiceException(f"ntop too big must be inferior or equal to {MAX_N_TOP_WORDS} "
+                                       f"and superior to {MIN_N_TOP_WORDS}")
             if len(self.calculator) < 2:
-                raise ServiceException("there is no enough treated window for the moment...Service not available")
-            similarity_resultats = self.calculator.compare_Windows_Sequentialy(**kwargs)
-            labels_idx = self.calculator.labels_idx
-            res = {
-                label : similarity_res_label for label , similarity_res_label in zip(labels_idx, similarity_resultats)
-            }
-            return make_response(jsonify(res), 200)
+                raise ServiceException("there is no enough treated window for the moment...Service not available."
+                                       "This Service needs at least two windows to work")
+            similarity_scores = self.calculator.compare_Windows_Sequentialy(**kwargs)
+            labels = self.calculator.labels_idx
+            labels_counters = self.calculator.label_articles_counters
+            series = build_series(similarity_scores , labels_counters , labels)
+
+            return make_response(jsonify(series), 200)
 
         except ServiceException as e:
             namesp.abort(410 , e.__doc__ , status = e.__str__ (), statuscode = "410")

@@ -7,10 +7,13 @@ from novelties_detection.Service.utils import initialize_calculator , createApp
 from novelties_detection.Service.server_module import CollectThread ,NoveltiesDetectionThread
 from novelties_detection.Experience.WindowClassification import WindowClassifierModel
 
+DEFAULT_CONFIG_PATH = "config/default_config_service.json"
+DEFAULT_LENGTH_CACHE = 20
+
 parser = argparse.ArgumentParser(description="pass config_file with model , kwargs_calculator paths",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("config_path", default="config/default_config_service.json", help="paths of the model and kwargs calculator")
-parser.add_argument("-l", "--length", default=20, type=int, help="Length of time series length cache")
+parser.add_argument("config_path", default= DEFAULT_CONFIG_PATH, help="paths of the model and kwargs calculator")
+parser.add_argument("-l", "--length", default=DEFAULT_LENGTH_CACHE, type=int, help="Length of time series length cache")
 
 args = parser.parse_args()
 args = vars(args)
@@ -25,7 +28,7 @@ MODEL_PATH = os.path.join(ROOT , config["model_path"])
 KWARGS_CALCULATOR_PATH = os.path.join(ROOT , config["kwargs_calculator_path"])
 KWARGS_MICRO_CALCULATOR_PATH = os.path.join(ROOT , config["kwargs_micro_calculator_path"])
 PROCESSOR_PATH = os.path.join(ROOT , config["processor_path"])
-LOOP_DELAY_PROCESS = config["loop_delay_process"] #minutes
+LOOP_DELAY_PROCESS = config["loop_delay_process"] # in minutes
 LOOP_DELAY_COLLECT = config["loop_delay_collect"]
 RSS_FEEDS_PATH = os.path.join(ROOT, config["rss_feeds_path"])
 OUTPUT_PATH = config["output_path"]
@@ -38,8 +41,8 @@ if LOOP_DELAY_COLLECT > LOOP_DELAY_PROCESS:
 
 def load_stuff() -> Dict:
     """
-
-    @return:
+    load stuff necessary for server working. calculator , training arguments , variable etc
+    @return: dictionnary
     """
     global LOOP_DELAY_PROCESS
     global LENGTH_CACHE
@@ -82,7 +85,7 @@ def launch_app(stuff):
     print("Running Server")
 
 
-def startServer():
+def start_Server():
     '''
     Starts server
     :return:
@@ -105,5 +108,5 @@ def startServer():
 
 if __name__ == '__main__':
 
-    startServer()
+    start_Server()
     pass
