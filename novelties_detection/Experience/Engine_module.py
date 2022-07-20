@@ -8,9 +8,20 @@ from novelties_detection.Experience.data_utils import DocumentsWordsCounter, Lab
 
 
 class Engine:
+    """
+    engine model we will use two get topic in corpus data
+    topic is a list of revelant words .
+    We will use different core method like CoreX , Latent dirichlet allocation and TFIDF
+    and different training way : no supervised , supervised and Guided (semi-supervised)
+    """
 
     def __init__(self, texts: List[List], nb_topics : int = 5, random_state : int = 42):
+        """
 
+        @param texts: texts ,data
+        @param nb_topics: number of relevant topics
+        @param random_state:
+        """
         self.random_state = random_state
         self.texts = texts
         self.nb_topics = nb_topics
@@ -24,6 +35,12 @@ class Engine:
 
 class SupervisedEngine(Engine):
     def __init__(self , labels: List , labels_idx: List  , **kwargs):
+        """
+
+        @param labels: labels of text data
+        @param labels_idx: list of labels (the idx is the list idx of the label)
+        @param kwargs:
+        """
         super(SupervisedEngine, self).__init__(**kwargs)
         self.labels_idx = labels_idx
         self.labels = labels
@@ -31,6 +48,11 @@ class SupervisedEngine(Engine):
 
 class GuidedEngine(Engine):
     def __init__(self , seed : dict  , **kwargs):
+        """
+
+        @param seed: dictionnary of list seed words with label as key (this words are specific of the kay label)
+        @param kwargs:
+        """
         super(GuidedEngine, self).__init__(**kwargs)
         self.seed = seed
 
@@ -107,7 +129,13 @@ class LDA(Engine):
 
     def __init__(self, dictionnary: corpora.Dictionary = None,
                  random_state=42, passes : int = 1 , **kwargs):
+        """
 
+        @param dictionnary: specific gensim dictionnary linked to the data corpus
+        @param random_state:
+        @param passes: number of time that we passe the corpus during training (like epoch)
+        @param kwargs:
+        """
         super().__init__(**kwargs)
         self.passes = passes
         self.random_state = random_state
@@ -140,7 +168,14 @@ class GuidedLDA(GuidedEngine , LDA):
 
     @staticmethod
     def generate_eta(seed , dictionnary, normalize_eta=False, overratte=1e7):
-
+        """
+        for LDA , eta is the matrix of weigth parameters with labels as row and words as column
+        @param seed:
+        @param dictionnary:
+        @param normalize_eta:
+        @param overratte: overratte eta weigth
+        @return:
+        """
         ntopics = len(seed)
 
         eta = np.full(shape=(ntopics, len(dictionnary)),

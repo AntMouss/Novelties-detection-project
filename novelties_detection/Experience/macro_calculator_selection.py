@@ -9,26 +9,22 @@ import pickle
 import logging
 from threading import Lock
 from novelties_detection.Experience.Exception_utils import SelectionException
+from novelties_detection.Experience.config_arguments import SAVE_CALCULATOR_KWARGS_PATH
 
 l = Lock()
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename=LOG_PATH , level=logging.INFO)
 logger = logging.getLogger(__name__)
-#
-# parser = argparse.ArgumentParser(description="pass config_file and save_path",
-#                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-# parser.add_argument("dest", help="Destination location")
-# args = parser.parse_args()
-# config = vars(args)
-#
-# SAVE_PATH = config["dest"]
 
 NB_BEST_CALCULATORS = 3
-SAVE_PATH = "/home/mouss/PycharmProjects/novelties-detection-git/results/wesh.pck"
+SAVE_PATH = SAVE_CALCULATOR_KWARGS_PATH
 NB_CALCULATORS = 15
 
 
 class MacroCalculatorSelector:
+    """
+    Select macro calculator with random kwargs parameters and choose the best according to many criteria
+    """
 
     def __init__(self , nb_best_calculators : int  , save_path : str):
         self.save_path = save_path

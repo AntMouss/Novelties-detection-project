@@ -3,7 +3,7 @@ import random
 from typing import List, Callable, Dict
 from novelties_detection.Experience.data_utils import TimeLineArticlesDataset
 from gensim import corpora
-from novelties_detection.Collection.data_processing import filterDictionnary
+from novelties_detection.Collection.data_processing import cleanDictionnary
 from novelties_detection.Experience import Engine_module
 from novelties_detection.Experience.Exception_utils import CompareWindowsException
 import numpy as np
@@ -23,9 +23,19 @@ def check_size(func):
 
 
 class MetaSequencialLangageSimilarityCalculator:
+    """
+    Meta class to calculate relation , similarity and novelties between sequential bunch of temporal data window.
+
+
+    """
 
     def __init__(self, nb_topics: int, bad_words_args : dict ,memory_length : int = None ):
+        """
 
+        @param nb_topics: number of topics we fixed a priori
+        @param bad_words_args: args for bad words removing
+        @param memory_length: number of engine models we keep in memory
+        """
         self.bad_words_args = bad_words_args
         if memory_length is None:
             self.models = []
@@ -62,13 +72,12 @@ class MetaSequencialLangageSimilarityCalculator:
         self.info['lookback'] = lookback
         rValue = random.Random()
         rValue.seed(37)
-        for i, (end_date_window, data_windows) in (enumerate(data)):
+        for window_idx, (end_date_window, data_windows) in (enumerate(data)):
             random_state = rValue.randint(1, 14340)
             kwargs["random_state"] = random_state
-            print(f"numero of window: {i} -- random state: {random_state}")
+            print(f"numero of window: {window_idx} -- random state: {random_state}")
             model, window_dictionnary = self.treat_Window(data_windows, **kwargs)
             # for bound window to the right glda model we use no_window
-            window_idx = i
             if update_res:
                 self.updateResults(end_date_window, window_dictionnary, window_idx)
             self.date_window_idx[end_date_window] = window_idx
@@ -179,6 +188,7 @@ class MetaSequencialLangageSimilarityCalculator:
             similarity_score = len(intersection) / len(cluster1)
         return similarity_score, (difference ,  intersection , disappearance)
 
+    @functools.lru_cache(maxsize=3)
     def compare_Windows_Sequentialy(self, first_w=0, last_w=0, ntop=100, back=3, **kwargs):
 
         # we use thi condition to set the numero of the last window because by
@@ -223,7 +233,7 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
         self.semi_filtred_dictionnary.merge_with(window_dictionnary)
         # we filtre bad words from window_dictionnary
         self.updateBadwords()
-        window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
+        window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts , nb_topics=self.nb_topics, **kwargs)
         self.models.append(model)
@@ -318,13 +328,13 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
         super(SupervisedSequantialLangageSimilarityCalculator, self).__init__(**kwargs)
         self.engine = Engine_module.SupervisedEngine
         self.labels_idx = labels_idx
-        self.label_articles_counter = []
+        self.label_articles_counters = []
 
 
     def updateLabelCounter(self , labels):
         window_counter = dict(Counter(labels))
         window_counter = {self.labels_idx.index(k) : v for k , v in window_counter.items()}
-        self.label_articles_counter.append(window_counter)
+        self.label_articles_counters.append(window_counter)
 
 
     @check_size
@@ -338,7 +348,7 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
         self.semi_filtred_dictionnary.merge_with(window_dictionnary)
         # we filtre bad words from window_dictionnary
         self.updateBadwords()
-        window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
+        window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts, labels=labels , nb_topics=self.nb_topics, labels_idx=self.labels_idx, **kwargs)
         self.models.append(model)
@@ -439,7 +449,7 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
         self.semi_filtred_dictionnary.merge_with(window_dictionnary)
         # we filtre bad words from window_dictionnary
         self.updateBadwords()
-        window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
+        window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts,nb_topics=self.nb_topics, seed=self.seed, **kwargs)
         self.models.append(model)
@@ -474,7 +484,7 @@ class LDASequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityC
         self.semi_filtred_dictionnary.merge_with(window_dictionnary)
         # we filtre bad words from window_dictionnary
         self.updateBadwords()
-        window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
+        window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts,nb_topics=self.nb_topics, dictionnary=window_dictionnary_f, **kwargs)
         self.models.append(model)
@@ -498,7 +508,7 @@ class GuidedLDASequentialSimilarityCalculator(GuidedSequantialLangageSimilarityC
         self.semi_filtred_dictionnary.merge_with(window_dictionnary)
         # we filtre bad words from window_dictionnary
         self.updateBadwords()
-        window_dictionnary_f = filterDictionnary(window_dictionnary, bad_words=self.bad_words)
+        window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts,nb_topics=self.nb_topics,seed=self.seed, dictionnary=window_dictionnary_f, **kwargs)
         self.models.append(model)

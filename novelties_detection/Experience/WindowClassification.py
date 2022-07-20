@@ -6,13 +6,19 @@ import pickle
 
 
 class WindowClassifierModel:
+    """
+    use this class to classifie window similarity score rarety.
+    we assume that the similarity_samples have normal distribution
+    so the centile are the way we use to classifie is a windows has
+    significant great similarity score value or not.
+
+    """
 
     inferior_border = 0
     superior_border = 1
 
     def __init__(self, train_similarity_scores: np.ndarray, nb_historic: int = 100, classification_centiles: List = None):
         """
-        we assume that the similarity_samples have normal distribution
 
         @param classification_centiles:
         @param nb_historic: number of sample that we want to keep in the historic of the model
@@ -74,10 +80,6 @@ class WindowClassifierModel:
                 sup_centile = self.classification_centiles[predict_group-1]
                 inf_centile = self.classification_centiles[predict_group-2]
             print(f"value between centile {inf_centile} and centile {sup_centile}")
-
-
-
-
 
 
     def save(self , path):

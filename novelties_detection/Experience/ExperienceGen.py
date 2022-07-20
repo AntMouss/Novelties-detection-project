@@ -20,11 +20,20 @@ logger = logging.getLogger(__name__)
 
 class ExperiencesMetadataGenerator:
 
+    space_length = 3
+
     def __init__(self, thematics : List[Thematic] = None, timeline_size : int = None, nb_experiences : int = 32
-                 , max_size_exp_rel = 0.25 , min_size_exp = 3,cheat : bool = False, boost : int = 0 ,
-                 min_thematic_size : int = 1000):
-        self.boost = boost
-        self.cheat = cheat
+                 , max_size_exp_rel = 0.25 , min_size_exp = 3,min_thematic_size : int = 1000):
+        """
+
+        @param thematics: thematics contain ids article that belong to the thematic
+        @param timeline_size:
+        @param nb_experiences:
+        @param max_size_exp_rel: max size of a experience (thematics injection) . relative number
+        @param min_size_exp:
+        @param min_thematic_size:
+        """
+
         self.nb_experiences = nb_experiences
         self.timeline_size = timeline_size
         self.thematics = thematics
@@ -37,16 +46,15 @@ class ExperiencesMetadataGenerator:
         if self.min_size_exp >= self.max_size_exp_abs or self.min_thematic_size < 2:
             raise MetadataGenerationException("min_size_exp should be superior to 1 and inferior to max_size_exp_abs")
 
-    @staticmethod
-    def verifSide(start, size, total_size, ranges):
+    def verifSide(self , start, size, total_size, ranges):
 
         end = start + size
-        if start < 3 or end > total_size - 3:
+        if start < self.space_length or end > total_size - self.space_length:
             return False
         for range in ranges:
-            if range[0] - 3 < start < range[1] + 3 or range[0] - 3 < end < range[1] + 3:
+            if range[0] - self.space_length < start < range[1] + self.space_length or range[0] - self.space_length < end < range[1] + self.space_length:
                 return False
-            if start -3 < range[0]  < end + 3 and start -3 < range[1] < end + 3:
+            if start -self.space_length < range[0]  < end + self.space_length and start -self.space_length < range[1] < end + self.space_length:
                 return False
         return True
 
@@ -80,14 +88,16 @@ class ExperiencesMetadataGenerator:
                                 ", probably because timeline_size is too small")
             experience['ranges'].sort(key=lambda tup: tup[0])
 
-            experience['cheat'] = self.cheat
-            experience['boost'] = self.boost
-
             yield ExperiencesMetadata(**experience) , thematic
 
 
 
 class ExperiencesGenerator:
+    """
+    use this class to generate 2 differents timeline ,one with thematics injection and another one without
+    then we compute similarity score for each time line and we analyse the similarity score to see if thematics injection
+    have been detected by the calculator
+    """
 
     def __init__(self):
         self.experiences_res = []
@@ -150,8 +160,8 @@ class ExperiencesGenerator:
                 res_wout = calculator_ref.compare_Windows_Sequentialy(**kwargs["generate_result"])
                 similarities_score = (res_w , res_wout)
                 self.new_experience['similarity'] = similarities_score
-                self.new_experience['label_counter_w'] = calculator_with.label_articles_counter
-                self.new_experience['label_counter_ref'] = calculator_ref.label_articles_counter
+                self.new_experience['label_counter_w'] = calculator_with.label_articles_counters
+                self.new_experience['label_counter_ref'] = calculator_ref.label_articles_counters
                 self.experiences_res.append(ExperiencesResult(**self.new_experience))
                 del self.new_experience
                 self.new_experience = {}

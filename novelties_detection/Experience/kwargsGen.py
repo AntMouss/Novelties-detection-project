@@ -79,9 +79,7 @@ class GuidedCoreXCalculatorKwargs(GuidedCalculatorKwargs):
 
 class KwargsExperiences:
     def __init__(self, nb_experiences: int, timeline_size: int, thematics: List[Thematic],
-                 min_thematic_size: int, min_size_exp: int, max_size_exp_rel: int, cheat: bool, boost: int):
-        self.boost = boost
-        self.cheat = cheat
+                 min_thematic_size: int, min_size_exp: int, max_size_exp_rel: int):
         self.max_size_exp_rel = max_size_exp_rel
         self.min_thematic_size = min_thematic_size
         self.min_size_exp = min_size_exp
@@ -197,8 +195,6 @@ class KwargsModelGenerator(MetaKwargsGenerator):
 class KwargsExperiencesGenerator:
     def __new__(cls , timeline_size : int ):
         kwargs_dictionnary = {}
-        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("boost"))
-        kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("cheat"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("max_size_exp_rel"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("min_thematic_size"))
         kwargs_dictionnary.update(KwargsModelGenerator.choose_arg("min_size_exp"))
@@ -289,8 +285,6 @@ KWARGS = {
     "min_thematic_size": [1000,2000],
     "min_size_exp": [i for i in range(2,4)],
     "max_size_exp_rel": [0.1, 0.2, 0.3],
-    "cheat": [False],
-    "boost": [0],
     "start": [START_DATE],
     "end": [END_DATE],
     "path": [DATA_PATH],

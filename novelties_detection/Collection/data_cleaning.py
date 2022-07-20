@@ -1,5 +1,4 @@
 from html2text import HTML2Text
-from bs4 import BeautifulSoup
 import re
 
 
@@ -21,7 +20,6 @@ def extract_text(articlePage, tags, clean = False) -> str:
 
 
 def cleanHTML(page , tags_to_remove):
-
     for tag in tags_to_remove:
         try:
             if "id" in tag.keys():

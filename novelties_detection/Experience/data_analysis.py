@@ -1,6 +1,11 @@
+""""
+the purpose of this module is to see difference between different type of window.
+In particular window that contain emulate topic change and normal window
+The base hypothesis is: this two type of window have a different similarity score mean
+"""
+
 import functools
 from scipy.special import rel_entr
-import numpy as np
 import copy
 from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte
 from scipy.stats import ttest_ind , normaltest , pearsonr
@@ -19,6 +24,9 @@ def check_topic_id(func):
 
 
 class Sampler:
+    """
+    format results data obtain during experience and transform it to being ready to use
+    """
 
     def __init__(self , results : ExperiencesResults ):
 
@@ -74,8 +82,17 @@ class Sampler:
 
 
 class Analyser:
+    """
+    analyse sample data to check hypothesis (normality and mean difference)
+    """
 
     def __init__(self , results : ExperiencesResults , risk = 0.05 , trim = 0):
+        """
+
+        @param results:
+        @param risk: alpha risk to check hypothesis availability
+        @param trim: percent of aberrant sample we can remove for hypothesis checking
+        """
         self.results = results
         self.trim = trim
         self.risk = risk
@@ -86,7 +103,15 @@ class Analyser:
 
     @check_topic_id
     def topic_pvalue_KL_divergence(self , topic_id : int , idx_window1 : int, idx_window2 : int, trim = 0 ):
-
+        """
+        return Kl divergence and pvalue of similarity score mean difference hypothesis between
+        2 types of window for one specific topic.
+        @param topic_id:
+        @param idx_window1:
+        @param idx_window2:
+        @param trim:
+        @return:
+        """
         topic_samples = self.samples[topic_id]
         a = topic_samples[self.types_window[idx_window1]]
         b = topic_samples[self.types_window[idx_window2]]

@@ -496,14 +496,14 @@ class RSSCollect():
 
 
 
-rootOutputFolder="/home/mouss/tmpTest18"
-
-if __name__ == '__main__':
-
-    processor = ProcessorText()
-    RSS_URL_file= "../../tmp_test_obj/rssfeed_news_test.json"
-    rssc = RSSCollect(RSS_URL_file,rootOutputFolder , processor = processor)
-    rssc.treatNewsFeedList(collectFullHtml=True, collectRssImage=False,collectArticleImages=False)
+# rootOutputFolder="/home/mouss/tmpTest18"
+#
+# if __name__ == '__main__':
+#
+#     processor = ProcessorText()
+#     RSS_URL_file= "../../tmp_test_obj/rssfeed_news_test.json"
+#     rssc = RSSCollect(RSS_URL_file,rootOutputFolder , processor = processor)
+#     rssc.treatNewsFeedList(collectFullHtml=True, collectRssImage=False,collectArticleImages=False)
 
 
 

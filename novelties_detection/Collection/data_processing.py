@@ -396,8 +396,16 @@ def exponentialThresholding(nb_docs, limit = 0.5, pente = 100):
 
 
 
-def filterDictionnary(dictionnary, filterStopwords=False, total_filter=False, filterNumber=False, filterSmallWord=False, keep_tokens=None, bad_ids=None, bad_words=None):
+def cleanDictionnary(dictionnary, filterStopwords=False, filterSmallWord=False, bad_ids=None, bad_words=None):
     """
+    clean dictionnary of words that we don't want in the treatment dictionnary
+    @param dictionnary: dictionnary to clean
+    @param filterStopwords: stop words to remove
+    @param filterSmallWord: remove words with length < 3
+    @param bad_ids: remove words by id
+    @param bad_words: remove words by value
+    @return: clean dictionnary
+
 
     """
     dictionnary_output = copy.deepcopy(dictionnary)
@@ -415,21 +423,9 @@ def filterDictionnary(dictionnary, filterStopwords=False, total_filter=False, fi
 
         dictionnary_output.filter_tokens(bad_ids=stop_ids)
 
-    # keep the default argument
-    if total_filter == True:
-        # we filtre frequent and infrequent words
-
-        no_above=1-(0.5 * (dictionnary_output.num_docs / 10000))
-        rel_no_bellow=0.001
-        abs_no_bellow= rel_no_bellow * dictionnary_output.num_docs
-        dictionnary_output.filter_extremes(no_below=abs_no_bellow, no_above=no_above, keep_tokens=keep_tokens)
-
 
     if filterSmallWord:
         small_ids = [dictionnary_output.token2id[word] for word in dictionnary_output.token2id if len(word) < 3]
-        # for word in dictionnary.token2id:
-        #     if len(word)<3:
-        #         idToRmv.append()
         dictionnary_output.filter_tokens(bad_ids=small_ids)
 
 
@@ -574,7 +570,13 @@ def imputeFieldAfterCollect (rootDatabase, configPath,fileName = 'data.json', ht
 
 
 def transformU(articles, processor : ProcessorText = None, process_already_done = True):
-
+    """
+    change format of the articles list to being ready to use
+    @param articles: articles in list of dictionnary format
+    @param processor:
+    @param process_already_done:
+    @return:
+    """
     texts = []
 
     for article in articles:
