@@ -23,7 +23,9 @@ class Data:
 
 
 class Thematic(Data):
-    def __init__(self , name : str , label : str  ,date : datetime , article_ids : List , lifetime : str):
+    def __init__(self , name : str , label : str  ,date : datetime ,
+                 article_ids : List , lifetime : str , window_idx_begin : int = None):
+        self.window_idx_begin = window_idx_begin
         self.lifetime = lifetime
         self.article_ids = article_ids
         self.date = date
@@ -32,6 +34,16 @@ class Thematic(Data):
 
     def __len__(self):
         return len(self.article_ids)
+
+class MacroThematic(Thematic):
+    def __init__(self, name: str, label: str, date: datetime, article_ids: List , timeline_count : List):
+        super().__init__(name, label, date, article_ids, "long")
+        self.timeline_count = timeline_count
+
+
+class MicroThematic(Thematic):
+    def __init__(self, name: str, label: str, date: datetime, article_ids: List):
+        super().__init__(name, label, date, article_ids, "short")
 
 
 class Alerte(Data):
