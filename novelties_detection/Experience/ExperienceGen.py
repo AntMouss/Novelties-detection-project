@@ -1,3 +1,7 @@
+"""
+this module isn't made to be used.
+used to select best macro calculator with MACRO_THEMATICS data and associated window articles dataset that aren't't available on this repo.
+"""
 import logging
 import random
 from typing import List, Tuple

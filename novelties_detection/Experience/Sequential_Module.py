@@ -174,8 +174,8 @@ class MetaSequencialLangageSimilarityCalculator:
                 topWordsTopics_tmp[j] = topWordsTopics_tmp[j].difference(intersection)
         return [{word: topWordsTopics[i][word] for word in topWordsTopics_tmp[i]} for i in range(len(topWordsTopics))]
 
-
-    def compute_similarity(self , cluster1 : Dict , cluster2 : Dict , soft = False):
+    @staticmethod
+    def compute_similarity(cluster1 : Dict , cluster2 : Dict , soft = False):
 
         intersection = set(cluster1).intersection(set(cluster2))
         difference = set(cluster1).difference(set(cluster2))

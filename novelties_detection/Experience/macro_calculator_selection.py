@@ -1,3 +1,7 @@
+"""
+this module isn't made to be used.
+used to select best macro calculator with MACRO_THEMATICS data and associated window articles dataset that aren't available on this repo.
+"""
 from multiprocessing import Pool
 from bisect import bisect_right
 from typing import List
