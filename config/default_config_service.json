@@ -1,0 +1,12 @@
+{
+  "host": "127.0.0.1",
+  "port": 5000,
+  "loop_delay_collect": 20,
+  "loop_delay_process" : 60,
+  "model_path" : "model/model.pck",
+  "kwargs_calculator_path" : "model/Kwargs_calculator_clean.pck",
+  "kwargs_micro_calculator_path" : "model/micro_kwargs_calculator.pck",
+  "rss_feeds_path": "config/RSSfeeds_with_tags.json",
+  "output_path": "/news/RssCollect",
+  "processor_path": "model/processor.pck"
+}

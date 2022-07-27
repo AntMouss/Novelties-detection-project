@@ -1,0 +1,613 @@
+{
+  "global_remove_tags": [
+
+    {
+        "tag": "figure"
+      },
+      {
+        "tag": "blockquote"
+      },
+      {
+        "tag" : "ul"
+      },
+      {"tag" :  "header"},
+      {"tag" :  "div" , "class" :  "infos"},
+      {"tag" :  "div" , "id" :  "IdCol_Sticky"},
+      {"tag" :  "nav"},
+      {"tag" :  "footer"},
+      {"tag" :  "iframe"},
+    {"tag" :  "aside"}
+
+  ],
+
+  "rss_feed_url": [
+    {
+      "url": "https://www.lemonde.fr/police/rss_full.xml",
+      "label": [
+        "crime"
+      ],
+      "remove_tags" : [
+        {"tag":"blockquote"} , {"tag" : "section" ,"class":"catcher"} , {"tag" : "section" ,"class":"author"} , {"tag" : "section" ,"class":"article__reactions"} , {"tag" : "strong"}]
+    },
+    {
+      "url": "https://www.lemonde.fr/justice/rss_full.xml",
+      "label": [
+        "justice"
+      ],
+      "remove_tags" : [ {"tag":"blockquote"} , {"tag" : "section" ,"class":"catcher"} , {"tag" : "section" ,"class":"author"} , {"tag" : "section" ,"class":"article__reactions"} , {"tag" : "strong"}]
+    },
+    {
+      "url": "https://www.lemonde.fr/societe/rss_full.xml",
+      "label": ["general"],
+      "remove_tags" : [ {"tag":"blockquote"} , {"tag" : "section" ,"class":"catcher"} , {"tag" : "section" ,"class":"author"} , {"tag" : "section" ,"class":"article__reactions"} , {"tag" : "strong"}]
+    },
+    {
+      "url": "https://feeds.leparisien.fr/leparisien/rss/faits-divers",
+      "label": [
+        "crime"
+      ],
+      "remove_tags" :  [{"tag" : "div" ,"class" : "grid"},{"tag" : "div" ,"class" : "mb_8_ad"} , {"tag" : "div" ,"class" : "article-read-also_container"},{"tag" : "div" ,"id" : "right_rail"},{"tag" : "div" ,"class" : "comments-wrapper"} , {"tag" : "span"}]
+    },
+    {
+      "url": "https://feeds.leparisien.fr/leparisien/rss",
+      "label": [],
+      "remove_tags" :  [{"tag" : "div" ,"class" : "grid"},{"tag" : "div" ,"class" : "mb_8_ad"} , {"tag" : "div" ,"class" : "article-read-also_container"},{"tag" : "div" ,"id" : "right_rail"},{"tag" : "div" ,"class" : "comments-wrapper"} , {"tag" : "span"}]
+    },
+    {
+      "url": "https://www.economie.gouv.fr/rss/toutesactualites",
+      "label": [
+        "economy"
+      ],
+      "remove_tags" : [
+      {
+        "tag": "p",
+        "class": "article--infos"
+      },
+      {
+        "tag" : "p",
+        "class" : "fond-gris"
+      }
+    ]
+    },
+    {
+      "url": "https://www.challenges.fr/economie/rss.xml",
+      "label": [
+        "economy"
+      ],
+      "remove_tags": [
+      {
+        "tag": "a",
+        "class": "article-reactions"
+      }
+    ]
+    },
+    {
+      "url": "https://www.challenges.fr/politique/rss.xml",
+      "label": [
+        "politique"
+      ],
+      "remove_tags": [
+      {
+        "tag": "a",
+        "class": "article-reactions"
+      }
+    ]
+    },
+    {
+      "url": "https://syndication.lesechos.fr/rss/rss_france.xml",
+      "label": [
+        "economy"
+      ]
+    },
+    {
+      "url": "https://syndication.lesechos.fr/rss/rss_politique_societe.xml",
+      "label": [
+        "politique"
+      ]
+    },
+
+    {
+      "url": "https://www.la-croix.com/RSS/UNIVERS_WECO#_ga\u003d2.147979703.1257174004.1618401902-969245978.1618401902",
+      "label": [
+        "economy"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" : "vertical-social-buttons clearfix" },
+      {"tag" :  "div" , "class" :  "tags"},
+      {"tag" :  "section" , "class" :  "top-articles-right"}
+    ]
+    },
+    {
+      "url": "https://www.la-croix.com/RSS/UNIVERS_WFRA#_ga\u003d2.148626871.1257174004.1618401902-969245978.1618401902",
+      "label": [
+        "general"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" : "vertical-social-buttons clearfix" },
+      {"tag" :  "div" , "class" :  "tags"},
+      {"tag" :  "section" , "class" :  "top-articles-right"}
+    ]
+    },
+    {
+      "url": "https://www.la-croix.com/RSS/France/Politique#_ga\u003d2.81392151.1257174004.1618401902-969245978.1618401902",
+      "label": [
+        "politique"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" : "vertical-social-buttons clearfix" },
+      {"tag" :  "div" , "class" :  "tags"},
+      {"tag" :  "section" , "class" :  "top-articles-right"}
+    ]
+    },
+    {
+      "url": "https://www.la-croix.com/RSS/France/Justice#_ga\u003d2.81392151.1257174004.1618401902-969245978.1618401902",
+      "label": [
+        "justice"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" : "vertical-social-buttons clearfix" },
+      {"tag" :  "div" , "class" :  "tags"},
+      {"tag" :  "section" , "class" :  "top-articles-right"}
+    ]
+    },
+    {
+      "url": "https://www.la-croix.com/RSS/France/Securite#_ga\u003d2.80998935.1257174004.1618401902-969245978.1618401902",
+      "label": [
+        "crime"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" : "vertical-social-buttons clearfix" },
+      {"tag" :  "div" , "class" :  "tags"},
+      {"tag" :  "section" , "class" :  "top-articles-right"}
+    ]
+    },
+    {
+      "url": "https://www.la-croix.com/RSS/UNIVERS_WMON#_ga\u003d2.176864293.1257174004.1618401902-969245978.1618401902",
+      "label": [
+        "general"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" : "vertical-social-buttons clearfix" },
+      {"tag" :  "div" , "class" :  "tags"},
+      {"tag" :  "section" , "class" :  "top-articles-right"}
+    ]
+    },
+    {
+      "url": "https://www.lefigaro.fr/rss/figaro_actualites.xml",
+      "label": [
+        "general"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "fig-premium-mark-article"},
+      {"tag" :  "div" , "class" :  "fig-wrapper"},
+      {"tag" :  "div" , "class": "fig-premium-paywall"},
+      {"tag" :  "p" , "class" :  "fig-body-link"}
+    ]
+    },
+    {
+      "url": "https://www.lefigaro.fr/rss/figaro_politique.xml",
+      "label": [
+        "politique"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "fig-premium-mark-article"},
+      {"tag" :  "div" , "class" :  "fig-wrapper"},
+      {"tag" :  "div" , "class": "fig-premium-paywall"},
+      {"tag" :  "p" , "class" :  "fig-body-link"}
+    ]
+    },
+    {
+      "url": "https://www.lefigaro.fr/rss/figaro_elections.xml",
+      "label": [
+        "politique"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "fig-premium-mark-article"},
+      {"tag" :  "div" , "class" :  "fig-wrapper"},
+      {"tag" :  "div" , "class": "fig-premium-paywall"},
+      {"tag" :  "p" , "class" :  "fig-body-link"}
+    ]
+    },
+    {
+      "url": "https://www.lefigaro.fr/rss/figaro_actualite-france.xml",
+      "label": [
+        "general"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "fig-premium-mark-article"},
+      {"tag" :  "div" , "class" :  "fig-wrapper"},
+      {"tag" :  "div" , "class": "fig-premium-paywall"},
+      {"tag" :  "p" , "class" :  "fig-body-link"}
+    ]
+    },
+    {
+      "url": "https://www.lefigaro.fr/rss/figaro_economie.xml",
+      "label": [
+        "economy"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "fig-premium-mark-article"},
+      {"tag" :  "div" , "class" :  "fig-wrapper"},
+      {"tag" :  "div" , "class": "fig-premium-paywall"},
+      {"tag" :  "p" , "class" :  "fig-body-link"}
+    ]
+    },
+    {
+      "url": "https://www.lefigaro.fr/rss/figaro_medias.xml",
+      "label": [
+        "economy"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "fig-premium-mark-article"},
+      {"tag" :  "div" , "class" :  "fig-wrapper"},
+      {"tag" :  "div" , "class": "fig-premium-paywall"},
+      {"tag" :  "p" , "class" :  "fig-body-link"}
+    ]
+    },
+    {
+      "url": "https://www.lefigaro.fr/rss/figaro_bourse.xml",
+      "label": [
+        "economy"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "fig-premium-mark-article"},
+      {"tag" :  "div" , "class" :  "fig-wrapper"},
+      {"tag" :  "div" , "class": "fig-premium-paywall"},
+      {"tag" :  "p" , "class" :  "fig-body-link"}
+    ]
+    },
+    {
+      "url": "https://www.lefigaro.fr/rss/figaro_emploi.xml",
+      "label": [
+        "economy"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "fig-premium-mark-article"},
+      {"tag" :  "div" , "class" :  "fig-wrapper"},
+      {"tag" :  "div" , "class": "fig-premium-paywall"},
+      {"tag" :  "p" , "class" :  "fig-body-link"}
+    ]
+    },
+    {
+      "url": "https://www.lefigaro.fr/rss/figaro_immobilier.xml",
+      "label": [
+        "economy"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "fig-premium-mark-article"},
+      {"tag" :  "div" , "class" :  "fig-wrapper"},
+      {"tag" :  "div" , "class": "fig-premium-paywall"},
+      {"tag" :  "p" , "class" :  "fig-body-link"}
+    ]
+    },
+    {
+      "url": "https://www.leprogres.fr/france-monde/rss",
+      "label": [
+        "general"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "illustration"},
+      {"tag" :  "div" , "class" :  "infos"}
+    ]
+    },
+    {
+      "url": "https://www.leprogres.fr/faits-divers-justice/rss",
+      "label": [
+        "crime"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "illustration"},
+      {"tag" :  "div" , "class" :  "infos"}
+    ]
+    },
+    {
+      "url": "https://www.leprogres.fr/politique/rss",
+      "label": [
+        "politique"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "illustration"},
+      {"tag" :  "div" , "class" :  "infos"}
+    ]
+    },
+    {
+      "url": "https://www.leprogres.fr/economie/rss",
+      "label": [
+        "economy"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "illustration"},
+      {"tag" :  "div" , "class" :  "infos"}
+    ]
+    },
+    {
+      "url": "https://www.leprogres.fr/rss",
+      "label": [
+        "general"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "illustration"},
+      {"tag" :  "div" , "class" :  "infos"}
+    ]
+    },
+    {
+      "url": "https://www.lavoixdunord.fr/rss.xml",
+      "label": [
+        "general"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "gr-media"},
+      {"tag" :  "div" , "class" :  "gr-content-footer"}
+    ]
+    },
+    {
+      "url": "https://www.ledauphine.com/rss",
+      "label": [
+        "general"
+      ]
+    },
+    {
+      "url": "https://www.ledauphine.com/france-monde/rss",
+      "label": [
+        "general"
+      ]
+    },
+    {
+      "url": "https://www.ledauphine.com/economie/rss",
+      "label": [
+        "economy"
+      ]
+    },
+    {
+      "url": "https://www.ledauphine.com/politique/rss",
+      "label": [
+        "politique"
+      ]
+    },
+    {
+      "url": "https://www.ledauphine.com/Faits-divers-Justice/rss",
+      "label": [
+        "crime"
+      ]
+    },
+    {
+      "url": "https://www.courrier-picard.fr/rss.xml",
+      "label": [
+        "general"
+      ],
+      "remove_tags" : [
+      {"tag" :  "div" , "class" :  "gr-media"},
+      {"tag" :  "div" , "id" :  "logoraRoot"},
+      {"tag" :  "div" , "class" :  "gr-linked-stories"},
+      {"tag" :  "div" , "class" :  "gr-free-tags"}
+    ]
+    },
+    {
+      "url": "https://www.francebleu.fr/rss/provence/rubrique/infos.xml",
+      "label": [
+        "general"
+      ]
+    },
+    {
+      "url": "https://nice.maville.com/flux/rss/actu.php?xtor\u003dRSS-18\u0026c\u003dactu\u0026code\u003dni",
+      "label": [
+        "general"
+      ]
+    },
+    {
+      "url": "https://nice.maville.com/flux/rss/actu.php?xtor\u003dRSS-18\u0026c\u003dloc\u0026code\u003dni",
+      "label": [
+        "general"
+      ]
+    },
+    {
+      "url": "https://www.midilibre.fr/rss.xml",
+      "label": [
+        "general"
+      ],
+      "remove_tags" : [
+      {"tag" :  "div" , "class" :  "article-full__infos"},
+      {"tag" :  "div" , "class" :  "article-full__footer"}
+    ]
+    },
+    {
+      "url": "https://www.lalsace.fr/rss",
+      "label": [
+        "general"
+      ]
+    },
+    {
+      "url": "https://www.lepoint.fr/politique/rss.xml",
+      "label": [
+        "politique"
+      ],
+      "remove_tags" : [
+      {"tag" :  "span" , "class" :  "Signature"}
+    ]
+    },
+    {
+      "url": "https://www.lepoint.fr/economie/rss.xml",
+      "label": [
+        "economy"
+      ],
+      "remove_tags" : [
+      {"tag" :  "span" , "class" :  "Signature"}
+    ]
+    },
+    {
+      "url": "https://www.lepoint.fr/monde/rss.xml",
+      "label": [
+        "general"
+      ],
+      "remove_tags" : [
+      {"tag" :  "span" , "class" :  "Signature"}
+    ]
+    },
+
+    {
+      "url": "https://www.francetvinfo.fr/france.rss",
+      "label": ["general"],
+      "remove_tags" : [
+      {"tag" :  "section" , "class" :  "social-zone"},
+      {"tag" :  "div" , "class" :  "c-signature-wrapper"},
+      {"tag" :  "div" , "class" :  "c-time"}
+    ]
+    },
+    {
+      "url": "https://www.francetvinfo.fr/societe/justice.rss",
+      "label": [
+        "justice"
+      ],
+      "remove_tags" : [
+      {"tag" :  "section" , "class" :  "social-zone"},
+      {"tag" :  "div" , "class" :  "c-signature-wrapper"},
+      {"tag" :  "div" , "class" :  "c-time"}
+    ]
+    },
+    {
+      "url": "https://www.francetvinfo.fr/faits-divers.rss",
+      "label": [
+        "crime"
+      ],
+      "remove_tags" : [
+      {"tag" :  "section" , "class" :  "social-zone"},
+      {"tag" :  "div" , "class" :  "c-signature-wrapper"},
+      {"tag" :  "div" , "class" :  "c-time"}
+    ]
+    },
+    {
+      "url": "https://www.francetvinfo.fr/politique.rss",
+      "label": [
+        "politique"
+      ],
+      "remove_tags" : [
+      {"tag" :  "section" , "class" :  "social-zone"},
+      {"tag" :  "div" , "class" :  "c-signature-wrapper"},
+      {"tag" :  "div" , "class" :  "c-time"}
+    ]
+    },
+    {
+      "url": "http://www.20minutes.fr/rss/actu-france.xml",
+      "label": [
+        "general"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "sharebar"}
+    ]
+    },
+    {
+      "url": "https://www.20minutes.fr/feeds/rss-une.xml",
+      "label": [
+        "general"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "sharebar"}]
+    },
+    {
+      "url": "https://www.egaliteetreconciliation.fr/spip.php?page\u003dbackend",
+      "label": [
+        "politique"
+      ]
+    },
+    {
+      "url": "https://fl24.net/feed/",
+      "label": [
+        "general"
+      ]
+    },
+    {
+      "url": "https://lecourrier-du-soir.com/feed/",
+      "label": [
+        "general"
+      ]
+    },
+    {
+      "url": "https://www.francesoir.fr/rss.xml",
+      "label": [
+        "general"
+      ]
+    },
+    {
+      "url": "https://lesmoutonsrebelles.com/feed/",
+      "label": [
+        "general"
+      ]
+    },
+    {
+      "url": "https://www.fdesouche.com/feed/",
+      "label": [
+        "politique"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "entry-header"},
+      {"tag" :  "a"}
+    ]
+    },
+    {
+      "url": "https://www.fdesouche.com/category/securite/feed/",
+      "label": [
+        "crime"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "entry-header"},
+      {"tag" :  "a"}
+    ]
+    },
+    {
+      "url": "https://www.fdesouche.com/category/politique/feed/",
+      "label": [
+        "politique"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "entry-header"},
+      {"tag" :  "a"}
+    ]
+    },
+    {
+      "url": "https://www.fdesouche.com/category/economie/feed/",
+      "label": [
+        "economy"
+      ],
+      "remove_tags": [
+      {"tag" :  "div" , "class" :  "entry-header"},
+      {"tag" :  "a"}
+    ]
+    },
+    {
+      "url": "https://fl24.net/category/insecurite/feed/",
+      "label": [
+        "crime"
+      ]
+    },
+    {
+      "url": "https://fl24.net/category/justice/feed/",
+      "label": [
+        "justice"
+      ]
+    },
+    {
+      "url": "https://www.medias-presse.info/category/politique/feed/",
+      "label": [
+        "politique"
+      ]
+    },
+    {
+      "url": "https://www.medias-presse.info/category/international/feed/",
+      "label": [
+        "general"
+      ]
+    },
+    {
+      "url": "https://www.medias-presse.info/category/societe/feed/",
+      "label": [
+        "general"
+      ]
+    },
+    {
+      "url": "https://news.konbini.com/feed",
+      "label": [
+        "general"
+      ]
+    }
+  ]
+}
