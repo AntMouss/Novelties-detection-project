@@ -144,7 +144,7 @@ class ArticlesDataset:
 
 class TimeLineArticlesDataset(ArticlesDataset):
 
-    def __init__(self, delta = 1 , lookback = 100  , processor : ProcessorText = None , transform_fct: callable = transformS , **kwargs):
+    def __init__(self, delta = 1 , lookback = 0  , processor : ProcessorText = None , transform_fct: callable = None , **kwargs):
         """
 
         @param delta: duration of each window
@@ -190,7 +190,10 @@ class TimeLineArticlesDataset(ArticlesDataset):
                 self.window_idx += 1
                 ref_date_tmsp = ref_date_tmsp + self.delta
                 window_articles += (self.lookback_articles)
-                yield  ref_date_tmsp , self.transform(window_articles , processor=self.processor)
+                if self.transform is None:
+                    yield ref_date_tmsp, window_articles
+                else:
+                    yield ref_date_tmsp, self.transform(window_articles, processor=self.processor)
                 self.update_lookback_articles(window_articles)
                 del window_articles
                 window_articles = []
@@ -198,8 +201,10 @@ class TimeLineArticlesDataset(ArticlesDataset):
                 window_articles.append(article)
             else:
                 continue
-        yield ref_date_tmsp , self.transform(window_articles , processor=self.processor)
-
+        if self.transform is None:
+            yield ref_date_tmsp , window_articles
+        else:
+            yield ref_date_tmsp, self.transform(window_articles, processor=self.processor)
 
 # i decide to make checkout for update_lookback fuction because
 # it's not fair to remove thematic article of the look_back_articles (it's a methodology bias)
