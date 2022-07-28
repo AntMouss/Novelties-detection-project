@@ -4,7 +4,7 @@ from typing import List, Tuple
 import math
 import ijson
 import numpy as np
-from novelties_detection.Collection.data_processing import ProcessorText , transformS
+from novelties_detection.Collection.data_processing import ProcessorText
 import pandas as pd
 
 
@@ -36,9 +36,26 @@ class Thematic(Data):
         return len(self.article_ids)
 
 class MacroThematic(Thematic):
-    def __init__(self, name: str, label: str, date: datetime, article_ids: List , timeline_count : List):
+    def __init__(self, name: str, label: str, date: datetime, article_ids: List, thematic_relative_count : List = None,
+                 threshold : float = 0 ):
+        """
+
+
+        @param thematic_relative_count: percent of thematic articles belongs to the thematic in the window
+        @param threshold: threshold that define if a window is injectable or not
+        injectable means that we can inject this thematics at this window idx during the experience processs.
+        """
         super().__init__(name, label, date, article_ids, "long")
-        self.timeline_count = timeline_count
+        self.threshold = threshold
+        self.thematic_relative_count = thematic_relative_count
+
+    @property
+    def good_windows(self):
+        return [window_idx for window_idx ,  percent in enumerate(self.thematic_relative_count) if percent > self.threshold]
+
+    def set_threshold(self , threshold):
+        self.threshold = threshold
+
 
 
 class MicroThematic(Thematic):
@@ -144,6 +161,7 @@ class ArticlesDataset:
 
 class TimeLineArticlesDataset(ArticlesDataset):
 
+
     def __init__(self, delta = 1 , lookback = 0  , processor : ProcessorText = None , transform_fct: callable = None , **kwargs):
         """
 
@@ -161,6 +179,7 @@ class TimeLineArticlesDataset(ArticlesDataset):
         self.window_idx = 0
         self.label_articles_counter = []
 
+
     def __len__(self):
 
         return math.ceil((self.end_date - self.start_date)/self.delta)
@@ -168,10 +187,15 @@ class TimeLineArticlesDataset(ArticlesDataset):
 
     def update_lookback_articles(self, window_articles):
         #transform relative look_back to absolute look_back
-        if self.lookback < 1:
+        if self.lookback< 0:
+            raise Exception("lookback need to be superior to 0")
+        elif self.lookback < 1:
             self.lookback = math.ceil(self.lookback * len(window_articles))
+
         if self.lookback > len(window_articles):
             self.lookback_articles = self.lookback_articles[(self.lookback - len(window_articles)):] + window_articles
+        elif self.lookback == 0:
+            self.lookback_articles = []
         else:
             self.lookback_articles = window_articles[-self.lookback:]
 
@@ -184,7 +208,7 @@ class TimeLineArticlesDataset(ArticlesDataset):
         for i , article in enumerate(self.articles):
             if article['timeStamp'] < self.start_date:
                  continue
-            if article['timeStamp'] > self.end_date:
+            elif article['timeStamp'] > self.end_date:
                 break
             while article['timeStamp'] >= ref_date_tmsp + self.delta :
                 self.window_idx += 1
@@ -220,11 +244,32 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
         self._ids_to_remove = ids_to_remove
 
 
+    def update_lookback_articles(self, window_articles):
+        #transform relative look_back to absolute look_back
+        if self.lookback< 0:
+            raise Exception("lookback need to be superior to 0")
+        elif self.lookback < 1:
+            self.lookback = math.ceil(self.lookback * len(window_articles))
+
+        if self.lookback > len(window_articles):
+            self.lookback_articles = self.lookback_articles[(self.lookback - len(window_articles)):] + window_articles
+        elif self.lookback == 0:
+            self.lookback_articles = []
+        else:
+            self.lookback_articles = window_articles[-self.lookback:]
+        #check if we are at the left boundaries to remove thematics articles from the lookback_articles
+        for range in self.metadata.ranges:
+            if self.window_idx == range[1] - 1:
+                self.clean_lookback_articles()
+
+
     def verif(self , article):
 
         if ProcessorText.detectLanguage(article['title']) != self.lang:
             return False
         elif not self.between_boundaries()  and article['id'] in self._ids_to_remove:
+            # remove id for optimization
+            self._ids_to_remove.remove(article["id"])
             return False
         else:
             return True
@@ -236,8 +281,13 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
                 return True
         return False
 
-
-
+    def clean_lookback_articles(self):
+        for article in self.lookback_articles:
+            if article["id"] in self._ids_to_remove:
+                self.lookback_articles.remove(article)
+                # for optimization we remove the id to the _ids_to_remove
+                # list because we will not met this article anymore
+                self._ids_to_remove.remove(article["id"])
 
 class WordsCounter:
 
@@ -288,3 +338,4 @@ class LabelsDictionnary:
                 if word not in self.index[label].keys():
                     self.index[label][word] = 0
                 self.index[label][word] += 1
+
