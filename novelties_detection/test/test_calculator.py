@@ -14,7 +14,7 @@ from novelties_detection.Experience.Sequential_Module import (
 )
 from novelties_detection.Experience.data_utils import TimeLineArticlesDataset
 from novelties_detection.Experience.kwargsGen import (
-    FullKwargsGenerator,
+    RandomFullProcessKwargsGenerator,
     GuidedLDACalculatorKwargs,
     GuidedCoreXCalculatorKwargs,
     LFIDFCalculatorKwargs,
@@ -56,7 +56,7 @@ with open("/home/mouss/PycharmProjects/novelties-detection-git/tmp_test_obj/data
 
 @pytest.mark.parametrize([])
 def test_kwargs_generator():
-    full_kwargs = FullKwargsGenerator()
+    full_kwargs = RandomFullProcessKwargsGenerator()
     assert type(full_kwargs) == dict
 
 
@@ -64,7 +64,7 @@ def test_kwargs_generator():
 @pytest.mark.parametrize(kwargs_calculator_generators)
 def test_sequential_calculators_treat_window(kwargs_calculator_type):
     topn = 100
-    full_kwargs = FullKwargsGenerator(kwargs_calculator_type)
+    full_kwargs = RandomFullProcessKwargsGenerator(kwargs_calculator_type)
     assert type(full_kwargs) == dict
     calculator_type = full_kwargs['initialize_engine']['calculator_type']
     training_args = full_kwargs['initialize_engine']['training_args']

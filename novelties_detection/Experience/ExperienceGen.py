@@ -4,10 +4,10 @@ used to select best macro calculator with MACRO_THEMATICS data and associated wi
 """
 import logging
 import random
-from typing import List, Tuple
+from typing import List, Tuple, Type
 from novelties_detection.Experience.data_utils import (TimeLineArticlesDataset,
                         EditedTimeLineArticlesDataset,
-                        Thematic,
+                        MacroThematic,
                         ExperiencesMetadata,
                         ExperiencesResults,
                         ExperiencesResult)
@@ -26,8 +26,8 @@ class ExperiencesMetadataGenerator:
 
     space_length = 3
 
-    def __init__(self, thematics : List[Thematic] = None, timeline_size : int = None, nb_experiences : int = 32
-                 , max_size_exp_rel = 0.25 , min_size_exp = 3,min_thematic_size : int = 1000):
+    def __init__(self, thematics : List[MacroThematic], timeline_size : int , random_seed_gen : random.Random , nb_experiences : int = 32
+                 , max_size_exp_rel = 0.25 , min_size_exp = 3,min_thematic_size : int = 1000 ):
         """
 
         @param thematics: thematics contain ids article that belong to the thematic
@@ -38,6 +38,7 @@ class ExperiencesMetadataGenerator:
         @param min_thematic_size:
         """
 
+        self.random_seed_gen = random_seed_gen
         self.nb_experiences = nb_experiences
         self.timeline_size = timeline_size
         self.thematics = thematics
@@ -50,20 +51,21 @@ class ExperiencesMetadataGenerator:
         if self.min_size_exp >= self.max_size_exp_abs or self.min_thematic_size < 2:
             raise MetadataGenerationException("min_size_exp should be superior to 1 and inferior to max_size_exp_abs")
 
-    def verifSide(self , start, size, total_size, ranges):
+    def verifSide(self, start_idx : int, end_idx:  int, total_size : int, ranges : list):
 
-        end = start + size
-        if start < self.space_length or end > total_size - self.space_length:
+        if start_idx < self.space_length or end_idx > total_size - self.space_length:
             return False
         for range in ranges:
-            if range[0] - self.space_length < start < range[1] + self.space_length or range[0] - self.space_length < end < range[1] + self.space_length:
+            if range[0] - self.space_length < start_idx < range[1] + self.space_length or range[0] - self.space_length < end_idx < range[1] + self.space_length:
                 return False
-            if start -self.space_length < range[0]  < end + self.space_length and start -self.space_length < range[1] < end + self.space_length:
+            if start_idx -self.space_length < range[0]  < end_idx + self.space_length and start_idx -self.space_length < range[1] < end_idx + self.space_length:
                 return False
         return True
 
     def __iter__(self):
 
+        random_state = self.random_seed_gen.randint(1, 14340)
+        random.seed(random_state)
         thematics_name = [(i , thematic.name) for i , thematic in enumerate(self.thematics) if
                                 len(thematic.article_ids) > self.min_thematic_size]
         count = 0
@@ -75,11 +77,16 @@ class ExperiencesMetadataGenerator:
             experience['ranges'] = []
             fail = 0
             while count < self.nb_experiences and fail < 15:
-                size = random.randrange(self.min_size_exp, self.max_size_exp_abs)
-                window_start = random.randrange(self.timeline_size)
-                ver = ExperiencesMetadataGenerator.verifSide(window_start, size, self.timeline_size, experience['ranges'])
+                window_start = random.choice(thematic.good_windows)
+                idx_good_window_start = thematic.good_windows.index(window_start)
+                try:
+                    range_set = self.get_range_set(thematic.good_windows , idx_good_window_start)
+                except IndexError:
+                    continue
+                window_end = random.choice(range_set)
+                ver = self.verifSide(window_start, window_end, self.timeline_size, experience['ranges'])
                 if ver:
-                    experience['ranges'].append((window_start, window_start + size))
+                    experience['ranges'].append((window_start, window_end))
                     count += 1
                     print(f"count : {count}")
                     fail = 0
@@ -94,6 +101,22 @@ class ExperiencesMetadataGenerator:
 
             yield ExperiencesMetadata(**experience) , thematic
 
+    def get_range_set(self, good_windows : list, idx_good_window_start : int):
+        """
+        function to get the idx of the range element that respect the max and min size experience condition that we
+        stare. after we can choose randomly the good window idx of the experience end.
+        @param good_windows: list of good windows idx for the current thematic we choose
+        @param idx_good_window_start: window idx that correspond to the begin of the experience (the first window which we inject thematic articles)
+        @return: list of good window idx
+        """
+        first_range_element_idx = idx_good_window_start
+        while good_windows[first_range_element_idx] - good_windows[idx_good_window_start ] < self.min_size_exp:
+            first_range_element_idx += 1
+        last_range_element_idx = first_range_element_idx
+        while good_windows[last_range_element_idx] - good_windows[idx_good_window_start ] < self.max_size_exp_abs:
+            last_range_element_idx += 1
+        return good_windows[first_range_element_idx:last_range_element_idx]
+
 
 
 class ExperiencesGenerator:
@@ -103,24 +126,24 @@ class ExperiencesGenerator:
     have been detected by the calculator
     """
 
-    def __init__(self):
+    def __init__(self , dataset : TimeLineArticlesDataset = None):
         self.experiences_res = []
         self.new_experience = {}
         self.info = {}
-        self.reference_timeline = None
+        self.reference_timeline = dataset
         self.reference_calculator = None
-        self.calculator_type = None
-        self.training_args = None
 
 
-    def generate_timelines(self , **kwargs) -> Tuple[TimeLineArticlesDataset]:
+    def generate_timelines(self , dataset_args : dict , experience_args) -> Tuple[TimeLineArticlesDataset]:
         try:
-            for metadata , thematic in ExperiencesMetadataGenerator(**kwargs['experience']):
+            rValue = random.Random()
+            rValue.seed(37)
+            for metadata , thematic in ExperiencesMetadataGenerator(**experience_args , random_seed_gen=rValue):
 
                 self.new_experience["metadata"] = metadata
                 if self.reference_timeline is None:
-                    self.reference_timeline = TimeLineArticlesDataset(**kwargs["initialize_dataset"])
-                timelinew = EditedTimeLineArticlesDataset(thematic=thematic , metadata=metadata , **kwargs["initialize_dataset"])
+                    self.reference_timeline = TimeLineArticlesDataset(**dataset_args)
+                timelinew = EditedTimeLineArticlesDataset(thematic=thematic , metadata=metadata , **dataset_args)
                 yield self.reference_timeline , timelinew
 
         except Exception as e:
@@ -128,26 +151,24 @@ class ExperiencesGenerator:
             raise TimelinesGenerationException("Exception occurred in Timeline Generation" , e)
 
 
-    def generate_calculator(self, **kwargs) -> Tuple[MetaSequencialLangageSimilarityCalculator]:
+    def generate_calculator(self, nb_topics : int, calculator_type : Type[MetaSequencialLangageSimilarityCalculator]
+                            , training_args : dict, experiences_args : dict, dataset_args : dict, **kwargs) -> Tuple[MetaSequencialLangageSimilarityCalculator]:
 
         try:
-            self.info["nb_topics"] = kwargs['initialize_engine']['nb_topics']
-            self.calculator_type = kwargs['initialize_engine']['calculator_type']
-            if issubclass(type(self.calculator_type), NoSupervisedSequantialLangageSimilarityCalculator):
+            self.info["nb_topics"] = nb_topics
+            lookback = dataset_args["lookback"]
+            if issubclass(type(calculator_type), NoSupervisedSequantialLangageSimilarityCalculator):
                 self.info["mode"] = "u"
             else:
                 self.info["mode"] = "s"
-            self.training_args = kwargs['initialize_engine']['training_args']
-            del kwargs['initialize_engine']['calculator_type']
-            del kwargs['initialize_engine']['training_args']
-            for reference_timeline , timeline_w in self.generate_timelines(**kwargs):
-                sequential_calculator = self.calculator_type
+            for reference_timeline , timeline_w in self.generate_timelines(**dataset_args , **experiences_args):
+                sequential_calculator = calculator_type
                 if self.reference_calculator is None:
-                    self.reference_calculator = sequential_calculator(**kwargs['initialize_engine'])
-                    self.reference_calculator.add_windows(reference_timeline, kwargs["initialize_dataset"]['lookback'],
-                                                          **self.training_args)
-                sq_calculator_w = sequential_calculator(**kwargs["initialize_engine"])
-                sq_calculator_w.add_windows(timeline_w , kwargs["initialize_dataset"]['lookback'] , **self.training_args)
+                    self.reference_calculator = sequential_calculator(nb_topics , **kwargs)
+                    self.reference_calculator.add_windows(reference_timeline, lookback,
+                                                          **training_args)
+                sq_calculator_w = sequential_calculator(nb_topics , **kwargs)
+                sq_calculator_w.add_windows(timeline_w , lookback , **training_args)
                 yield self.reference_calculator , sq_calculator_w
 
         except Exception as e:
@@ -155,13 +176,13 @@ class ExperiencesGenerator:
             raise CalculatorGenerationException("Exception occurred in Calculator Generation")
 
 
-    def generate_results(self , **kwargs):
+    def generate_results(self , first : int , last : int , ntop : int , back : int , calculator_kwargs : dict, **kwargs):
 
         try:
             # delete topic_id key for use compareTopicsSequentialy that is like compareTopicSequentialy for all topics
-            for calculator_ref , calculator_with in self.generate_calculator(**kwargs):
-                res_w = calculator_with.compare_Windows_Sequentialy(**kwargs["generate_result"])
-                res_wout = calculator_ref.compare_Windows_Sequentialy(**kwargs["generate_result"])
+            for calculator_ref , calculator_with in self.generate_calculator(**calculator_kwargs):
+                res_w = calculator_with.compare_Windows_Sequentialy(first , last , ntop , back , **kwargs)
+                res_wout = calculator_ref.compare_Windows_Sequentialy(first , last , ntop , back , **kwargs)
                 similarities_score = (res_w , res_wout)
                 self.new_experience['similarity'] = similarities_score
                 self.new_experience['label_counter_w'] = calculator_with.label_articles_counters
