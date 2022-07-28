@@ -5,10 +5,10 @@ used to select best macro calculator with MACRO_THEMATICS data and associated wi
 from multiprocessing import Pool
 from bisect import bisect_right
 from typing import List
-from novelties_detection.Experience.kwargsGen import KwargsGenerator
+from novelties_detection.Experience.kwargsGen import RandomKwargsGenerator , FullKwargs
 from novelties_detection.Experience.ExperienceGen import ExperiencesGenerator
 from novelties_detection.Experience.config_arguments import LOG_PATH
-from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte
+from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte , TimeLineArticlesDataset
 import pickle
 import logging
 from threading import Lock
@@ -25,7 +25,7 @@ SAVE_PATH = SAVE_CALCULATOR_KWARGS_PATH
 NB_CALCULATORS = 15
 
 
-class MacroCalculatorSelector:
+class RandomMacroCalculatorSelector:
     """
     Select macro calculator with random kwargs parameters and choose the best according to many criteria
     """
@@ -56,18 +56,20 @@ class MacroCalculatorSelector:
         self.best_calculators[bisect_idx - 1] = {"id" : calculator_id , "score" : calculator_KL_score}
 
 
-    def process(self,kwargs):
+    def process(self, full_kwargs : FullKwargs):
 
-        calculator_id = id(kwargs)
-        experienceGenerator = ExperiencesGenerator()
+        calculator_id = id(full_kwargs)
+        kwargs_dataset = full_kwargs["dataset"]
+        dataset = TimeLineArticlesDataset(**kwargs_dataset)
+        experienceGenerator = ExperiencesGenerator(dataset)
         try:
-            experienceGenerator.generate_results(**kwargs)
+            experienceGenerator.generate_results(**full_kwargs["results_args"])
             experiences_results = ExperiencesResults(experienceGenerator.experiences_res , experienceGenerator.info)
-            alerts = ExperiencesGenerator.analyse_results(experiences_results , **kwargs["analyse"])
+            alerts = ExperiencesGenerator.analyse_results(experiences_results, **full_kwargs["analyse"])
             KL_score = self.compute_calculator_score(alerts)
             self.update_best_calculator(calculator_id , KL_score)
             l.acquire()
-            self.save(calculator_id , kwargs , alerts)
+            self.save(calculator_id, full_kwargs, alerts)
             l.release()
             if len(alerts) != 0:
                 logger.info(f"Hypothesis confirmed for process id : {calculator_id}")
@@ -80,13 +82,16 @@ class MacroCalculatorSelector:
 
 
     def run(self , nb_calculators):
-        kwargs_generator = KwargsGenerator(nb_calculators)
+        kwargs_generator = RandomKwargsGenerator(nb_calculators)
         with Pool(3) as p:
             p.map(self.process, kwargs_generator)
 
 
+
+
+
 if __name__ == '__main__':
-    selector = MacroCalculatorSelector(
+    selector = RandomMacroCalculatorSelector(
         nb_best_calculators=NB_BEST_CALCULATORS ,
         save_path=SAVE_PATH
     )

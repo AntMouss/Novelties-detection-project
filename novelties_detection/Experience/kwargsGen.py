@@ -131,9 +131,42 @@ class KwargsAnalyse:
         self.trim = trim
         self.risk = risk
 
+class FullKwargs:
+    def __init__(self , kwargs_dataset : KwargsDataset , kwargs_experiences : KwargsExperiences ,
+                 kwargs_engine : MetaCalculatorKwargs , kwargs_result : KwargsResults ,
+                 kwargs_analyse : KwargsAnalyse):
+        self.kwargs_analyse = kwargs_analyse
+        self.kwargs_result = kwargs_result
+        self.kwargs_engine = kwargs_engine
+        self.kwargs_experiences = kwargs_experiences
+        self.kwargs_dataset = kwargs_dataset
+
+    def __getitem__(self, item):
+
+        kwargs = {}
+        if item == 'results_args':
+            kwargs.update(self.kwargs_result.__dict__)
+            kwargs.update({"calculator_args" : self["calculator_args"]})
+            return kwargs
+        elif item == "calculator_args":
+            kwargs.update(self.kwargs_engine.__dict__)
+            kwargs.update({
+                "dataset_args" : self["dataset_args"],
+                "experiences_args" : self["experiences_args"]
+            })
+        elif item == "dataset_args":
+            kwargs.update(self.kwargs_dataset.__dict__)
+        elif item == "experiences_args" :
+            kwargs.update(self.kwargs_experiences.__dict__)
+        elif item == "analyse_args":
+            kwargs.update(self.kwargs_analyse.__dict__)
+        else:
+            raise KeyError(f"{item}")
 
 
-class MetaKwargsGenerator:
+
+
+class RandomMetaKwargsGenerator:
 
     @staticmethod
     def choose_arg(kwarg , key_name = None):
@@ -142,36 +175,36 @@ class MetaKwargsGenerator:
         else:
             return {key_name: random.choice(KWARGS[kwarg])}
 
-class KwargsBadWordsGenerator:
+class RandomKwargsBadWordsGenerator:
     def __new__(cls):
         kwargs_dictionnary = {}
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("nb_topics"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("thresholding_fct_above"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("thresholding_fct_bellow"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_kwargs_thresholding(
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("nb_topics"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("thresholding_fct_above"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("thresholding_fct_bellow"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_kwargs_thresholding(
             [kwargs_dictionnary["thresholding_fct_above"], kwargs_dictionnary["thresholding_fct_bellow"]]))
         return UpdateBadWordsKwargs(**kwargs_dictionnary)
 
-class KwargsCalculatorGenerator(MetaKwargsGenerator):
+class RandomKwargsCalculatorGenerator(RandomMetaKwargsGenerator):
 
     def __new__(cls , kwargs_calculator_type : Type[MetaCalculatorKwargs]):
         kwargs_dictionnary = {}
-        kwargs_dictionnary["bad_words_args"] = KwargsBadWordsGenerator()
+        kwargs_dictionnary["bad_words_args"] = RandomKwargsBadWordsGenerator()
         if kwargs_calculator_type.__name__ == 'GuidedLDACalculatorKwargs':
-            kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("overrate"))
-            kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("passes"))
-            kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("seed"))
-            kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("labels_idx"))
+            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("overrate"))
+            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("passes"))
+            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("seed"))
+            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("labels_idx"))
         elif kwargs_calculator_type.__name__ == 'GuidedCoreXCalculatorKwargs':
-            kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("anchor_strength"))
-            kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("seed"))
-            kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("labels_idx"))
+            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("anchor_strength"))
+            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("seed"))
+            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("labels_idx"))
         elif kwargs_calculator_type.__name__ == 'LFIDFCalculatorKwargs':
-            kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("labels_idx"))
+            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("labels_idx"))
         elif kwargs_calculator_type.__name__ == 'CoreXCalculatorKwargs':
             pass
         elif kwargs_calculator_type.__name__ == 'LDACalculatorKwargs':
-            kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("passes"))
+            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("passes"))
             pass
         return kwargs_calculator_type(**kwargs_dictionnary)
 
@@ -184,95 +217,94 @@ class KwargsCalculatorGenerator(MetaKwargsGenerator):
         #begin with kwargs_above geneneration
         if fcts[0] == absoluteThresholding:
             kwargs_thresholding["kwargs_above"].update(
-                KwargsCalculatorGenerator.choose_arg("absolute_value_above", "absolute_value"))
+                RandomKwargsCalculatorGenerator.choose_arg("absolute_value_above", "absolute_value"))
         elif fcts[0] == linearThresholding:
             kwargs_thresholding["kwargs_above"].update(
-                KwargsCalculatorGenerator.choose_arg("relative_value_above", "relative_value"))
+                RandomKwargsCalculatorGenerator.choose_arg("relative_value_above", "relative_value"))
         elif fcts[0] == exponentialThresholding:
             kwargs_thresholding["kwargs_above"].update(
-                KwargsCalculatorGenerator.choose_arg("limit"))
+                RandomKwargsCalculatorGenerator.choose_arg("limit"))
             kwargs_thresholding["kwargs_above"].update(
-                KwargsCalculatorGenerator.choose_arg("pente"))
+                RandomKwargsCalculatorGenerator.choose_arg("pente"))
         if fcts[1] == absoluteThresholding:
             kwargs_thresholding["kwargs_bellow"].update(
-                KwargsCalculatorGenerator.choose_arg("absolute_value_bellow", "absolute_value"))
+                RandomKwargsCalculatorGenerator.choose_arg("absolute_value_bellow", "absolute_value"))
         elif fcts[1] == linearThresholding:
             kwargs_thresholding["kwargs_bellow"].update(
-                KwargsCalculatorGenerator.choose_arg("relative_value_bellow", "relative_value"))
+                RandomKwargsCalculatorGenerator.choose_arg("relative_value_bellow", "relative_value"))
         return kwargs_thresholding
 
 
 
 
-class KwargsExperiencesGenerator:
+class RandomKwargsExperiencesGenerator:
     def __new__(cls , timeline_size : int ):
         kwargs_dictionnary = {}
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("max_size_exp_rel"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("min_thematic_size"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("min_size_exp"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("thematics"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("max_size_exp_rel"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("min_thematic_size"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("min_size_exp"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("thematics"))
         kwargs_dictionnary["timeline_size"] = timeline_size
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("nb_experiences"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("nb_experiences"))
         return KwargsExperiences(**kwargs_dictionnary)
 
 
-class KwargsDatasetGenerator:
+class RandomKwargsDatasetGenerator:
     def __new__(cls):
         kwargs_dictionnary = {}
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("processor"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("delta"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("lookback"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("path"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("end"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("start"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("processor"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("delta"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("lookback"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("path"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("end"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("start"))
         return KwargsDataset(**kwargs_dictionnary)
 
 
-class KwargsResultsGenerator:
+class RandomKwargsResultsGenerator:
     def __new__(cls, mode : str = "u"):
         kwargs_dictionnary = {}
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("remove_seed_words"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("last_w"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("first_w"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("ntop"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("back"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("remove_seed_words"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("last_w"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("first_w"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("ntop"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("back"))
         if mode == "s":
             return KwargsResults(**kwargs_dictionnary)
         else:
-            kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("reproduction_threshold"))
+            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("reproduction_threshold"))
             return KwargsNoSupervisedResults(**kwargs_dictionnary)
 
 
-class KwargsAnalyseGenerator:
+class RandomKwargsAnalyseGenerator:
     def __new__(cls):
         kwargs_dictionnary = {}
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("risk"))
-        kwargs_dictionnary.update(KwargsCalculatorGenerator.choose_arg("trim"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("risk"))
+        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("trim"))
         return KwargsAnalyse(**kwargs_dictionnary)
 
 
 
-class FullKwargsGenerator:
+class RandomFullProcessKwargsGenerator:
 
     def __new__(cls , kwargs_calculator_type : Type[MetaCalculatorKwargs] = None):
         if kwargs_calculator_type is None:
             kwargs_calculator_type = random.choice(KWARGS["kwargs_calculator_type"])
-        full_kwargs = {}
-        full_kwargs["initialize_dataset"] = KwargsDatasetGenerator().__dict__
-        end_date = full_kwargs["initialize_dataset"]["end"]
-        start_date = full_kwargs["initialize_dataset"]["start"]
-        delta = full_kwargs["initialize_dataset"]["delta"]
+        kwargs_dataset = RandomKwargsDatasetGenerator()
+        end_date = kwargs_dataset.end
+        start_date = kwargs_dataset.start
+        delta = kwargs_dataset.delta
         timeline_size = math.ceil(( end_date- start_date) / (delta*3600))
-        full_kwargs["experience"] = KwargsExperiencesGenerator(timeline_size).__dict__
-        full_kwargs["initialize_engine"] = KwargsCalculatorGenerator(kwargs_calculator_type).__dict__
+        kwargs_experience = RandomKwargsExperiencesGenerator(timeline_size)
+        kwargs_engine = RandomKwargsCalculatorGenerator(kwargs_calculator_type)
         if issubclass(kwargs_calculator_type , SupervisedCalculatorKwargs):
-            full_kwargs["generate_result"] = KwargsResultsGenerator(mode='s').__dict__
+            kwargs_result = RandomKwargsResultsGenerator(mode='s')
         else:
-            full_kwargs["generate_result"] = KwargsResultsGenerator(mode='u').__dict__
-        full_kwargs["analyse"] = KwargsAnalyseGenerator().__dict__
-        return full_kwargs
+            kwargs_result = RandomKwargsResultsGenerator(mode='u')
+        kwarg_analyse = RandomKwargsAnalyseGenerator()
+        return FullKwargs(kwargs_dataset , kwargs_experience , kwargs_engine , kwargs_result , kwarg_analyse)
 
-class KwargsGenerator:
+class RandomKwargsGenerator:
     def __init__(self , n : int):
         self.n = n
 
@@ -281,7 +313,7 @@ class KwargsGenerator:
 
     def __iter__(self):
         for i in range(self.n):
-            yield FullKwargsGenerator()
+            yield RandomFullProcessKwargsGenerator()
 
 
 KWARGS = {

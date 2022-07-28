@@ -3,7 +3,7 @@ this module isn't made to be used.
 used to select best micro calculator with MICRO_THEMATICS data that isn't available on this repo.
 """
 import copy
-from novelties_detection.Experience.config_arguments import MICRO_THEMATICS
+#from novelties_detection.Experience.config_arguments import MICRO_THEMATICS
 from novelties_detection.Experience.data_utils import MicroThematic
 from novelties_detection.Experience.Sequential_Module import (
 MetaSequencialLangageSimilarityCalculator,
@@ -103,8 +103,8 @@ class MicroCalculatorSelector:
 if __name__ == '__main__':
 
     micro_calculator_generator = MicroCalculatorGenerator(15 , kwargs_micro_calculators)
-    micro_calculator_selector = MicroCalculatorSelector(micro_calculator_generator , MICRO_THEMATICS)
-    best_micro_calculator = micro_calculator_selector.select_micro_calculator()
+    # micro_calculator_selector = MicroCalculatorSelector(micro_calculator_generator , MICRO_THEMATICS)
+    # best_micro_calculator = micro_calculator_selector.select_micro_calculator()
 
 
 
