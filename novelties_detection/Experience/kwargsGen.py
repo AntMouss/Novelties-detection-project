@@ -16,8 +16,8 @@ from novelties_detection.Experience.Sequential_Module import (MetaSequencialLang
                                                               LDASequentialSimilarityCalculator,
                                                               CoreXSequentialSimilarityCalculator)
 from novelties_detection.Collection.data_processing import  absoluteThresholding , linearThresholding , exponentialThresholding
-from novelties_detection.Experience.config_arguments import (
-    Thematic , ProcessorText , THEMATICS , START_DATE , END_DATE , DATA_PATH , PROCESSOR , LABELS_IDX , SEED)
+from novelties_detection.Experience.config_arguments import Thematic , ProcessorText , KWARGS
+
 
 class UpdateBadWordsKwargs:
     """
@@ -187,23 +187,29 @@ class RandomKwargsBadWordsGenerator:
 
 class RandomKwargsCalculatorGenerator(RandomMetaKwargsGenerator):
 
-    def __new__(cls , kwargs_calculator_type : Type[MetaCalculatorKwargs]):
+    def __new__(cls, calculator_type : Type[MetaSequencialLangageSimilarityCalculator]):
+        global kwargs_calculator_type
         kwargs_dictionnary = {}
         kwargs_dictionnary["bad_words_args"] = RandomKwargsBadWordsGenerator()
-        if kwargs_calculator_type.__name__ == 'GuidedLDACalculatorKwargs':
+        if calculator_type.__name__ == 'GuidedLDASequentialSimilarityCalculator':
+            kwargs_calculator_type = GuidedCalculatorKwargs
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("overrate"))
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("passes"))
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("seed"))
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("labels_idx"))
-        elif kwargs_calculator_type.__name__ == 'GuidedCoreXCalculatorKwargs':
+        elif calculator_type.__name__ == 'GuidedCoreXSequentialSimilarityCalculator':
+            kwargs_calculator_type = GuidedCoreXCalculatorKwargs
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("anchor_strength"))
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("seed"))
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("labels_idx"))
-        elif kwargs_calculator_type.__name__ == 'LFIDFCalculatorKwargs':
+        elif calculator_type.__name__ == 'LFIDFSequentialSimilarityCalculator':
+            kwargs_calculator_type = LFIDFCalculatorKwargs
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("labels_idx"))
-        elif kwargs_calculator_type.__name__ == 'CoreXCalculatorKwargs':
+        elif calculator_type.__name__ == 'CoreXSequentialSimilarityCalculator':
+            kwargs_calculator_type = CoreXCalculatorKwargs
             pass
-        elif kwargs_calculator_type.__name__ == 'LDACalculatorKwargs':
+        elif calculator_type.__name__ == 'LDASequentialSimilarityCalculator':
+            kwargs_calculator_type = LDACalculatorKwargs
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("passes"))
             pass
         return kwargs_calculator_type(**kwargs_dictionnary)
@@ -315,52 +321,3 @@ class RandomKwargsGenerator:
         for i in range(self.n):
             yield RandomFullProcessKwargsGenerator()
 
-
-KWARGS = {
-    #GuidedLDAModelKwargs,LFIDFModelKwargs,GuidedCoreXKwargs
-    "kwargs_calculator_type": [GuidedLDACalculatorKwargs,
-    GuidedCoreXCalculatorKwargs,
-    LFIDFCalculatorKwargs,
-    LDACalculatorKwargs,
-    CoreXCalculatorKwargs],
-    #32, 48, 64
-    "nb_experiences": [32],
-    "thematics": [THEMATICS],
-    "min_thematic_size": [1000,2000],
-    "min_size_exp": [i for i in range(2,4)],
-    "max_size_exp_rel": [0.1, 0.2, 0.3],
-    "start": [START_DATE],
-    "end": [END_DATE],
-    "path": [DATA_PATH],
-    "lookback": [i for i in range(5, 100, 5)],
-    "delta": [1],
-    "processor": [PROCESSOR],
-    "nb_topics": [len(LABELS_IDX)],
-    "labels_idx": [LABELS_IDX],
-    "topic_id": [i for i in range(len(LABELS_IDX))],
-    "first_w": [0],
-    "last_w": [0],
-    "ntop": [ntop for ntop in range(50 , 101 , 10)],
-    "seed" : [SEED],
-    "remove_seed_words": [True],
-    "exclusive": [True, False],
-    "back": [2,3,4,5,6],
-    "soft": [True, False],
-    "random_state": [42],
-    "overrate": [10 ** i for i in range(4, 7)],
-    "anchor_strength": [i for i in range(3, 30)],
-    "trim": [0, 0.05, 0.1],
-    "risk" : [0.05],
-    #absoluteThresholding , linearThresholding
-    "thresholding_fct_above" : [exponentialThresholding , linearThresholding],
-    #absoluteThresholding
-    "thresholding_fct_bellow" : [linearThresholding],
-    "absolute_value_above":[2000 , 10000 , 20000],
-    "absolute_value_bellow" : [1, 3 , 10],
-    "relative_value_above" : [0.7 , 0.5 , 0.25],
-    "relative_value_bellow" : [0.05 , 0.01 , 0.001 , 0.0005 , 0.0001],
-    "limit" : [0.7 , 0.5],
-    "pente" : [100 , 500 , 1000],
-    "passes" : [1 , 2 , 4 , 7],
-   "reproduction_threshold"  : [0.1 , 0.2 , 0.3]
-}
