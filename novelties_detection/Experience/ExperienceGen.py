@@ -13,7 +13,7 @@ from novelties_detection.Experience.data_utils import (TimeLineArticlesDataset,
                         ExperiencesResult)
 from novelties_detection.Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator, \
     NoSupervisedSequantialLangageSimilarityCalculator
-from novelties_detection.Experience.config_arguments import LOG_PATH
+from novelties_detection.Experience.config_path import LOG_PATH
 from novelties_detection.Experience.data_analysis import Analyser
 from novelties_detection.Experience.Exception_utils import *
 

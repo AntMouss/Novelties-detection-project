@@ -91,7 +91,7 @@ class GuidedCoreXCalculatorKwargs(GuidedCalculatorKwargs):
 
 class KwargsExperiences:
     def __init__(self, nb_experiences: int, timeline_size: int, thematics: List[Thematic],
-                 min_thematic_size: int, min_size_exp: int, max_size_exp_rel: int):
+                 min_thematic_size: int, min_size_exp: int, max_size_exp_rel: float):
         self.max_size_exp_rel = max_size_exp_rel
         self.min_thematic_size = min_thematic_size
         self.min_size_exp = min_size_exp
@@ -102,7 +102,7 @@ class KwargsExperiences:
 
 class KwargsDataset:
     def __init__(self, start, end, path: str,
-                 lookback: int, delta: int, processor: ProcessorText):
+                 lookback: int, delta: int, processor: ProcessorText = None):
         self.processor = processor
         self.delta = delta
         self.lookback = lookback
@@ -127,7 +127,7 @@ class KwargsNoSupervisedResults(KwargsResults):
 
 
 class KwargsAnalyse:
-    def __init__(self , trim : int , risk = 0.05 ):
+    def __init__(self , trim : float , risk = 0.05 ):
         self.trim = trim
         self.risk = risk
 

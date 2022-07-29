@@ -7,13 +7,12 @@ from bisect import bisect_right
 from typing import List
 from novelties_detection.Experience.kwargsGen import RandomKwargsGenerator , FullKwargs
 from novelties_detection.Experience.ExperienceGen import ExperiencesGenerator
-from novelties_detection.Experience.config_arguments import LOG_PATH
 from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte , TimeLineArticlesDataset
 import pickle
 import logging
 from threading import Lock
 from novelties_detection.Experience.Exception_utils import SelectionException
-from novelties_detection.Experience.config_arguments import SAVE_CALCULATOR_KWARGS_PATH
+from novelties_detection.Experience.config_path import SAVE_CALCULATOR_KWARGS_PATH, LOG_PATH
 
 l = Lock()
 
@@ -30,9 +29,9 @@ class RandomMacroCalculatorSelector:
     Select macro calculator with random kwargs parameters and choose the best according to many criteria
     """
 
-    def __init__(self , nb_best_calculators : int  , save_path : str):
+    def __init__(self, nb_best_to_save : int, save_path : str):
         self.save_path = save_path
-        self.best_calculators = [{"id" : "0000" , "score" : 0} for _ in range(nb_best_calculators)]
+        self.best_calculators = [{"id" : "0000" , "score" : 0} for _ in range(nb_best_to_save)]
         self.resultats = {
             "calculator" : {},
             "best" : self.best_calculators
@@ -81,10 +80,27 @@ class RandomMacroCalculatorSelector:
             del experienceGenerator
 
 
-    def run(self , nb_calculators):
+    def run(self , nb_calculators , nb_workers = 1):
         kwargs_generator = RandomKwargsGenerator(nb_calculators)
-        with Pool(3) as p:
+        with Pool(nb_workers) as p:
             p.map(self.process, kwargs_generator)
+
+
+class StaticMacroCalculatorSelector(RandomMacroCalculatorSelector):
+
+    def __init__(self, nb_best_to_save: int, save_path: str):
+        super().__init__(nb_best_to_save, save_path)
+
+    def run(self , static_macro_calculator_generator : List[FullKwargs] , nb_workers = 1):
+        """
+
+        @param static_macro_calculator_generator: in fact it's about a list of FullKwargs that we generate manually in
+        config file
+        """
+        with Pool(nb_workers) as p:
+            p.map(self.process, static_macro_calculator_generator)
+
+
 
 
 
@@ -92,8 +108,8 @@ class RandomMacroCalculatorSelector:
 
 if __name__ == '__main__':
     selector = RandomMacroCalculatorSelector(
-        nb_best_calculators=NB_BEST_CALCULATORS ,
+        nb_best_to_save=NB_BEST_CALCULATORS ,
         save_path=SAVE_PATH
     )
 
-    selector.run(NB_CALCULATORS)
+    selector.run(NB_CALCULATORS , 3)

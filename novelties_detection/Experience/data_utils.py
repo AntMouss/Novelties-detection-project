@@ -162,7 +162,8 @@ class ArticlesDataset:
 class TimeLineArticlesDataset(ArticlesDataset):
 
 
-    def __init__(self, delta = 1 , lookback = 0  , processor : ProcessorText = None , transform_fct: callable = None , **kwargs):
+    def __init__(self, path ,start = 1615105271 , end = 1630999271, lang = 'fr', delta = 1 , lookback = 0  ,
+                 processor : ProcessorText = None , transform_fct: callable = None):
         """
 
         @param delta: duration of each window
@@ -170,7 +171,7 @@ class TimeLineArticlesDataset(ArticlesDataset):
         the look back is relative (percentage of the last window)
         @param kwargs:
         """
-        super().__init__(**kwargs)
+        super().__init__(path , start , end , lang=lang , is_sorted=True)
         self.transform = transform_fct
         self.processor = processor
         self.lookback = lookback
