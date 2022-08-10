@@ -5,11 +5,13 @@ The base hypothesis is: this two type of window have a different similarity scor
 """
 
 import functools
-from scipy.special import rel_entr
+import numpy as np
 import copy
 from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte
-from scipy.stats import ttest_ind , normaltest , pearsonr
+from scipy.stats import ttest_ind , normaltest , pearsonr , energy_distance
 import itertools
+
+
 
 
 def check_topic_id(func):
@@ -52,12 +54,12 @@ class Sampler:
         }
         samples = [copy.deepcopy(topic_samples) for _ in range(len(self))]
         for result in self.results:
-            similarity = result.similarity
+            similarity = result.similarities_score
             difference_matrix = abs(similarity['with'] - similarity['without'])
             for topic_id, difference_scores in enumerate(difference_matrix):
                 for window_id, difference_score in enumerate(difference_scores):
-
-                    key = Sampler.choose_key(window_id, result.metadata.ranges)
+                    full_flat_ranges = [ thematic_ranges for thematic_ranges in result.metadata.ranges]
+                    key = Sampler.choose_key(window_id, full_flat_ranges)
                     samples[topic_id][key].append(difference_score)
 
         return samples
@@ -102,22 +104,26 @@ class Analyser:
 
 
     @check_topic_id
-    def topic_pvalue_KL_divergence(self , topic_id : int , idx_window1 : int, idx_window2 : int, trim = 0 ):
+    def topic_pvalue_distance(self, topic_id : int, idx_window1 : int, idx_window2 : int, trim = 0):
         """
-        return Kl divergence and pvalue of similarity score mean difference hypothesis between
+        return distance energy and pvalue of similarity score mean difference hypothesis between
         2 types of window for one specific topic.
         @param topic_id:
-        @param idx_window1:
-        @param idx_window2:
+        @param idx_window1: target type window idx
+        @param idx_window2:other type window idx
         @param trim:
         @return:
         """
         topic_samples = self.samples[topic_id]
         a = topic_samples[self.types_window[idx_window1]]
         b = topic_samples[self.types_window[idx_window2]]
-        _ , pvalue = ttest_ind(a , b , trim=trim)
-        kl_divergence = sum(rel_entr(a, b))
-        return pvalue , kl_divergence
+        try:
+            _ , pvalue = ttest_ind(a , b , trim=trim)
+            distance = energy_distance(a,b)
+            mean_distance = np.mean(a) - np.mean(b)
+        except ValueError:
+            return None , None
+        return pvalue , distance , mean_distance
 
 
 
@@ -130,9 +136,11 @@ class Analyser:
                             f"the differents type:\n'{self.types_window}'")
         idx1 = self.types_window.index(type_window1)
         idx2 = self.types_window.index(type_window2)
-        pvalue , score = self.topic_pvalue_KL_divergence(topic_id , idx1 , idx2 , self.trim)
-        if pvalue < self.risk and (test_normality == False or (test_normality and is_normal)) :
-            return Alerte(topic_id , risk=self.risk , windows=[type_window1 , type_window2]
+        pvalue , en_distance , mean_distance = self.topic_pvalue_distance(topic_id, idx1, idx2, self.trim)
+        if pvalue is None:
+            return None
+        elif pvalue < self.risk and (test_normality == False or (test_normality and is_normal) and mean_distance > 0) :
+            return Alerte(topic_id , mean_distance , en_distance, risk=self.risk , windows=[type_window1 , type_window2]
                           , pvalue= pvalue , is_normal=is_normal)
 
 
@@ -155,7 +163,7 @@ class Analyser:
         # contain topic injection
         #we assume that the distribution of similarity is invariant acoording to the label
         # so we flat the similarity["without"]
-        similarity_samples = self.results.results[0].similarity["without"]
+        similarity_samples = self.results.results[0].similarities_score["without"]
         similarity_samples = list(similarity_samples[topic_id])
         _ , pvalue = normaltest(similarity_samples)
         # we assume that we take the same risk for normality hypothesis and topic injection hypothesis
@@ -170,8 +178,8 @@ class Analyser:
     def test_correlation_hypothesis_similarity_counter_articles(self):
 
         for topic_id in range(self.nb_topics):
-            similarity_topic = [result.similarity["without"][topic_id] for result in
-                                  self.results.results]
+            similarity_topic = [result.similarities_score["without"][topic_id] for result in
+                                self.results.results]
             similarity_topic = list(itertools.chain.from_iterable(similarity_topic))
             count_topic = [[window_count[topic_id] for window_count in result.label_counter_ref] for result in
                                   self.results.results]

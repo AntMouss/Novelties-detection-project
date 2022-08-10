@@ -15,7 +15,7 @@ from novelties_detection.Experience.Sequential_Module import (MetaSequencialLang
                                                               GuidedLDASequentialSimilarityCalculator,
                                                               LDASequentialSimilarityCalculator,
                                                               CoreXSequentialSimilarityCalculator)
-from novelties_detection.Collection.data_processing import  absoluteThresholding , linearThresholding , exponentialThresholding
+from novelties_detection.Collection.data_processing import  absoluteThresholding , linearThresholding , exponentialThresholding , transformS , transformU
 from novelties_detection.Experience.config_arguments import Thematic , ProcessorText , KWARGS
 
 
@@ -102,7 +102,8 @@ class KwargsExperiences:
 
 class KwargsDataset:
     def __init__(self, start, end, path: str,
-                 lookback: int, delta: int, processor: ProcessorText = None):
+                 lookback: int, delta: int, processor: ProcessorText = None , transform_fct = None):
+        self.transform_fct = transform_fct
         self.processor = processor
         self.delta = delta
         self.lookback = lookback
@@ -147,12 +148,10 @@ class FullKwargs:
         if item == 'results_args':
             kwargs.update(self.kwargs_result.__dict__)
             kwargs.update({"calculator_args" : self["calculator_args"]})
-            return kwargs
         elif item == "calculator_args":
             kwargs.update(self.kwargs_engine.__dict__)
             kwargs.update({
-                "dataset_args" : self["dataset_args"],
-                "experiences_args" : self["experiences_args"]
+                "dataset_args" : self["dataset_args"]
             })
         elif item == "dataset_args":
             kwargs.update(self.kwargs_dataset.__dict__)
@@ -162,6 +161,7 @@ class FullKwargs:
             kwargs.update(self.kwargs_analyse.__dict__)
         else:
             raise KeyError(f"{item}")
+        return kwargs
 
 
 
@@ -256,7 +256,7 @@ class RandomKwargsExperiencesGenerator:
 
 
 class RandomKwargsDatasetGenerator:
-    def __new__(cls):
+    def __new__(cls , mode : str = 's'):
         kwargs_dictionnary = {}
         kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("processor"))
         kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("delta"))
@@ -264,6 +264,11 @@ class RandomKwargsDatasetGenerator:
         kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("path"))
         kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("end"))
         kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("start"))
+        if mode == 's' :
+            kwargs_dictionnary["transform_fct"] = transformS
+        else:
+            kwargs_dictionnary["transform_fct"] = transformU
+
         return KwargsDataset(**kwargs_dictionnary)
 
 
@@ -296,18 +301,18 @@ class RandomFullProcessKwargsGenerator:
     def __new__(cls , kwargs_calculator_type : Type[MetaCalculatorKwargs] = None):
         if kwargs_calculator_type is None:
             kwargs_calculator_type = random.choice(KWARGS["kwargs_calculator_type"])
-        kwargs_dataset = RandomKwargsDatasetGenerator()
-        end_date = kwargs_dataset.end
-        start_date = kwargs_dataset.start
-        delta = kwargs_dataset.delta
-        timeline_size = math.ceil(( end_date- start_date) / (delta*3600))
-        kwargs_experience = RandomKwargsExperiencesGenerator(timeline_size)
         kwargs_engine = RandomKwargsCalculatorGenerator(kwargs_calculator_type)
         if issubclass(kwargs_calculator_type , SupervisedCalculatorKwargs):
             kwargs_result = RandomKwargsResultsGenerator(mode='s')
         else:
             kwargs_result = RandomKwargsResultsGenerator(mode='u')
         kwarg_analyse = RandomKwargsAnalyseGenerator()
+        kwargs_dataset = RandomKwargsDatasetGenerator()
+        end_date = kwargs_dataset.end
+        start_date = kwargs_dataset.start
+        delta = kwargs_dataset.delta
+        timeline_size = math.ceil((end_date - start_date) / (delta * 3600))
+        kwargs_experience = RandomKwargsExperiencesGenerator(timeline_size)
         return FullKwargs(kwargs_dataset , kwargs_experience , kwargs_engine , kwargs_result , kwarg_analyse)
 
 class RandomKwargsGenerator:

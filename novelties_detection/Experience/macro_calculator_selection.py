@@ -2,73 +2,120 @@
 this module isn't made to be used.
 used to select best macro calculator with MACRO_THEMATICS data and associated window articles dataset that aren't available on this repo.
 """
+from itertools import repeat
 from multiprocessing import Pool
-from bisect import bisect_right
-from typing import List
+import bisect
+from typing import List , Union , Tuple
 from novelties_detection.Experience.kwargsGen import RandomKwargsGenerator , FullKwargs
-from novelties_detection.Experience.ExperienceGen import ExperiencesGenerator
-from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte , TimeLineArticlesDataset
+from novelties_detection.Experience.ExperienceGen import ExperiencesGenerator , MetadataGenerationException
+from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte , TimeLineArticlesDataset , MacroThematic , ExperiencesMetadata
 import pickle
 import logging
 from threading import Lock
 from novelties_detection.Experience.Exception_utils import SelectionException
 from novelties_detection.Experience.config_path import SAVE_CALCULATOR_KWARGS_PATH, LOG_PATH
+from novelties_detection.Experience.config_calculator_selection import STATIC_KWARGS_GENERATOR , EXPERIENCES_METADATA_GENERATOR
 
 l = Lock()
 
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename=LOG_PATH , level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , filename=LOG_PATH , level=logging.CRITICAL)
 logger = logging.getLogger(__name__)
+logger.propagate = False
 
 NB_BEST_CALCULATORS = 3
 SAVE_PATH = SAVE_CALCULATOR_KWARGS_PATH
 NB_CALCULATORS = 15
 
 
-class RandomMacroCalculatorSelector:
-    """
-    Select macro calculator with random kwargs parameters and choose the best according to many criteria
-    """
+class CalculatorInfo:
 
-    def __init__(self, nb_best_to_save : int, save_path : str):
-        self.save_path = save_path
-        self.best_calculators = [{"id" : "0000" , "score" : 0} for _ in range(nb_best_to_save)]
+    def __init__(self , calculator_id , score : float ):
+        self.calculator_id = calculator_id
+        self.score = score
+    def __lt__(self, other):
+        return self.score < other.score
+    def __gt__(self, other):
+        return self.score > other.score
+
+class MicroCalculatorInfo(CalculatorInfo):
+    def __init__(self, calculator_id, score : float , nb_clusters : int , kernel_type : str):
+        super().__init__(calculator_id, score)
+        self.kernel_type = kernel_type
+        self.nb_clusters = nb_clusters
+
+
+class MetaCalculatorSelector:
+    def __init__(self, kwargs_calculator_generator):
+        self.kwargs_calculator_generator = kwargs_calculator_generator
+        self.best_calculators = []
+        self.res = {}
+
+    def select(self, full_kwargs : FullKwargs, max_to_save : int, path = None):
+        pass
+
+    def run(self, max_to_save : int, nb_workers : int = 1, path = None):
+        if nb_workers == 1:
+            for kwargs in self.kwargs_calculator_generator:
+                self.select(kwargs , max_to_save=max_to_save , path=path)
+        else:
+            with Pool(nb_workers) as p:
+                p.starmap(self.select, zip(self.kwargs_calculator_generator, repeat(max_to_save), repeat(path)))
+        return self.best_calculators
+
+    def save(self,save_path : str ) :
+        to_save = {
+            "res" : self.res,
+            "best_micro_calculators" : self.best_calculators
+        }
+        with open(save_path , "wb") as f:
+            f.write(pickle.dumps(to_save))
+
+    def update_best_calculators(self, calculator_info : CalculatorInfo , max_to_save):
+        bisect.insort(self.best_calculators, calculator_info)
+        if len(self.best_calculators) > max_to_save:
+            del self.best_calculators[0]
+
+
+class MacroCalculatorSelector(MetaCalculatorSelector):
+
+    def __init__(self, kwargs_calculator_generator , experiences_metadata_generator : Union[List[Tuple[ExperiencesMetadata , List[MacroThematic]]] , MetadataGenerationException]):
+        super().__init__(kwargs_calculator_generator)
+        self.experiences_metadata_generator = experiences_metadata_generator
         self.resultats = {
             "calculator" : {},
             "best" : self.best_calculators
         }
 
-
-    def save(self,calculator_id, kwargs, alerts):
-        self.resultats["calculator"][calculator_id] = {"kwargs" : kwargs, "alerts" : alerts}
-        with open(SAVE_PATH , "wb") as f:
-            f.write(pickle.dumps(self.resultats))
-
-    def compute_calculator_score(self,alerts : List[Alerte]):
-        total_KL_score = 0
+    @staticmethod
+    def compute_calculator_score(alerts : List[Alerte] , average=True):
+        total_energy_distance = 0
+        if len(alerts) == 0:
+            return 0
         for alert in alerts:
-            total_KL_score += alert.score
-        return total_KL_score
+            total_energy_distance += alert.mean_distance
+        if average:
+            return total_energy_distance / len(alerts)
+        else:
+            return total_energy_distance
 
-    def update_best_calculator(self,calculator_id , calculator_KL_score):
-        score_list = [calculator["score"] for calculator in self.best_calculators]
-        bisect_idx = bisect_right(score_list , calculator_KL_score)
-        self.best_calculators[bisect_idx - 1] = {"id" : calculator_id , "score" : calculator_KL_score}
+    def select(self, full_kwargs : FullKwargs, max_to_save : int, path = None):
 
-
-    def process(self, full_kwargs : FullKwargs):
-
+        global l
         calculator_id = id(full_kwargs)
-        kwargs_dataset = full_kwargs["dataset"]
+        kwargs_dataset = full_kwargs["dataset_args"]
         dataset = TimeLineArticlesDataset(**kwargs_dataset)
-        experienceGenerator = ExperiencesGenerator(dataset)
+        experience_generator = ExperiencesGenerator(self.experiences_metadata_generator , dataset)
         try:
-            experienceGenerator.generate_results(**full_kwargs["results_args"])
-            experiences_results = ExperiencesResults(experienceGenerator.experiences_res , experienceGenerator.info)
-            alerts = ExperiencesGenerator.analyse_results(experiences_results, **full_kwargs["analyse"])
-            KL_score = self.compute_calculator_score(alerts)
-            self.update_best_calculator(calculator_id , KL_score)
+            experience_generator.generate_results(**full_kwargs["results_args"])
+            experiences_results = ExperiencesResults(experience_generator.experiences_res , experience_generator.info)
+            alerts = ExperiencesGenerator.analyse_results(experiences_results, **full_kwargs["analyse_args"])
+            energy_distance = self.compute_calculator_score(alerts)
+            calc_info = CalculatorInfo(calculator_id, energy_distance)
+            self.update_best_calculators(calc_info, max_to_save)
             l.acquire()
-            self.save(calculator_id, full_kwargs, alerts)
+            self.resultats["calculator"][calculator_id] = {"kwargs": full_kwargs, "alerts": alerts , "experience_resusltas" : experiences_results}
+            if path is not None:
+                self.save(path)
             l.release()
             if len(alerts) != 0:
                 logger.info(f"Hypothesis confirmed for process id : {calculator_id}")
@@ -77,39 +124,30 @@ class RandomMacroCalculatorSelector:
         except Exception as e:
             logger.critical(f"Unknown Problem affect runtime : {e}")
         finally:
-            del experienceGenerator
-
-
-    def run(self , nb_calculators , nb_workers = 1):
-        kwargs_generator = RandomKwargsGenerator(nb_calculators)
-        with Pool(nb_workers) as p:
-            p.map(self.process, kwargs_generator)
-
-
-class StaticMacroCalculatorSelector(RandomMacroCalculatorSelector):
-
-    def __init__(self, nb_best_to_save: int, save_path: str):
-        super().__init__(nb_best_to_save, save_path)
-
-    def run(self , static_macro_calculator_generator : List[FullKwargs] , nb_workers = 1):
-        """
-
-        @param static_macro_calculator_generator: in fact it's about a list of FullKwargs that we generate manually in
-        config file
-        """
-        with Pool(nb_workers) as p:
-            p.map(self.process, static_macro_calculator_generator)
+            del experience_generator
 
 
 
+class RandomMacroCalculatorSelector(MacroCalculatorSelector):
+    """
+    Select macro calculator with random kwargs parameters and choose the best according to many criteria
+    """
+
+    def __init__(self, kwargs_calculator_generator : RandomKwargsGenerator , experiences_metadata_generator : Union[List[Tuple[ExperiencesMetadata , List[MacroThematic]]] , MetadataGenerationException]):
+        super().__init__(kwargs_calculator_generator , experiences_metadata_generator)
+        self.resultats = {
+            "calculator" : {},
+            "best" : self.best_calculators
+        }
 
 
+
+def main():
+
+    static_selector = MacroCalculatorSelector(STATIC_KWARGS_GENERATOR , EXPERIENCES_METADATA_GENERATOR)
+    static_selector.run( max_to_save=3 , nb_workers=1)
 
 
 if __name__ == '__main__':
-    selector = RandomMacroCalculatorSelector(
-        nb_best_to_save=NB_BEST_CALCULATORS ,
-        save_path=SAVE_PATH
-    )
 
-    selector.run(NB_CALCULATORS , 3)
+    main()

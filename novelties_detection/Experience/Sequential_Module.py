@@ -1,6 +1,6 @@
 import copy
 import random
-from typing import List, Callable, Dict
+from typing import List, Dict
 from novelties_detection.Experience.data_utils import TimeLineArticlesDataset
 from gensim import corpora
 from novelties_detection.Collection.data_processing import cleanDictionnary
@@ -324,12 +324,16 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
 
 class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimilarityCalculator):
 
-    def __init__(self, labels_idx, **kwargs):
-        super(SupervisedSequantialLangageSimilarityCalculator, self).__init__(**kwargs)
+    def __init__(self, nb_topics: int, bad_words_args: dict , labels_idx : list):
+
+        super().__init__(nb_topics, bad_words_args)
         self.engine = Engine_module.SupervisedEngine
         self.labels_idx = labels_idx
         self.label_articles_counters = []
 
+    def set_new_label(self , label : str):
+        self.labels_idx.append(label)
+        self.nb_topics += 1
 
     def updateLabelCounter(self , labels):
         window_counter = dict(Counter(labels))
@@ -427,13 +431,14 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
 
 class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSimilarityCalculator):
 
-    def __init__(self, seed: dict, **kwargs):
-        super(GuidedSequantialLangageSimilarityCalculator, self).__init__(**kwargs)
+    def __init__(self, nb_topics: int, bad_words_args: dict, labels_idx: list ,seed: dict ):
+        super().__init__(nb_topics, bad_words_args, labels_idx)
         self.engine = Engine_module.GuidedEngine
         self.seed = seed
         if len(seed) != self.nb_topics:
             raise Exception("the number of topics in the seed need to be same as the number of topics that we"
                             "declared in the init function ")
+
 
     @check_size
     def treat_Window(self, data_windows: tuple, **kwargs):
@@ -471,9 +476,10 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
 
 class LDASequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityCalculator):
 
-    def __init__(self, **kwargs):
-        super(LDASequentialSimilarityCalculator, self).__init__(**kwargs)
+    def __init__(self, nb_topics: int, bad_words_args: dict):
+        super().__init__(nb_topics, bad_words_args)
         self.engine = Engine_module.LDA
+
 
     @check_size
     def treat_Window(self, texts, **kwargs):
@@ -493,9 +499,10 @@ class LDASequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityC
 
 class GuidedLDASequentialSimilarityCalculator(GuidedSequantialLangageSimilarityCalculator):
 
-    def __init__(self, **kwargs):
-        super(GuidedLDASequentialSimilarityCalculator, self).__init__(**kwargs)
+    def __init__(self, nb_topics: int, bad_words_args: dict, labels_idx: list, seed: dict):
+        super().__init__(nb_topics, bad_words_args, labels_idx, seed)
         self.engine = Engine_module.GuidedLDA
+
 
     @check_size
     def treat_Window(self, data_window, **kwargs):
@@ -517,26 +524,28 @@ class GuidedLDASequentialSimilarityCalculator(GuidedSequantialLangageSimilarityC
 
 class GuidedCoreXSequentialSimilarityCalculator(GuidedSequantialLangageSimilarityCalculator):
 
-    def __init__(self, **kwargs):
-        super(GuidedCoreXSequentialSimilarityCalculator, self).__init__(**kwargs)
+    def __init__(self, nb_topics: int, bad_words_args: dict, labels_idx: list, seed: dict):
+        super().__init__(nb_topics, bad_words_args, labels_idx, seed)
         self.engine = Engine_module.GuidedCoreX
 
 
 class CoreXSequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityCalculator):
-    def __init__(self, **kwargs):
-        super(CoreXSequentialSimilarityCalculator, self).__init__(**kwargs)
+
+    def __init__(self, nb_topics: int, bad_words_args: dict):
+        super().__init__(nb_topics, bad_words_args)
         self.engine = Engine_module.CoreX
 
 
 class SupervisedCoreXSequentialSimilarityCalculator(SupervisedSequantialLangageSimilarityCalculator):
 
-    def __init__(self, **kwargs):
-        super(SupervisedCoreXSequentialSimilarityCalculator, self).__init__(**kwargs)
+    def __init__(self, nb_topics: int, bad_words_args: dict, labels_idx: list):
+        super().__init__(nb_topics, bad_words_args, labels_idx)
         self.engine = Engine_module.SupervisedCoreX
 
 
 class LFIDFSequentialSimilarityCalculator(SupervisedSequantialLangageSimilarityCalculator):
 
-    def __init__(self, **kwargs):
-        super(LFIDFSequentialSimilarityCalculator, self).__init__(**kwargs)
+    def __init__(self, nb_topics: int, bad_words_args: dict, labels_idx: list):
+        super().__init__(nb_topics, bad_words_args, labels_idx)
         self.engine = Engine_module.LFIDF
+

@@ -59,14 +59,15 @@ class MacroThematic(Thematic):
 
 
 class MicroThematic(Thematic):
-    def __init__(self, name: str, label: str, date: datetime, article_ids: List):
-        super().__init__(name, label, date, article_ids, "short")
+    def __init__(self, name: str, label: str, date: datetime, article_ids: List , window_idx_begin : int = None):
+        super().__init__(name, label, date, article_ids, "short" , window_idx_begin)
 
 
 class Alerte(Data):
     
-    def __init__(self , topic_id , score : float , risk : float , windows : List , pvalue : float , is_normal : bool):
-        self.score = score
+    def __init__(self, topic_id, mean_distance : float , energy_distance : float, risk : float, windows : List, pvalue : float, is_normal : bool):
+        self.energy_distance = energy_distance
+        self.mean_distance = mean_distance
         self.is_normal = is_normal
         self.pvalue = pvalue
         self.windows = windows
@@ -79,7 +80,7 @@ class Alerte(Data):
 
 class ExperiencesMetadata(Data):
 
-    def __init__(self, name : str = None, ranges : List[Tuple] = None, nb_windows : int = None , cheat : bool = False ,
+    def __init__(self, name : str = None, ranges : List[List[Tuple]] = None, nb_windows : int = None , cheat : bool = False ,
                  boost = 0):
         self.boost = boost
         self.cheat = cheat
@@ -90,11 +91,20 @@ class ExperiencesMetadata(Data):
 
 class ExperiencesResult(Data):
 
-    def __init__(self, metadata : ExperiencesMetadata, similarity : Tuple[np.ndarray , np.ndarray], label_counter_w : List[dict] = None
+    def __init__(self, metadata : ExperiencesMetadata, similarities_score : Tuple[np.ndarray , np.ndarray], label_counter_w : List[dict] = None
                  , label_counter_ref : List[dict] = None):
+        """
+        
+        @param metadata: metadata about experience in the timeline using for the instanciation ExperiencesResult
+        contain : ranges boundaries index  , thematic name ...
+        @param similarities_score: one array for similarities score of the original timeline
+        one array for the edited timeline with thematic articles removed outside the experiences ranges
+        @param label_counter_w: 
+        @param label_counter_ref: 
+        """
         self.label_counter_ref = label_counter_ref
         self.label_counter_w = label_counter_w
-        self.similarity = {"with" : similarity[0] , "without" : similarity[1]}
+        self.similarities_score = {"with" : similarities_score[0] , "without" : similarities_score[1]}
         self.metadata = metadata
 
 
@@ -105,6 +115,11 @@ class ExperiencesResults(Data):
         self.results = results
 
     def __len__(self):
+        """
+        self.results contain the number of result object generate during experience process but one result object
+        can contain many experiences.
+        @return:
+        """
         return len(self.results)
 
 
@@ -131,7 +146,7 @@ class ArticlesDataset:
 
 
     def verif(self , article):
-        if ProcessorText.detectLanguage(article['title']) != self.lang:
+        if article["lang"] != self.lang:
             return False
         else:
             return True
@@ -179,11 +194,18 @@ class TimeLineArticlesDataset(ArticlesDataset):
         self.delta = delta * 3600
         self.window_idx = 0
         self.label_articles_counter = []
-
+        self.stop_window = len(self)
 
     def __len__(self):
 
         return math.ceil((self.end_date - self.start_date)/self.delta)
+
+
+    def break_timeline(self, article_date):
+            return (article_date > self.end_date or self.window_idx >= self.stop_window)
+
+    def set_stop_window(self , window_idx):
+        self.stop_window = window_idx
 
 
     def update_lookback_articles(self, window_articles):
@@ -201,6 +223,9 @@ class TimeLineArticlesDataset(ArticlesDataset):
             self.lookback_articles = window_articles[-self.lookback:]
 
 
+    def set_transform_function(self , transform_fct):
+        self.transform = transform_fct
+
     def __iter__(self):
 
         ref_date_tmsp = self.start_date
@@ -209,7 +234,7 @@ class TimeLineArticlesDataset(ArticlesDataset):
         for i , article in enumerate(self.articles):
             if article['timeStamp'] < self.start_date:
                  continue
-            elif article['timeStamp'] > self.end_date:
+            elif self.break_timeline(article["timeStamp"]):
                 break
             while article['timeStamp'] >= ref_date_tmsp + self.delta :
                 self.window_idx += 1
@@ -231,18 +256,21 @@ class TimeLineArticlesDataset(ArticlesDataset):
         else:
             yield ref_date_tmsp, self.transform(window_articles, processor=self.processor)
 
+
 # i decide to make checkout for update_lookback fuction because
 # it's not fair to remove thematic article of the look_back_articles (it's a methodology bias)
 class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
 
-    def __init__(self , thematic : Thematic,metadata : ExperiencesMetadata,**kwargs ):
+    def __init__(self, thematics : List[Thematic], metadata : ExperiencesMetadata, **kwargs):
         super(EditedTimeLineArticlesDataset, self).__init__(**kwargs)
-        self.thematic = thematic
+        self.thematics = thematics
         self.metadata = metadata
-        self._ids_to_remove = self.thematic.article_ids
+        self.thematics_ids_to_remove = [thematic.article_ids for thematic in self.thematics]
+        self.stop_window = np.max([ranges_thematic[-1][1] for ranges_thematic in self.metadata.ranges])
+
 
     def set_ids_to_remove(self, ids_to_remove: List):
-        self._ids_to_remove = ids_to_remove
+        self.thematics_ids_to_remove = ids_to_remove
 
 
     def update_lookback_articles(self, window_articles):
@@ -259,36 +287,39 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
         else:
             self.lookback_articles = window_articles[-self.lookback:]
         #check if we are at the left boundaries to remove thematics articles from the lookback_articles
-        for range in self.metadata.ranges:
-            if self.window_idx == range[1] - 1:
-                self.clean_lookback_articles()
+        for ranges_thematic in self.metadata.ranges:
+            for i ,  range in enumerate(ranges_thematic):
+                if self.window_idx == range[1] - 1:
+                    self.clean_lookback_articles(i)
 
 
     def verif(self , article):
 
-        if ProcessorText.detectLanguage(article['title']) != self.lang:
+        if article["lang"] != self.lang:
             return False
-        elif not self.between_boundaries()  and article['id'] in self._ids_to_remove:
-            # remove id for optimization
-            self._ids_to_remove.remove(article["id"])
-            return False
-        else:
-            return True
+        for thematic_ranges , thematic_ids_to_rem in zip(self.metadata.ranges , self.thematics_ids_to_remove):
+            if not self.between_boundaries(thematic_ranges)  and article['id'] in thematic_ids_to_rem:
+                # remove id for optimization
+                self.thematics_ids_to_remove.remove(article["id"])
+                return False
+        return True
 
-    def between_boundaries(self):
 
-        for range in self.metadata.ranges:
+    def between_boundaries(self , ranges):
+
+        for range in ranges:
             if range[0] <= self.window_idx < range[1]:
                 return True
         return False
 
-    def clean_lookback_articles(self):
-        for article in self.lookback_articles:
-            if article["id"] in self._ids_to_remove:
+
+    def clean_lookback_articles(self , ranges_thematic_idx):
+        for article in self.lookback_articles[ranges_thematic_idx]:
+            if article["id"] in self.thematics_ids_to_remove:
                 self.lookback_articles.remove(article)
                 # for optimization we remove the id to the _ids_to_remove
                 # list because we will not met this article anymore
-                self._ids_to_remove.remove(article["id"])
+                self.thematics_ids_to_remove.remove(article["id"])
 
 class WordsCounter:
 
