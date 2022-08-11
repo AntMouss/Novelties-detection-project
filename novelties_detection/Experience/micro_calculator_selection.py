@@ -10,7 +10,7 @@ from itertools import repeat
 from multiprocessing import Pool
 from typing import List
 from novelties_detection.Experience.data_utils import ArticlesDataset
-from novelties_detection.Experience.config_calculator_selection import micro_thematics , original_dataset
+from novelties_detection.Experience.config_calculator_selection import micro_thematics , original_dataset_hours
 from novelties_detection.Experience.data_utils import MicroThematic
 from novelties_detection.Experience.Sequential_Module import (
 NoSupervisedSequantialLangageSimilarityCalculator,
@@ -193,7 +193,7 @@ if __name__ == '__main__':
     root = "/home/mouss/PycharmProjects/novelties-detection-git/results"
     path = os.path.join(root , "LDA_micro_selection_res")
     micro_calculator_generator = MicroCalculatorGenerator(15 , kwargs_micro_calculators , 42 )
-    micro_calculator_selector = MicroCalculatorSelector(micro_calculator_generator , micro_thematics , original_dataset)
+    micro_calculator_selector = MicroCalculatorSelector(micro_calculator_generator, micro_thematics, original_dataset_hours)
     best_micro_calculators = micro_calculator_selector.run(max_to_save=3 )
 
 

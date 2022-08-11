@@ -148,9 +148,11 @@ class ExperiencesGenerator:
                 self.new_experience["metadata"] = metadata
                 if self.reference_timeline is None:
                     self.reference_timeline = TimeLineArticlesDataset(**dataset_args)
-                timelinew = EditedTimeLineArticlesDataset(thematics=thematics, metadata=metadata, **dataset_args)
+                timelinew = EditedTimeLineArticlesDataset(thematics=thematics, metadata=metadata, optimize_mode=True,**dataset_args)
                 stop_window_idx = timelinew.stop_window
+                begin_window_idx = timelinew.begin_window
                 self.reference_timeline.set_stop_window(stop_window_idx)
+                self.reference_timeline.set_begin_window(begin_window_idx)
                 yield self.reference_timeline , timelinew
 
         except MetadataGenerationException:
@@ -171,12 +173,12 @@ class ExperiencesGenerator:
             else:
                 self.info["mode"] = "s"
             for reference_timeline , timeline_w in self.generate_timelines(dataset_args):
+                sq_calculator_w = calculator_type(nb_topics, **kwargs)
+                sq_calculator_w.add_windows(timeline_w, lookback, **training_args)
                 if self.reference_calculator is None:
                     self.reference_calculator = calculator_type(nb_topics , **kwargs)
                     self.reference_calculator.add_windows(reference_timeline, lookback,
                                                           **training_args)
-                sq_calculator_w = calculator_type(nb_topics , **kwargs)
-                sq_calculator_w.add_windows(timeline_w , lookback , **training_args)
                 yield self.reference_calculator , sq_calculator_w
 
         except MetadataGenerationException:

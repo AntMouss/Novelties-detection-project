@@ -13,8 +13,8 @@ import pickle
 import logging
 from threading import Lock
 from novelties_detection.Experience.Exception_utils import SelectionException
-from novelties_detection.Experience.config_path import SAVE_CALCULATOR_KWARGS_PATH, LOG_PATH
-from novelties_detection.Experience.config_calculator_selection import STATIC_KWARGS_GENERATOR , EXPERIENCES_METADATA_GENERATOR
+from novelties_detection.Experience.config_path import RES_HOUR_CALCULATOR_SELECTION_PATH , RES_DAY_CALCULATOR_SELECTION_PATH, LOG_PATH
+from novelties_detection.Experience.config_calculator_selection import STATIC_KWARGS_GENERATOR_HOURS , EXPERIENCES_METADATA_GENERATOR_HOURS , STATIC_KWARGS_GENERATOR_DAYS , EXPERIENCES_METADATA_GENERATOR_DAYS
 
 l = Lock()
 
@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 logger.propagate = False
 
 NB_BEST_CALCULATORS = 3
-SAVE_PATH = SAVE_CALCULATOR_KWARGS_PATH
 NB_CALCULATORS = 15
 
 
@@ -120,6 +119,7 @@ class MacroCalculatorSelector(MetaCalculatorSelector):
             if len(alerts) != 0:
                 logger.info(f"Hypothesis confirmed for process id : {calculator_id}")
         except SelectionException:
+            raise
             pass
         except Exception as e:
             logger.critical(f"Unknown Problem affect runtime : {e}")
@@ -144,8 +144,10 @@ class RandomMacroCalculatorSelector(MacroCalculatorSelector):
 
 def main():
 
-    static_selector = MacroCalculatorSelector(STATIC_KWARGS_GENERATOR , EXPERIENCES_METADATA_GENERATOR)
-    static_selector.run( max_to_save=3 , nb_workers=1)
+    static_selector_hours = MacroCalculatorSelector(STATIC_KWARGS_GENERATOR_HOURS, EXPERIENCES_METADATA_GENERATOR_HOURS)
+    static_selector_days = MacroCalculatorSelector(STATIC_KWARGS_GENERATOR_DAYS, EXPERIENCES_METADATA_GENERATOR_DAYS)
+    static_selector_hours.run( max_to_save=3 , nb_workers=1 , path=RES_HOUR_CALCULATOR_SELECTION_PATH)
+    static_selector_days.run(max_to_save=3, nb_workers=1 , path=RES_DAY_CALCULATOR_SELECTION_PATH)
 
 
 if __name__ == '__main__':

@@ -195,6 +195,7 @@ class TimeLineArticlesDataset(ArticlesDataset):
         self.window_idx = 0
         self.label_articles_counter = []
         self.stop_window = len(self)
+        self.begin_window = 0
 
     def __len__(self):
 
@@ -205,7 +206,21 @@ class TimeLineArticlesDataset(ArticlesDataset):
             return (article_date > self.end_date or self.window_idx >= self.stop_window)
 
     def set_stop_window(self , window_idx):
+        if window_idx < 1:
+            raise Exception("window index can't be inferior to one because we need at least one window")
+        elif window_idx > len(self) :
+            raise Exception("the windows index set is too large and exceed size of the dataset")
         self.stop_window = window_idx
+
+    def set_begin_window(self , window_idx):
+        if window_idx < 0:
+            raise Exception("window index can't be negative")
+        if window_idx > len(self) - 1:
+            raise Exception("the windows index set is too large and need to be inferior of dataset size -1 because"
+                            "we need at least one window for iteration")
+        else:
+            self.begin_window = window_idx
+            self.start_date = self.start_date + window_idx * self.delta
 
 
     def update_lookback_articles(self, window_articles):
@@ -229,44 +244,67 @@ class TimeLineArticlesDataset(ArticlesDataset):
     def __iter__(self):
 
         ref_date_tmsp = self.start_date
-        self.window_idx = 0
+        self.window_idx = self.begin_window
         window_articles = []
-        for i , article in enumerate(self.articles):
+        for _ , article in enumerate(self.articles):
             if article['timeStamp'] < self.start_date:
                  continue
             elif self.break_timeline(article["timeStamp"]):
                 break
-            while article['timeStamp'] >= ref_date_tmsp + self.delta :
-                self.window_idx += 1
-                ref_date_tmsp = ref_date_tmsp + self.delta
-                window_articles += (self.lookback_articles)
+            if article['timeStamp'] >= ref_date_tmsp + self.delta :
+
+                #generation
                 if self.transform is None:
                     yield ref_date_tmsp, window_articles
                 else:
                     yield ref_date_tmsp, self.transform(window_articles, processor=self.processor)
+
+                #incrementation
+                self.window_idx += 1
+                ref_date_tmsp = ref_date_tmsp + self.delta
                 self.update_lookback_articles(window_articles)
+
+                #re-initialization
                 del window_articles
                 window_articles = []
+                window_articles += (self.lookback_articles)
+
             if self.verif(article):
                 window_articles.append(article)
             else:
                 continue
-        if self.transform is None:
-            yield ref_date_tmsp , window_articles
-        else:
-            yield ref_date_tmsp, self.transform(window_articles, processor=self.processor)
+        if len(window_articles) != 0:
+            if self.transform is None:
+                yield ref_date_tmsp , window_articles
+            else:
+                yield ref_date_tmsp, self.transform(window_articles, processor=self.processor)
 
 
 # i decide to make checkout for update_lookback fuction because
 # it's not fair to remove thematic article of the look_back_articles (it's a methodology bias)
 class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
 
-    def __init__(self, thematics : List[Thematic], metadata : ExperiencesMetadata, **kwargs):
+    gap_between_first_range_entry_and_begin_window = 2
+    gap_between_last_range_exit_and_stop_window = 3
+
+    def __init__(self, thematics : List[Thematic], metadata : ExperiencesMetadata,optimize_mode : bool = True, **kwargs):
         super(EditedTimeLineArticlesDataset, self).__init__(**kwargs)
         self.thematics = thematics
         self.metadata = metadata
         self.thematics_ids_to_remove = [thematic.article_ids for thematic in self.thematics]
-        self.stop_window = np.max([ranges_thematic[-1][1] for ranges_thematic in self.metadata.ranges])
+        tmp_last_window_ranges = []
+        if optimize_mode:
+            for ranges_thematic in self.metadata.ranges:
+                for ranges in ranges_thematic:
+                    tmp_last_window_ranges.append(ranges[1])
+            stop_window_idx = np.max(tmp_last_window_ranges) + self.gap_between_last_range_exit_and_stop_window
+            self.set_stop_window(stop_window_idx)
+            for ranges_thematic in self.metadata.ranges:
+                for ranges in ranges_thematic:
+                    tmp_last_window_ranges.append(ranges[0])
+            begin_window_idx = np.min(tmp_last_window_ranges) - self.gap_between_first_range_entry_and_begin_window
+            self.set_begin_window(begin_window_idx)
+
 
 
     def set_ids_to_remove(self, ids_to_remove: List):
@@ -287,9 +325,9 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
         else:
             self.lookback_articles = window_articles[-self.lookback:]
         #check if we are at the left boundaries to remove thematics articles from the lookback_articles
-        for ranges_thematic in self.metadata.ranges:
-            for i ,  range in enumerate(ranges_thematic):
-                if self.window_idx == range[1] - 1:
+        for i , ranges_thematic in enumerate(self.metadata.ranges):
+            for range in ranges_thematic:
+                if self.window_idx == range[1]:
                     self.clean_lookback_articles(i)
 
 
@@ -300,7 +338,7 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
         for thematic_ranges , thematic_ids_to_rem in zip(self.metadata.ranges , self.thematics_ids_to_remove):
             if not self.between_boundaries(thematic_ranges)  and article['id'] in thematic_ids_to_rem:
                 # remove id for optimization
-                self.thematics_ids_to_remove.remove(article["id"])
+                thematic_ids_to_rem.remove(article["id"])
                 return False
         return True
 
@@ -314,12 +352,12 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
 
 
     def clean_lookback_articles(self , ranges_thematic_idx):
-        for article in self.lookback_articles[ranges_thematic_idx]:
-            if article["id"] in self.thematics_ids_to_remove:
+        for article in self.lookback_articles:
+            if article["id"] in self.thematics_ids_to_remove[ranges_thematic_idx]:
                 self.lookback_articles.remove(article)
                 # for optimization we remove the id to the _ids_to_remove
                 # list because we will not met this article anymore
-                self.thematics_ids_to_remove.remove(article["id"])
+                self.thematics_ids_to_remove[ranges_thematic_idx].remove(article["id"])
 
 class WordsCounter:
 
