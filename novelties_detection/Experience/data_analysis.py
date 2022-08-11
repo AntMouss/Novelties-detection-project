@@ -54,11 +54,14 @@ class Sampler:
         }
         samples = [copy.deepcopy(topic_samples) for _ in range(len(self))]
         for result in self.results:
+            full_flat_ranges = []
+            for thematic_ranges in result.metadata.ranges:
+                full_flat_ranges += thematic_ranges
+            full_flat_ranges = sorted(full_flat_ranges , key = lambda item : item[0])
             similarity = result.similarities_score
             difference_matrix = abs(similarity['with'] - similarity['without'])
             for topic_id, difference_scores in enumerate(difference_matrix):
                 for window_id, difference_score in enumerate(difference_scores):
-                    full_flat_ranges = [ thematic_ranges for thematic_ranges in result.metadata.ranges]
                     key = Sampler.choose_key(window_id, full_flat_ranges)
                     samples[topic_id][key].append(difference_score)
 
@@ -69,9 +72,9 @@ class Sampler:
     def choose_key(idx_window , ranges):
 
         if idx_window < ranges[0][0]:
-            return 'before'
+            return 'outside'
         elif idx_window > ranges[-1][1]:
-            return 'after'
+            return 'outside'
         else:
             for entry , out in ranges:
                 if idx_window == out:
@@ -80,7 +83,7 @@ class Sampler:
                     return 'in'
                 elif entry < idx_window < out:
                     return 'inside'
-            return 'between'
+            return 'outside'
 
 
 class Analyser:
@@ -122,7 +125,7 @@ class Analyser:
             distance = energy_distance(a,b)
             mean_distance = np.mean(a) - np.mean(b)
         except ValueError:
-            return None , None
+            return None , None , None
         return pvalue , distance , mean_distance
 
 
@@ -147,7 +150,7 @@ class Analyser:
     def multi_test_hypothesis_topic_injection(self, test_normality = True):
 
         target_window_types = ['in' , 'out']
-        other_window_types = ['inside' , 'between' , 'after' , 'before']
+        other_window_types = ['inside' , 'outside' ]#'between' , 'after' , 'before'
         for topic_id in range (self.nb_topics):
             for target_window in target_window_types:
                 for other_window in other_window_types:
