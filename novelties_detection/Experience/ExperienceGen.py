@@ -139,7 +139,6 @@ class ExperiencesGenerator:
         self.new_experience = {}
         self.info = {}
         self.reference_timeline = dataset
-        self.reference_calculator = None
 
 
     def generate_timelines(self , dataset_args : dict) -> Tuple[TimeLineArticlesDataset]:
@@ -175,11 +174,10 @@ class ExperiencesGenerator:
             for reference_timeline , timeline_w in self.generate_timelines(dataset_args):
                 sq_calculator_w = calculator_type(nb_topics, **kwargs)
                 sq_calculator_w.add_windows(timeline_w, lookback, **training_args)
-                if self.reference_calculator is None:
-                    self.reference_calculator = calculator_type(nb_topics , **kwargs)
-                    self.reference_calculator.add_windows(reference_timeline, lookback,
+                reference_calculator = calculator_type(nb_topics , **kwargs)
+                reference_calculator.add_windows(reference_timeline, lookback,
                                                           **training_args)
-                yield self.reference_calculator , sq_calculator_w
+                yield reference_calculator , sq_calculator_w
 
         except MetadataGenerationException:
             raise

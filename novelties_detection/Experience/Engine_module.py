@@ -140,9 +140,9 @@ class LDA(Engine):
         self.passes = passes
         self.random_state = random_state
         self.dictionnary = dictionnary
-        corpus_bow = [self.dictionnary.doc2bow(text) for text in self.texts]
+        self.corpus_bow = [self.dictionnary.doc2bow(text) for text in self.texts]
         self.ldaargs = {
-            "corpus" : corpus_bow,
+            "corpus" : self.corpus_bow,
             "num_topics" : self.nb_topics,
             "id2word" : self.dictionnary ,
             "random_state" : self.random_state,

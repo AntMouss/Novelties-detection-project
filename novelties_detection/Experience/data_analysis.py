@@ -45,9 +45,7 @@ class Sampler:
     def samples(self):
 
         topic_samples = {
-            "before": [],
-            "after": [],
-            "between": [],
+            "outside": [],
             "in": [],
             "out": [],
             "inside": []

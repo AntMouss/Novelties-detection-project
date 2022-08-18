@@ -14,7 +14,8 @@ import logging
 from threading import Lock
 from novelties_detection.Experience.Exception_utils import SelectionException
 from novelties_detection.Experience.config_path import RES_HOUR_CALCULATOR_SELECTION_PATH , RES_DAY_CALCULATOR_SELECTION_PATH, LOG_PATH
-from novelties_detection.Experience.config_calculator_selection import STATIC_KWARGS_GENERATOR_HOURS , EXPERIENCES_METADATA_GENERATOR_HOURS , STATIC_KWARGS_GENERATOR_DAYS , EXPERIENCES_METADATA_GENERATOR_DAYS
+from novelties_detection.Experience.config_calculator_selection import STATIC_KWARGS_GENERATOR_HOURS , EXPERIENCES_METADATA_GENERATOR_HOURS , STATIC_KWARGS_GENERATOR_DAYS , EXPERIENCES_METADATA_GENERATOR_DAYS , TEST_EXPERIENCES_METADATA_GENERATOR_HOURS
+from novelties_detection.Experience.utils import timer_func
 
 l = Lock()
 
@@ -49,16 +50,21 @@ class MetaCalculatorSelector:
         self.best_calculators = []
         self.res = {}
 
-    def select(self, full_kwargs : FullKwargs, max_to_save : int, path = None):
+    @timer_func
+    def process_selection(self, full_kwargs : FullKwargs, max_to_save : int, path = None):
         pass
 
     def run(self, max_to_save : int, nb_workers : int = 1, path = None):
         if nb_workers == 1:
-            for kwargs in self.kwargs_calculator_generator:
-                self.select(kwargs , max_to_save=max_to_save , path=path)
+            for i , kwargs in enumerate(self.kwargs_calculator_generator):
+                self.process_selection(kwargs, max_to_save=max_to_save, path=path)
+                print(f"-------------"
+                    f"calculator numero {i} process over {len(self.kwargs_calculator_generator)} from selector {id(self)}"
+                      f"-------------")
+
         else:
             with Pool(nb_workers) as p:
-                p.starmap(self.select, zip(self.kwargs_calculator_generator, repeat(max_to_save), repeat(path)))
+                p.starmap(self.process_selection, zip(self.kwargs_calculator_generator, repeat(max_to_save), repeat(path)))
         return self.best_calculators
 
     def save(self,save_path : str ) :
@@ -88,16 +94,18 @@ class MacroCalculatorSelector(MetaCalculatorSelector):
     @staticmethod
     def compute_calculator_score(alerts : List[Alerte] , average=True):
         total_energy_distance = 0
-        if len(alerts) == 0:
+        try:
+            for alert in alerts:
+                total_energy_distance += alert.mean_distance
+            if average:
+                return total_energy_distance / len(alerts)
+            else:
+                return total_energy_distance
+        except ZeroDivisionError:
             return 0
-        for alert in alerts:
-            total_energy_distance += alert.mean_distance
-        if average:
-            return total_energy_distance / len(alerts)
-        else:
-            return total_energy_distance
 
-    def select(self, full_kwargs : FullKwargs, max_to_save : int, path = None):
+    @timer_func
+    def process_selection(self, full_kwargs : FullKwargs, max_to_save : int, path = None):
 
         global l
         calculator_id = id(full_kwargs)
@@ -110,6 +118,7 @@ class MacroCalculatorSelector(MetaCalculatorSelector):
             alerts = ExperiencesGenerator.analyse_results(experiences_results, **full_kwargs["analyse_args"])
             energy_distance = self.compute_calculator_score(alerts)
             calc_info = CalculatorInfo(calculator_id, energy_distance)
+            print(f"hypothesis mean distance equals to {energy_distance} for calculator {calculator_id}")
             self.update_best_calculators(calc_info, max_to_save)
             l.acquire()
             self.resultats["calculator"][calculator_id] = {"kwargs": full_kwargs, "alerts": alerts , "experience_resusltas" : experiences_results}

@@ -596,7 +596,10 @@ def transformS(articles, processor : ProcessorText = None, process_already_done 
             res.append((article['process_text'] , article['label'][0]))
         else:
             res.append((processor.processText(article['text']) , article['label'][0]))
-    texts , labels = list(zip(*res))
+    try:
+        texts , labels = list(zip(*res))
+    except Exception as e:
+        print("opiu")
     labels = list(labels)
     return texts , labels
 

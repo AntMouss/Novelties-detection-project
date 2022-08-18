@@ -80,8 +80,9 @@ class Alerte(Data):
 
 class ExperiencesMetadata(Data):
 
-    def __init__(self, name : str = None, ranges : List[List[Tuple]] = None, nb_windows : int = None , cheat : bool = False ,
-                 boost = 0):
+    def __init__(self, name : str = None, ranges : List[List[Tuple]] = None, nb_windows : int = None , begin_window_idx : int = None,
+                 cheat : bool = False , boost = 0):
+        self.begin_window_idx = begin_window_idx
         self.boost = boost
         self.cheat = cheat
         self.nb_windows = nb_windows
@@ -194,33 +195,36 @@ class TimeLineArticlesDataset(ArticlesDataset):
         self.delta = delta * 3600
         self.window_idx = 0
         self.label_articles_counter = []
-        self.stop_window = len(self)
+        self.default_stop_window = math.ceil((self.end_date - self.start_date)/self.delta)
+        self.stop_window = self.default_stop_window
         self.begin_window = 0
 
     def __len__(self):
 
-        return math.ceil((self.end_date - self.start_date)/self.delta)
+        return self.stop_window - self.begin_window
 
 
-    def break_timeline(self, article_date):
+    def stop_timeline(self, article_date):
             return (article_date > self.end_date or self.window_idx >= self.stop_window)
+
+    def begin_timeline(self , article_date):
+        return (article_date < self.start_date or self.window_idx >= self.stop_window)
 
     def set_stop_window(self , window_idx):
         if window_idx < 1:
-            raise Exception("window index can't be inferior to one because we need at least one window")
-        elif window_idx > len(self) :
-            raise Exception("the windows index set is too large and exceed size of the dataset")
+            raise Exception("stop window index can't be inferior to one because we need at least one window")
+        elif window_idx > self.default_stop_window :
+            raise Exception("the stop windows index set is too large and exceed size of the dataset")
         self.stop_window = window_idx
 
     def set_begin_window(self , window_idx):
         if window_idx < 0:
-            raise Exception("window index can't be negative")
-        if window_idx > len(self) - 1:
-            raise Exception("the windows index set is too large and need to be inferior of dataset size -1 because"
+            raise Exception("begin window index can't be negative")
+        if window_idx > self.default_stop_window - 1:
+            raise Exception("the begin windows index set is too large and need to be inferior of dataset size -1 because"
                             "we need at least one window for iteration")
         else:
             self.begin_window = window_idx
-            self.start_date = self.start_date + window_idx * self.delta
 
 
     def update_lookback_articles(self, window_articles):
@@ -243,13 +247,14 @@ class TimeLineArticlesDataset(ArticlesDataset):
 
     def __iter__(self):
 
-        ref_date_tmsp = self.start_date
+        ref_date_tmsp = int(self.start_date + self.begin_window  * self.delta)
+        timeline_start_date = ref_date_tmsp
         self.window_idx = self.begin_window
         window_articles = []
         for _ , article in enumerate(self.articles):
-            if article['timeStamp'] < self.start_date:
+            if article['timeStamp'] < timeline_start_date:
                  continue
-            elif self.break_timeline(article["timeStamp"]):
+            elif self.stop_timeline(article["timeStamp"]):
                 break
             if article['timeStamp'] >= ref_date_tmsp + self.delta :
 
@@ -297,14 +302,10 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
             for ranges_thematic in self.metadata.ranges:
                 for ranges in ranges_thematic:
                     tmp_last_window_ranges.append(ranges[1])
-            stop_window_idx = np.max(tmp_last_window_ranges) + self.gap_between_last_range_exit_and_stop_window
+            stop_window_idx = int(np.max(tmp_last_window_ranges) + self.gap_between_last_range_exit_and_stop_window)
             self.set_stop_window(stop_window_idx)
-            for ranges_thematic in self.metadata.ranges:
-                for ranges in ranges_thematic:
-                    tmp_last_window_ranges.append(ranges[0])
-            begin_window_idx = np.min(tmp_last_window_ranges) - self.gap_between_first_range_entry_and_begin_window
+            begin_window_idx = self.metadata.begin_window_idx
             self.set_begin_window(begin_window_idx)
-
 
 
     def set_ids_to_remove(self, ids_to_remove: List):
