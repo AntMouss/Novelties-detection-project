@@ -5,7 +5,7 @@ from novelties_detection.Experience.data_utils import TimeLineArticlesDataset
 from gensim import corpora
 from novelties_detection.Collection.data_processing import cleanDictionnary
 from novelties_detection.Experience import Engine_module
-from novelties_detection.Experience.Exception_utils import CompareWindowsException
+from novelties_detection.Experience.Exception_utils import CompareWindowsException , NoWordsClusterException
 import numpy as np
 from collections import Counter
 import functools
@@ -21,15 +21,24 @@ def check_size(func):
     return wrapper
 
 
-
 class MetaSequencialLangageSimilarityCalculator:
-    """
-    Meta class to calculate relation , similarity and novelties between sequential bunch of temporal data window.
+
+    semi_filtred_dictionnary = corpora.Dictionary()
+    seedFileName = '_seed.json'
+    bad_words = []
+    res = {}
+    info_file = 'info.json'
+    resFileName = 'res.json'
+    semi_dictionnaryFileName = '_semiDict'
+    dateFile = 'date.json'
+    date_window_idx = {}
+    predefinedBadWords = ['...', 'commenter', 'réagir', 'envoyer', 'mail', 'partager', 'publier', 'lire',
+                               'journal', "abonnez-vous", "d'une", "d'un", "mars", "avril", "mai",
+                               "juin", "juillet", "an", "soir", "mois", "lundi", "mardi", "mercredi"
+        , "jeudi", "vendredi", "samedi", "dimanche"]
 
 
-    """
-
-    def __init__(self, nb_topics: int, bad_words_args : dict ,memory_length : int = None ):
+    def __init__(self, bad_words_args : dict ,memory_length : int = None ):
         """
 
         @param nb_topics: number of topics we fixed a priori
@@ -42,21 +51,7 @@ class MetaSequencialLangageSimilarityCalculator:
         else:
             self.models = deque(maxlen=memory_length)
         self.engine = Engine_module.Engine
-        self.semi_filtred_dictionnary = corpora.Dictionary()
-        self.nb_topics = nb_topics
-        self.seedFileName = '_seed.json'
-        self.bad_words = []
-        self.info = {"engine_type": self.engine.__name__, 'nb_topics': self.nb_topics}
-        self.res = {}
-        self.info_file = 'info.json'
-        self.resFileName = 'res.json'
-        self.semi_dictionnaryFileName = '_semiDict'
-        self.dateFile = 'date.json'
-        self.date_window_idx = {}
-        self.predefinedBadWords = ['...', 'commenter', 'réagir', 'envoyer', 'mail', 'partager', 'publier', 'lire',
-                                   'journal', "abonnez-vous", "d'une", "d'un", "mars", "avril", "mai",
-                                   "juin", "juillet", "an", "soir", "mois", "lundi", "mardi", "mercredi"
-            , "jeudi", "vendredi", "samedi", "dimanche"]
+        self.info = {"engine_type": self.engine.__name__}
 
 
     def __len__(self):
@@ -66,6 +61,91 @@ class MetaSequencialLangageSimilarityCalculator:
     @check_size
     def treat_Window(self, data_window, **kwargs):
         pass
+
+    def add_windows(self, data: TimeLineArticlesDataset, lookback=10, **kwargs):
+
+        self.info['lookback'] = lookback
+        rValue = random.Random()
+        rValue.seed(37)
+        for window_idx, (end_date_window, data_windows) in (enumerate(data)):
+            random_state = rValue.randint(1, 14340)
+            kwargs["random_state"] = random_state
+            print(f"numero of window: {window_idx} -- random state: {random_state}")
+            model, window_dictionnary = self.treat_Window(data_windows, **kwargs)
+            # for bound window to the right glda model we use no_window
+            self.date_window_idx[end_date_window] = window_idx
+
+    def get_res(self):
+        return self.res
+
+
+    def updateBadwords(self):
+
+        thresholding_fct_above = self.bad_words_args["thresholding_fct_above"]
+        thresholding_fct_bellow = self.bad_words_args["thresholding_fct_bellow"]
+        kwargs_above = self.bad_words_args["kwargs_above"]
+        kwargs_bellow = self.bad_words_args["kwargs_bellow"]
+        nb_docs = self.semi_filtred_dictionnary.num_docs
+        abs_no_above = thresholding_fct_above(nb_docs=nb_docs, **kwargs_above)
+        abs_no_bellow = thresholding_fct_bellow(nb_docs=nb_docs, **kwargs_bellow)
+        if abs_no_bellow >= abs_no_above:
+            raise Exception("abs_no_bellow should be inferior to abs_no_above")
+        if abs_no_above <= 0:
+            raise Exception("abs_no_above should be superior to zero")
+        self.bad_words = [word for id, word in self.semi_filtred_dictionnary.items() if
+                          self.semi_filtred_dictionnary.dfs[id] < abs_no_bellow or self.semi_filtred_dictionnary.dfs[
+                              id] > abs_no_above]
+        self.bad_words += self.predefinedBadWords
+
+
+    def getTopWordsTopic(self, topic_id, model_idx: int, ntop: int = 100, **kwargs):
+        model = self.models[model_idx]
+        # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
+        topWords = model.get_topic_terms(topic_id=topic_id, topn=ntop)
+        topWordsTopic = {topWord[0]: topWord[1] for topWord in topWords.items()}
+        return topWordsTopic
+
+
+class MetaDynamicalSequencialLangageSimilarityCalculator(MetaSequencialLangageSimilarityCalculator):
+
+    def __init__(self, bad_words_args: dict, nb_max_topics : int, nb_min_topics : int, minimum_ratio_selection: float = 0.10):
+        """
+
+        @param nb_min_topics:
+        @param bad_words_args:
+        @param nb_max_topics: maximum number of topics that we can choose
+        @param minimum_ratio_selection: minimum ratio between 2 derivate coherence scores from which the number of topics is chosen
+        """
+        super().__init__(bad_words_args)
+        self.nb_min_topics = nb_min_topics
+        self.minimum_ratio_selection = minimum_ratio_selection
+        self.nb_max_topics = nb_max_topics
+
+    def select_optimal_topic_number(self, coherences):
+        coherences_derivate = np.gradient(coherences , len(coherences))
+        for idx ,(nb_topics ,  coherence_derivate) in enumerate(zip(coherences_derivate , range(self.nb_min_topics , self.nb_max_topics))):
+            if coherence_derivate < self.minimum_ratio_selection:
+                return nb_topics - 1 , idx
+
+
+class MetaFixedSequencialLangageSimilarityCalculator(MetaSequencialLangageSimilarityCalculator):
+    """
+    Meta class to calculate relation , similarity and novelties between sequential bunch of temporal data window.
+
+    """
+
+    def __init__(self, nb_topics: int, bad_words_args: dict, memory_length: int = None):
+        """
+
+        @param nb_topics: number of topics we fixed a priori
+        @param bad_words_args: args for bad words removing
+        @param memory_length: number of engine models we keep in memory
+        """
+        super().__init__(bad_words_args, memory_length)
+        self.nb_topics = nb_topics
+        self.info = {"engine_type": self.engine.__name__, 'nb_topics': self.nb_topics}
+
+
 
     def add_windows(self, data: TimeLineArticlesDataset, lookback=10, update_res=False, **kwargs):
 
@@ -114,28 +194,6 @@ class MetaSequencialLangageSimilarityCalculator:
                 # appearance['keyword'][topic_id]['relative_score'] = str(score/average_score_topic)
 
 
-    def get_res(self):
-        return self.res
-
-
-    def updateBadwords(self):
-
-        thresholding_fct_above = self.bad_words_args["thresholding_fct_above"]
-        thresholding_fct_bellow = self.bad_words_args["thresholding_fct_bellow"]
-        kwargs_above = self.bad_words_args["kwargs_above"]
-        kwargs_bellow = self.bad_words_args["kwargs_bellow"]
-        nb_docs = self.semi_filtred_dictionnary.num_docs
-        abs_no_above = thresholding_fct_above(nb_docs=nb_docs, **kwargs_above)
-        abs_no_bellow = thresholding_fct_bellow(nb_docs=nb_docs, **kwargs_bellow)
-        if abs_no_bellow >= abs_no_above:
-            raise Exception("abs_no_bellow should be inferior to abs_no_above")
-        if abs_no_above <= 0:
-            raise Exception("abs_no_above should be superior to zero")
-        self.bad_words = [word for id, word in self.semi_filtred_dictionnary.items() if
-                          self.semi_filtred_dictionnary.dfs[id] < abs_no_bellow or self.semi_filtred_dictionnary.dfs[
-                              id] > abs_no_above]
-        self.bad_words += self.predefinedBadWords
-
 
     def getTopWordsTopics(self, model_idx: int, ntop: int = 100, exclusive=False, **kwargs):
         """
@@ -155,13 +213,6 @@ class MetaSequencialLangageSimilarityCalculator:
             return self.exclusiveWordsPerTopics(topWordsTopics)
 
 
-    def getTopWordsTopic(self, topic_id, model_idx: int, ntop: int = 100, **kwargs):
-        model = self.models[model_idx]
-        # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
-        topWords = model.get_topic_terms(topic_id=topic_id, topn=ntop)
-        topWordsTopic = {topWord[0]: topWord[1] for topWord in topWords.items()}
-        return topWordsTopic
-
     @staticmethod
     def exclusiveWordsPerTopics(topWordsTopics: List[dict]):
 
@@ -177,9 +228,11 @@ class MetaSequencialLangageSimilarityCalculator:
     @staticmethod
     def compute_similarity(cluster1 : Dict , cluster2 : Dict , soft = False):
 
-        intersection = set(cluster1).intersection(set(cluster2))
-        difference = set(cluster1).difference(set(cluster2))
-        disappearance = set(cluster2).difference(set(cluster1))
+        if len(cluster1) == 0 or len(cluster2) == 0:
+            raise NoWordsClusterException("cluster contain no words... impossible to compute similarity ")
+        intersection = list(set(cluster1).intersection(set(cluster2)))
+        difference = list(set(cluster1).difference(set(cluster2)))
+        disappearance = list(set(cluster2).difference(set(cluster1)))
         if soft:
             # to normalize output result because score depend of the engine
             total = sum([score for _ , score in cluster1.items() ])
@@ -189,24 +242,20 @@ class MetaSequencialLangageSimilarityCalculator:
         return similarity_score, (difference ,  intersection , disappearance)
 
     @functools.lru_cache(maxsize=3)
-    def compare_Windows_Sequentialy(self, first_w=0, last_w=0, ntop=100, back=3, **kwargs):
+    def compare_Windows_Sequentialy(self, ntop=100, back=3, **kwargs):
 
         # we use thi condition to set the numero of the last window because by
         # default we want to compute similarity until the last window
-        if last_w == 0:
-            last_w = len(self.models)
         res = []
-        for i in range(first_w + 1, last_w):
+        for i in range(1, len(self.models)):
             window_res = []
-            for j in range(back):
-                try:
-                    similarities, _  = self.calcule_similarity_topics_W_W(
-                        ntop=ntop, previous_window_idx=i - 1 - j, new_window_idx=i, **kwargs)
-                    similarities = np.array(similarities)
-                    similarities = np.nan_to_num(similarities)
-                    window_res.append(similarities)
-                except Exception as e:
-                    break
+            j = 0
+            while j < back and i - 1 - j >= 0:
+                similarities, _  = self.calcule_similarity_topics_W_W(
+                    ntop=ntop, previous_window_idx=i - 1 - j, new_window_idx=i, **kwargs)
+                similarities = np.array(similarities)
+                window_res.append(similarities)
+                j += 1
             window_res = np.array(window_res)
             res.append(np.mean(window_res , axis=0))
         return np.transpose(np.array(res))
@@ -222,7 +271,7 @@ class MetaSequencialLangageSimilarityCalculator:
 
 
 
-class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimilarityCalculator):
+class NoSupervisedSequantialLangageSimilarityCalculator(MetaFixedSequencialLangageSimilarityCalculator):
 
     @check_size
     def treat_Window(self, texts: List[List], **kwargs):
@@ -255,7 +304,6 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
         """
         if previous_window_idx < 0 or new_window_idx < 0:
             raise CompareWindowsException("index should be positives")
-        total_similarity_score = 0
         links = [[] for _ in range(self.nb_topics)]
         # 'no_relationship' because this novelties are from "new topic" that aren't reproducte itself (similarity_score < reproduction_threshold)
         no_relationship_novelties = np.zeros(self.nb_topics, dtype=list)
@@ -270,12 +318,22 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
         # the number of topics is static so we can use self.nb_topics for iterate
         total_previous_Top_words = dict(ChainMap(*previousTopWordsTopics))
         total_new_Top_words = dict(ChainMap(*newTopWordsTopics))
-        total_similarity_score , _  = self.compute_similarity(total_new_Top_words , total_previous_Top_words , soft=soft)
-        if total_new_Top_words == np.nan:
-            total_similarity_score = 0.0
+        try:
+            total_similarity_score , _  = self.compute_similarity(total_new_Top_words , total_previous_Top_words , soft=soft)
+        except NoWordsClusterException:
+            total_similarity_score = np.nan
+            pass
         for new_topic in range(self.nb_topics):
             for previous_topic in range(self.nb_topics):
-                similarity_score , (novelties , habbits , disappearances) = self.compute_similarity(newTopWordsTopics[new_topic] , previousTopWordsTopics[previous_topic] , soft=soft)
+                try:
+                    similarity_score , (novelties , habbits , disappearances) = self.compute_similarity(
+                        newTopWordsTopics[new_topic] , previousTopWordsTopics[previous_topic] , soft=soft)
+                except NoWordsClusterException:
+                    similarity_score = 0
+                    novelties = []
+                    habbits = []
+                    disappearances = []
+                    pass
                 if similarity_score >= reproduction_threshold:
                     links[new_topic].append(previous_topic)
                     relationship_novelties_matrix[new_topic][previous_topic] = novelties
@@ -289,6 +347,7 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
         # note that we compute a total_score for all the window in the no supervised case
         #malus = np.sum(persist)
         return [total_similarity_score] , (links , relationship_novelties_matrix , relationship_habbits_matrix , relationship_disappearances_matrix)
+
 
     def print_novelties(self, n_words_to_print=10, **kwargs):
         """
@@ -322,7 +381,7 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
 
 
 
-class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimilarityCalculator):
+class SupervisedSequantialLangageSimilarityCalculator(MetaFixedSequencialLangageSimilarityCalculator):
 
     def __init__(self, nb_topics: int, bad_words_args: dict , labels_idx : list):
 
@@ -385,8 +444,14 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
         habbits = []
         disappearances = []
         for topic_id in range(self.nb_topics):
-            similarity_score , (novelties_topic , habbits_topic , disappearances_topic) = self.compute_similarity(
-                newTopWordsTopics[topic_id], previousTopWordsTopics[topic_id], soft=soft)
+            try:
+                similarity_score , (novelties_topic , habbits_topic , disappearances_topic) = self.compute_similarity(
+                    newTopWordsTopics[topic_id], previousTopWordsTopics[topic_id], soft=soft)
+            except NoWordsClusterException:
+                similarity_score = np.nan
+                novelties_topic = []
+                habbits_topic = []
+                disappearances_topic = []
             similarities.append(similarity_score)
             novelties.append(novelties_topic)
             habbits.append(habbits_topic)
@@ -465,13 +530,17 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
 
         # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
         model = self.models[model_idx]
-        topWordsTopic = model.get_topic_terms(topic_id=topic_id, topn=ntop)
-        topic = self.labels_idx[topic_id]
-        if remove_seed_words:
-            words2keep = set(topWordsTopic.keys()).intersection(self.seed[topic])
-            for word in words2keep:
-                del (topWordsTopic[word])
-        return topWordsTopic
+        topWordsTopic = []
+        mult = 0
+        while len(topWordsTopic) < ntop:
+            topWordsTopic = model.get_topic_terms(topic_id=topic_id, topn=ntop * mult)
+            topic = self.labels_idx[topic_id]
+            if remove_seed_words:
+                words2keep = set(topWordsTopic.keys()).intersection(self.seed[topic])
+                for word in words2keep:
+                    del (topWordsTopic[word])
+            mult += 1
+        return { word : score for word  , score in list(topWordsTopic.items())[:ntop]}
 
 
 class LDASequentialSimilarityCalculator(NoSupervisedSequantialLangageSimilarityCalculator):
@@ -548,4 +617,71 @@ class LFIDFSequentialSimilarityCalculator(SupervisedSequantialLangageSimilarityC
     def __init__(self, nb_topics: int, bad_words_args: dict, labels_idx: list):
         super().__init__(nb_topics, bad_words_args, labels_idx)
         self.engine = Engine_module.LFIDF
+
+
+class DynamicalCoreXSequentialSimilarityCalculator(MetaDynamicalSequencialLangageSimilarityCalculator):
+
+    def __init__(self, bad_words_args: dict, nb_max_topics : int, nb_min_topics : int, minimum_ratio_selection: float = 0.10):
+        super().__init__(bad_words_args, nb_max_topics, nb_min_topics,minimum_ratio_selection )
+        self.engine = Engine_module.CoreX
+
+
+    @check_size
+    def treat_Window(self, texts: List[List], **kwargs):
+
+        print(f"size documents: {len(texts)} ")
+        print("-" * 30)
+        window_dictionnary = corpora.Dictionary(texts)
+        # update semi-filtred dictionnary
+        self.semi_filtred_dictionnary.merge_with(window_dictionnary)
+        # we filtre bad words from window_dictionnary
+        self.updateBadwords()
+        window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
+        # train specific Engine model correlated to the window
+        models = []
+        coherences = []
+        for nb_topics in range(self.nb_min_topics, self.nb_max_topics):
+            model = self.engine(texts=texts, nb_topics=nb_topics, dictionnary=window_dictionnary_f,
+                                **kwargs)
+            models.append(model)
+            coherence = model.coherence
+            coherences.append(coherence)
+        nb_topics, choosen_model_idx = self.select_optimal_topic_number(coherences)
+        model = models[choosen_model_idx]
+        self.models.append(model)
+        return model, window_dictionnary_f
+
+
+class DynamicalLDASequentialSimilarityCalculator(MetaDynamicalSequencialLangageSimilarityCalculator):
+
+    def __init__(self, bad_words_args: dict, nb_max_topics : int, nb_min_topics : int, minimum_ratio_selection: float = 0.10):
+        super().__init__(bad_words_args, nb_max_topics, nb_min_topics, minimum_ratio_selection)
+        self.engine = Engine_module.LDA
+
+    @check_size
+    def treat_Window(self, texts: List[List], **kwargs):
+
+        print(f"size documents: {len(texts)} ")
+        print("-" * 30)
+        window_dictionnary = corpora.Dictionary(texts)
+        # update semi-filtred dictionnary
+        self.semi_filtred_dictionnary.merge_with(window_dictionnary)
+        # we filtre bad words from window_dictionnary
+        self.updateBadwords()
+        window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
+        # train specific Engine model correlated to the window
+        models = []
+        coherences = []
+        for nb_topics in range(self.nb_min_topics , self.nb_max_topics):
+            model = self.engine(texts=texts, nb_topics=nb_topics, dictionnary=window_dictionnary_f,
+                                **kwargs)
+            models.append(model)
+            coherence = model.coherence
+            coherences.append(coherence)
+        nb_topics , choosen_model_idx = self.select_optimal_topic_number(coherences)
+        model = models[choosen_model_idx]
+        self.models.append(model)
+        return model, window_dictionnary_f
+
+
 

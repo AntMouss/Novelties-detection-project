@@ -1,7 +1,7 @@
 from typing import List
 import numpy as np
 from gensim import corpora
-from gensim.models import LdaModel
+from gensim.models import LdaModel , CoherenceModel
 import scipy.sparse as ss
 from corextopic import corextopic as ct
 from novelties_detection.Experience.data_utils import DocumentsWordsCounter, LabelsWordsCounter
@@ -26,6 +26,10 @@ class Engine:
         self.texts = texts
         self.nb_topics = nb_topics
         self.core = None
+
+    @property
+    def coherence(self):
+        return None
 
     def __len__(self):
         return self.nb_topics
@@ -67,6 +71,10 @@ class CoreX(Engine):
         self.documents_matrix = ss.csc_matrix(self.documents_matrix)
         self.core = ct.Corex(n_hidden=self.nb_topics, max_iter=200, verbose=False, seed=1)
         self.core.fit(self.documents_matrix, words=self.words)
+
+    @property
+    def coherence(self):
+        return self.core.tcs
 
     def get_topic_terms(self,topic_id : int, topn=100):
         res = self.core.get_topics(n_words=topn , topic=topic_id)
@@ -149,6 +157,13 @@ class LDA(Engine):
             "passes" : self.passes
         }
         self.core  = LdaModel(**self.ldaargs)
+
+    @property
+    def coherence(self):
+        coherence_model = CoherenceModel(model=self.core, topics=self.nb_topics,
+                                         corpus=self.corpus_bow, dictionary=self.dictionnary)
+        return coherence_model.get_coherence()
+
 
 
     def get_topic_terms(self ,topic_id : int , topn = 100 , **kwargs):
