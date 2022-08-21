@@ -1,6 +1,6 @@
 import pickle
 from datetime import datetime
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import math
 import ijson
 import numpy as np
@@ -92,7 +92,7 @@ class ExperiencesMetadata(Data):
 
 class ExperiencesResult(Data):
 
-    def __init__(self, metadata : ExperiencesMetadata, similarities_score : Tuple[np.ndarray , np.ndarray], label_counter_w : List[dict] = None
+    def __init__(self, metadata : ExperiencesMetadata, similarities_score : np.array, label_counter_w : List[dict] = None
                  , label_counter_ref : List[dict] = None):
         """
         
@@ -105,7 +105,7 @@ class ExperiencesResult(Data):
         """
         self.label_counter_ref = label_counter_ref
         self.label_counter_w = label_counter_w
-        self.similarities_score = {"with" : similarities_score[0] , "without" : similarities_score[1]}
+        self.similarities_score = similarities_score
         self.metadata = metadata
 
 
@@ -409,4 +409,24 @@ class LabelsDictionnary:
                 if word not in self.index[label].keys():
                     self.index[label][word] = 0
                 self.index[label][word] += 1
+
+class LabelisedSample(Data):
+
+    def __init__(self , labels : List[str] , samples_window : List[Dict] ):
+        self.samples_window = samples_window
+        self.labels = labels
+        if len(samples_window) != len(labels):
+            raise Exception("labels and samples_window haven't the same size")
+
+    def __len__(self):
+        return len(self.labels)
+
+    @property
+    def to_dataframe(self):
+        dataframe = []
+        for label  , samples_window_label in zip(self.labels , self.samples_window):
+            for window_type , samples in samples_window_label.items():
+                for value in samples:
+                    dataframe.append({"label" : label , "type" : window_type , "similarity_value" : value})
+        return pd.DataFrame(dataframe)
 
