@@ -11,9 +11,8 @@ from novelties_detection.Experience.data_utils import (TimeLineArticlesDataset,
                         ExperiencesMetadata,
                         ExperiencesResults,
                         ExperiencesResult)
-from novelties_detection.Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator, \
-    NoSupervisedSequantialLangageSimilarityCalculator
-from novelties_detection.Experience.data_analysis import Analyser
+from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator
+from novelties_detection.Experience.data_analysis import Analyser , SupervisedSampler
 from novelties_detection.Experience.Exception_utils import *
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , level=logging.INFO)
@@ -126,7 +125,7 @@ class ExperiencesMetadataGenerator:
 
 
 
-class ExperiencesGenerator:
+class ExperiencesProcessor:
     """
     use this class to generate 2 differents timeline ,one with thematics injection and another one without
     then we compute similarity score for each time line and we analyse the similarity score to see if thematics injection
@@ -138,21 +137,14 @@ class ExperiencesGenerator:
         self.experiences_res = []
         self.new_experience = {}
         self.info = {}
-        self.reference_timeline = dataset
 
 
-    def generate_timelines(self , dataset_args : dict) -> Tuple[TimeLineArticlesDataset]:
+    def generate_timelines(self , dataset_args : dict) -> EditedTimeLineArticlesDataset:
         try:
             for metadata , thematics in self.metadata_generator:
                 self.new_experience["metadata"] = metadata
-                if self.reference_timeline is None:
-                    self.reference_timeline = TimeLineArticlesDataset(**dataset_args)
                 timelinew = EditedTimeLineArticlesDataset(thematics=thematics, metadata=metadata, optimize_mode=True,**dataset_args)
-                stop_window_idx = timelinew.stop_window
-                begin_window_idx = timelinew.begin_window
-                self.reference_timeline.set_stop_window(stop_window_idx)
-                self.reference_timeline.set_begin_window(begin_window_idx)
-                yield self.reference_timeline , timelinew
+                yield timelinew
 
         except MetadataGenerationException:
             raise
@@ -161,23 +153,17 @@ class ExperiencesGenerator:
             raise TimelinesGenerationException("Exception occurred in Timeline Generation" , e)
 
 
-    def generate_calculator(self, nb_topics : int, calculator_type : Type[MetaSequencialLangageSimilarityCalculator]
-                            , training_args : dict, dataset_args : dict, **kwargs) -> Tuple[MetaSequencialLangageSimilarityCalculator]:
+    def generate_calculator(self, nb_topics : int, calculator_type : Type[SupervisedSequantialLangageSimilarityCalculator]
+                            , training_args : dict, dataset_args : dict, **kwargs):
 
         try:
             self.info["nb_topics"] = nb_topics
             lookback = dataset_args["lookback"]
-            if issubclass(calculator_type, NoSupervisedSequantialLangageSimilarityCalculator):
-                self.info["mode"] = "u"
-            else:
-                self.info["mode"] = "s"
-            for reference_timeline , timeline_w in self.generate_timelines(dataset_args):
+            self.info["mode"] = "s"
+            for timeline_w in self.generate_timelines(dataset_args):
                 sq_calculator_w = calculator_type(nb_topics, **kwargs)
                 sq_calculator_w.add_windows(timeline_w, lookback, **training_args)
-                reference_calculator = calculator_type(nb_topics , **kwargs)
-                reference_calculator.add_windows(reference_timeline, lookback,
-                                                          **training_args)
-                yield reference_calculator , sq_calculator_w
+                yield  sq_calculator_w
 
         except MetadataGenerationException:
             raise
@@ -188,21 +174,18 @@ class ExperiencesGenerator:
             raise CalculatorGenerationException("Exception occurred in Calculator Generation")
 
 
-    def generate_results(self, first_w : int, last_w : int, ntop : int, back : int, calculator_args : dict, **kwargs):
+    def generate_results(self, ntop : int, back : int, calculator_args : dict, **kwargs):
 
         try:
             # delete topic_id key for use compareTopicsSequentialy that is like compareTopicSequentialy for all topics
-            for calculator_ref , calculator_with in self.generate_calculator(**calculator_args):
-                res_w = calculator_with.compare_Windows_Sequentialy(first_w, last_w, ntop, back, **kwargs)
-                res_wout = calculator_ref.compare_Windows_Sequentialy(first_w, last_w, ntop, back, **kwargs)
-                similarities_score = (res_w , res_wout)
+            for calculator_with in self.generate_calculator(**calculator_args):
+                res_w = calculator_with.compare_Windows_Sequentialy(ntop, back, **kwargs)
+                similarities_score = res_w
                 self.new_experience['similarities_score'] = similarities_score
                 self.new_experience['label_counter_w'] = calculator_with.label_articles_counters
-                self.new_experience['label_counter_ref'] = calculator_ref.label_articles_counters
                 self.experiences_res.append(ExperiencesResult(**self.new_experience))
                 del self.new_experience
                 self.new_experience = {}
-
         except MetadataGenerationException:
             raise
         except TimelinesGenerationException:
@@ -218,7 +201,8 @@ class ExperiencesGenerator:
     def analyse_results(experiences_results : ExperiencesResults , risk = 0.05 , trim = 0):
         alerts = []
         try:
-            analyser = Analyser(experiences_results , risk = risk , trim=trim)
+            samples = SupervisedSampler(experiences_results).samples
+            analyser = Analyser(samples , risk = risk , trim=trim)
             for alert in analyser.multi_test_hypothesis_topic_injection():
                 alerts.append(alert)
             return alerts

@@ -113,13 +113,11 @@ class KwargsDataset:
 
 
 class KwargsResults:
-    def __init__(self, first_w: int, last_w: int, ntop: int,
+    def __init__(self, ntop: int,
                   remove_seed_words: bool , back : int ):
         self.back = back
         self.remove_seed_words = remove_seed_words
         self.ntop = ntop
-        self.last_w = last_w
-        self.first_w = first_w
 
 class KwargsNoSupervisedResults(KwargsResults):
     def __init__(self,reproduction_threshold : float , **kwargs):
@@ -276,8 +274,6 @@ class RandomKwargsResultsGenerator:
     def __new__(cls, mode : str = "u"):
         kwargs_dictionnary = {}
         kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("remove_seed_words"))
-        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("last_w"))
-        kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("first_w"))
         kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("ntop"))
         kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("back"))
         if mode == "s":

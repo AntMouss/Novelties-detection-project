@@ -7,14 +7,21 @@ from multiprocessing import Pool
 import bisect
 from typing import List , Union , Tuple
 from novelties_detection.Experience.kwargsGen import RandomKwargsGenerator , FullKwargs
-from novelties_detection.Experience.ExperienceGen import ExperiencesGenerator , MetadataGenerationException
+from novelties_detection.Experience.ExperienceGen import ExperiencesProcessor , MetadataGenerationException
 from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte , TimeLineArticlesDataset , MacroThematic , ExperiencesMetadata
 import pickle
 import logging
 from threading import Lock
-from novelties_detection.Experience.Exception_utils import SelectionException
+from novelties_detection.Experience.Exception_utils import SelectionException , AnalyseException , ResultsGenerationException
 from novelties_detection.Experience.config_path import RES_HOUR_CALCULATOR_SELECTION_PATH , RES_DAY_CALCULATOR_SELECTION_PATH, LOG_PATH
-from novelties_detection.Experience.config_calculator_selection import STATIC_KWARGS_GENERATOR_HOURS , EXPERIENCES_METADATA_GENERATOR_HOURS , STATIC_KWARGS_GENERATOR_DAYS , EXPERIENCES_METADATA_GENERATOR_DAYS , TEST_EXPERIENCES_METADATA_GENERATOR_HOURS
+from novelties_detection.Experience.config_calculator_selection import (
+    STATIC_KWARGS_GENERATOR_HOURS ,
+    EXPERIENCES_METADATA_GENERATOR_HOURS ,
+    STATIC_KWARGS_GENERATOR_DAYS ,
+    EXPERIENCES_METADATA_GENERATOR_DAYS ,
+    TEST_EXPERIENCES_METADATA_GENERATOR_HOURS,
+    TEST_EXPERIENCES_METADATA_GENERATOR_DAYS
+)
 from novelties_detection.Experience.utils import timer_func
 
 l = Lock()
@@ -29,7 +36,9 @@ NB_CALCULATORS = 15
 
 class CalculatorInfo:
 
-    def __init__(self , calculator_id , score : float ):
+    def __init__(self , calculator_id , score : float , resultats : ExperiencesResults = None , full_kwargs : FullKwargs = None ):
+        self.full_kwargs = full_kwargs
+        self.resultats = resultats
         self.calculator_id = calculator_id
         self.score = score
     def __lt__(self, other):
@@ -44,11 +53,13 @@ class MicroCalculatorInfo(CalculatorInfo):
         self.nb_clusters = nb_clusters
 
 
+
+
 class MetaCalculatorSelector:
+    best_calculators = []
+    calculators_info = []
     def __init__(self, kwargs_calculator_generator):
         self.kwargs_calculator_generator = kwargs_calculator_generator
-        self.best_calculators = []
-        self.res = {}
 
     @timer_func
     def process_selection(self, full_kwargs : FullKwargs, max_to_save : int, path = None):
@@ -69,16 +80,17 @@ class MetaCalculatorSelector:
 
     def save(self,save_path : str ) :
         to_save = {
-            "res" : self.res,
-            "best_micro_calculators" : self.best_calculators
+            "calculators_info" : self.calculators_info,
+            "best_calculators" : self.best_calculators
         }
         with open(save_path , "wb") as f:
             f.write(pickle.dumps(to_save))
 
-    def update_best_calculators(self, calculator_info : CalculatorInfo , max_to_save):
-        bisect.insort(self.best_calculators, calculator_info)
+    def update_best_calculators(self, calculator_id  , max_to_save : int):
+        bisect.insort(self.best_calculators, calculator_id)
         if len(self.best_calculators) > max_to_save:
             del self.best_calculators[0]
+
 
 
 class MacroCalculatorSelector(MetaCalculatorSelector):
@@ -86,10 +98,6 @@ class MacroCalculatorSelector(MetaCalculatorSelector):
     def __init__(self, kwargs_calculator_generator , experiences_metadata_generator : Union[List[Tuple[ExperiencesMetadata , List[MacroThematic]]] , MetadataGenerationException]):
         super().__init__(kwargs_calculator_generator)
         self.experiences_metadata_generator = experiences_metadata_generator
-        self.resultats = {
-            "calculator" : {},
-            "best" : self.best_calculators
-        }
 
     @staticmethod
     def compute_calculator_score(alerts : List[Alerte] , average=True):
@@ -109,30 +117,33 @@ class MacroCalculatorSelector(MetaCalculatorSelector):
 
         global l
         calculator_id = id(full_kwargs)
+        energy_distance = 0
         kwargs_dataset = full_kwargs["dataset_args"]
-        dataset = TimeLineArticlesDataset(**kwargs_dataset)
-        experience_generator = ExperiencesGenerator(self.experiences_metadata_generator , dataset)
+        experiences_results = None
         try:
+
+            dataset = TimeLineArticlesDataset(**kwargs_dataset)
+            experience_generator = ExperiencesProcessor(self.experiences_metadata_generator, dataset)
             experience_generator.generate_results(**full_kwargs["results_args"])
             experiences_results = ExperiencesResults(experience_generator.experiences_res , experience_generator.info)
-            alerts = ExperiencesGenerator.analyse_results(experiences_results, **full_kwargs["analyse_args"])
+            alerts = ExperiencesProcessor.analyse_results(experiences_results, **full_kwargs["analyse_args"])
             energy_distance = self.compute_calculator_score(alerts)
-            calc_info = CalculatorInfo(calculator_id, energy_distance)
             print(f"hypothesis mean distance equals to {energy_distance} for calculator {calculator_id}")
-            self.update_best_calculators(calc_info, max_to_save)
-            l.acquire()
-            self.resultats["calculator"][calculator_id] = {"kwargs": full_kwargs, "alerts": alerts , "experience_resusltas" : experiences_results}
-            if path is not None:
-                self.save(path)
-            l.release()
-            if len(alerts) != 0:
-                logger.info(f"Hypothesis confirmed for process id : {calculator_id}")
-        except SelectionException:
-            raise
+        except ResultsGenerationException:
+            pass
+        except AnalyseException:
             pass
         except Exception as e:
             logger.critical(f"Unknown Problem affect runtime : {e}")
+            raise
         finally:
+            calculator_info = CalculatorInfo(calculator_id, energy_distance , experiences_results , full_kwargs)
+            self.update_best_calculators(calculator_id, max_to_save)
+            self.calculators_info.append(calculator_info)
+            l.acquire()
+            if path is not None:
+                self.save(path)
+            l.release()
             del experience_generator
 
 
@@ -144,19 +155,16 @@ class RandomMacroCalculatorSelector(MacroCalculatorSelector):
 
     def __init__(self, kwargs_calculator_generator : RandomKwargsGenerator , experiences_metadata_generator : Union[List[Tuple[ExperiencesMetadata , List[MacroThematic]]] , MetadataGenerationException]):
         super().__init__(kwargs_calculator_generator , experiences_metadata_generator)
-        self.resultats = {
-            "calculator" : {},
-            "best" : self.best_calculators
-        }
+
 
 
 
 def main():
 
-    static_selector_hours = MacroCalculatorSelector(STATIC_KWARGS_GENERATOR_HOURS, EXPERIENCES_METADATA_GENERATOR_HOURS)
-    static_selector_days = MacroCalculatorSelector(STATIC_KWARGS_GENERATOR_DAYS, EXPERIENCES_METADATA_GENERATOR_DAYS)
-    static_selector_hours.run( max_to_save=3 , nb_workers=1 , path=RES_HOUR_CALCULATOR_SELECTION_PATH)
-    static_selector_days.run(max_to_save=3, nb_workers=1 , path=RES_DAY_CALCULATOR_SELECTION_PATH)
+    static_selector_hours = MacroCalculatorSelector(STATIC_KWARGS_GENERATOR_HOURS, TEST_EXPERIENCES_METADATA_GENERATOR_HOURS)
+    static_selector_days = MacroCalculatorSelector(STATIC_KWARGS_GENERATOR_DAYS, TEST_EXPERIENCES_METADATA_GENERATOR_DAYS)
+    static_selector_days.run(max_to_save=3, nb_workers=1 , path="/home/mouss/PycharmProjects/novelties-detection-git/results/day2.pck")
+    static_selector_hours.run( max_to_save=3 , nb_workers=1 , path="/home/mouss/PycharmProjects/novelties-detection-git/results/hour2.pck")
 
 
 if __name__ == '__main__':

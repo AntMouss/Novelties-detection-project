@@ -104,7 +104,7 @@ NAN_WINDOW_IDX = found_nan_window(  original_dataset_hours, 20)
 #DEFAULT KWARGS
 
 kwargs_analyse = KwargsAnalyse(TRIM , RISK)
-kwargs_results = KwargsResults(0 , 0 , NTOP , True ,BACK)
+kwargs_results = KwargsResults(NTOP , True ,BACK)
 kwargs_dataset_hour = KwargsDataset(START, END, PATH, LOOKBACK, 1, transform_fct=transformS)
 kwargs_dataset_days = KwargsDataset(START, END, PATH, LOOKBACK, 24, transform_fct=transformS)
 kwargs_experiences = KwargsExperiences(
@@ -134,9 +134,11 @@ default_guidedcorex_kwargs_engine = GuidedCoreXCalculatorKwargs(
 )
 
 STATIC_KWARGS_GENERATOR_HOURS = [
-    FullKwargs(kwargs_dataset_hour, kwargs_experiences, default_lfidf_kwargs_engine, kwargs_results, kwargs_analyse),
-    FullKwargs(kwargs_dataset_hour, kwargs_experiences, default_guidedlda_kwargs_engine, kwargs_results, kwargs_analyse),
-    FullKwargs(kwargs_dataset_hour, kwargs_experiences, default_guidedcorex_kwargs_engine, kwargs_results, kwargs_analyse)
+    FullKwargs(kwargs_dataset_hour, kwargs_experiences, default_guidedcorex_kwargs_engine, kwargs_results,
+               kwargs_analyse),
+    FullKwargs(kwargs_dataset_hour, kwargs_experiences, default_guidedlda_kwargs_engine, kwargs_results,
+               kwargs_analyse),
+    FullKwargs(kwargs_dataset_hour, kwargs_experiences, default_lfidf_kwargs_engine, kwargs_results, kwargs_analyse)
 ]
 
 STATIC_KWARGS_GENERATOR_DAYS = [
@@ -144,6 +146,7 @@ STATIC_KWARGS_GENERATOR_DAYS = [
     FullKwargs(kwargs_dataset_days, kwargs_experiences, default_guidedcorex_kwargs_engine, kwargs_results, kwargs_analyse),
     FullKwargs(kwargs_dataset_days, kwargs_experiences, default_lfidf_kwargs_engine, kwargs_results, kwargs_analyse)
 ]
+
 
 HOUR_RANGES_1 = [[(15, 23) , (29 , 40) , (56, 92) ] ,
                  [],
@@ -228,18 +231,6 @@ HOUR_RANGES_LIST = [
     HOUR_RANGES_5
 ]
 
-TEST_RANGES_HOURS_1 = [[(15, 23) , (29 , 40)] ,
-                     [] ,
-                     [] ,
-                     []
-                     ]
-
-TEST_RANGES_HOURS_2 = [[(105 , 114)] ,
-                     [(140 , 163)] ,
-                     [] ,
-                     []
-                     ]
-
 
 DAY_RANGES_1 =[
     [(43 , 45) , (47 , 49) , (62 , 64)],
@@ -263,10 +254,32 @@ DAY_RANGES_3 =[
 ]
 
 
-TEST_EXPERIENCES_METADATA_GENERATOR_HOURS = [
-    (ExperiencesMetadata("nimportequoi", TEST_RANGES_HOURS_1), macro_thematics_hours),
-    (ExperiencesMetadata("nimportequoi", TEST_RANGES_HOURS_2), macro_thematics_hours),
+TEST_RANGES_HOURS_1 = [[(15, 23) , (29 , 40)] ,
+                     [] ,
+                     [] ,
+                     []
+                     ]
+
+TEST_RANGES_HOURS_2 = [[(105 , 114)] ,
+                     [(140 , 163)] ,
+                     [] ,
+                     []
+                     ]
+
+TEST_RANGES_DAYS_1 = [
+    [],
+    [],
+    [(4,8)],
+    [(9,13)]
 ]
+
+TEST_RANGES_DAYS_2 = [
+    [],
+    [],
+    [],
+    [(16 , 17) , (18 , 21)]
+]
+
 
 
 EXPERIENCES_METADATA_GENERATOR_HOURS = [
@@ -279,4 +292,13 @@ EXPERIENCES_METADATA_GENERATOR_DAYS = [
 (ExperiencesMetadata("nimp1" , DAY_RANGES_1 , begin_window_idx=found_begin_window_idx(DAY_RANGES_1 , [])), macro_thematics_days),
 (ExperiencesMetadata("nimp2" , DAY_RANGES_2 ,begin_window_idx=found_begin_window_idx(DAY_RANGES_2 , [])), macro_thematics_days),
 (ExperiencesMetadata("nimp3" , DAY_RANGES_3 , begin_window_idx=found_begin_window_idx(DAY_RANGES_3 , [])), macro_thematics_days)
+]
+
+
+TEST_EXPERIENCES_METADATA_GENERATOR_HOURS = EXPERIENCES_METADATA_GENERATOR_HOURS[:2]
+
+
+TEST_EXPERIENCES_METADATA_GENERATOR_DAYS = [
+(ExperiencesMetadata("nimp1" , TEST_RANGES_DAYS_1 , begin_window_idx= 2), macro_thematics_days),
+(ExperiencesMetadata("nimp2" , TEST_RANGES_DAYS_2 ,begin_window_idx=14), macro_thematics_days),
 ]

@@ -55,8 +55,6 @@ KWARGS = {
     "nb_topics": [len(LABELS_IDX)],
     "labels_idx": [LABELS_IDX],
     "topic_id": [i for i in range(len(LABELS_IDX))],
-    "first_w": [0],
-    "last_w": [0],
     "ntop": [ntop for ntop in range(50 , 101 , 10)],
     "seed" : [SEED],
     "remove_seed_words": [True],

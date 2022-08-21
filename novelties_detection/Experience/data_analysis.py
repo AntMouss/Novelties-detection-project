@@ -7,9 +7,8 @@ The base hypothesis is: this two type of window have a different similarity scor
 import functools
 import numpy as np
 import copy
-from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte
-from scipy.stats import ttest_ind , normaltest , pearsonr , energy_distance
-import itertools
+from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte , LabelisedSample
+from scipy.stats import ttest_ind , normaltest  , energy_distance
 
 
 
@@ -25,7 +24,7 @@ def check_topic_id(func):
     return wrapper
 
 
-class Sampler:
+class SupervisedSampler:
     """
     format results data obtain during experience and transform it to being ready to use
     """
@@ -34,6 +33,7 @@ class Sampler:
 
         self.results = results.results
         self.info = results.info
+        self.labels = self.info["labels"]
 
     def __len__(self):
         if self.info["mode"] == "u":
@@ -42,7 +42,7 @@ class Sampler:
             return self.info["nb_topics"]
 
     @property
-    def samples(self):
+    def samples(self) -> LabelisedSample:
 
         topic_samples = {
             "outside": [],
@@ -52,18 +52,19 @@ class Sampler:
         }
         samples = [copy.deepcopy(topic_samples) for _ in range(len(self))]
         for result in self.results:
+            first_window_idx = result.metadata.begin_window_idx
             full_flat_ranges = []
             for thematic_ranges in result.metadata.ranges:
                 full_flat_ranges += thematic_ranges
             full_flat_ranges = sorted(full_flat_ranges , key = lambda item : item[0])
             similarity = result.similarities_score
-            difference_matrix = abs(similarity['with'] - similarity['without'])
-            for topic_id, difference_scores in enumerate(difference_matrix):
+            for topic_id, difference_scores in enumerate(similarity):
                 for window_id, difference_score in enumerate(difference_scores):
-                    key = Sampler.choose_key(window_id, full_flat_ranges)
+                    window_id = window_id + first_window_idx
+                    key = SupervisedSampler.choose_key(window_id, full_flat_ranges)
                     samples[topic_id][key].append(difference_score)
 
-        return samples
+        return LabelisedSample(self.labels, samples)
 
 
     @staticmethod
@@ -88,20 +89,22 @@ class Analyser:
     """
     analyse sample data to check hypothesis (normality and mean difference)
     """
+    normality_risk = 0.05
+    target_window_types = ['in', 'out']
+    other_window_types = ['inside', 'outside']#'between' , 'after' , 'before'
+    types_window = target_window_types + other_window_types
 
-    def __init__(self , results : ExperiencesResults , risk = 0.05 , trim = 0):
+    def __init__(self, sample : LabelisedSample, risk = 0.05, trim = 0):
         """
 
         @param results:
         @param risk: alpha risk to check hypothesis availability
         @param trim: percent of aberrant sample we can remove for hypothesis checking
         """
-        self.results = results
         self.trim = trim
         self.risk = risk
-        self.samples = Sampler(self.results).samples
-        self.nb_topics = len(self.samples)
-        self.types_window = list(self.samples[0].keys())
+        self.sample = sample
+        self.nb_topics = len(self.sample)
 
 
     @check_topic_id
@@ -115,13 +118,13 @@ class Analyser:
         @param trim:
         @return:
         """
-        topic_samples = self.samples[topic_id]
-        a = topic_samples[self.types_window[idx_window1]]
-        b = topic_samples[self.types_window[idx_window2]]
+        topic_samples = self.sample.samples_window[topic_id]
+        target_samples = topic_samples[self.types_window[idx_window1]]
+        other_samples = topic_samples[self.types_window[idx_window2]]
         try:
-            _ , pvalue = ttest_ind(a , b , trim=trim)
-            distance = energy_distance(a,b)
-            mean_distance = np.mean(a) - np.mean(b)
+            _ , pvalue = ttest_ind(target_samples , other_samples , trim=trim)
+            distance = energy_distance(target_samples,other_samples)
+            mean_distance =  np.mean(other_samples) - np.mean(target_samples)
         except ValueError:
             return None , None , None
         return pvalue , distance , mean_distance
@@ -147,11 +150,9 @@ class Analyser:
 
     def multi_test_hypothesis_topic_injection(self, test_normality = True):
 
-        target_window_types = ['in' , 'out']
-        other_window_types = ['inside' , 'outside' ]#'between' , 'after' , 'before'
         for topic_id in range (self.nb_topics):
-            for target_window in target_window_types:
-                for other_window in other_window_types:
+            for target_window in self.target_window_types:
+                for other_window in self.other_window_types:
                     alert =  self.test_hypothesis_topic_injection(topic_id ,type_window1=target_window
                                     ,type_window2=other_window ,test_normality = test_normality)
                     if alert is not None:
@@ -160,15 +161,13 @@ class Analyser:
     @check_topic_id
     @functools.lru_cache(maxsize=2)
     def test_hypothesis_normal_distribution(self , topic_id):
-        # "without" key is linked to the result that we obtained with the reference model that isn't
-        # contain topic injection
-        #we assume that the distribution of similarity is invariant acoording to the label
-        # so we flat the similarity["without"]
-        similarity_samples = self.results.results[0].similarities_score["without"]
-        similarity_samples = list(similarity_samples[topic_id])
+
+        similarity_samples = []
+        topic_samples = self.sample[topic_id]
+        for window_type in self.other_window_types:
+            similarity_samples += topic_samples[window_type]
         _ , pvalue = normaltest(similarity_samples)
-        # we assume that we take the same risk for normality hypothesis and topic injection hypothesis
-        if pvalue >= self.risk:
+        if pvalue >= self.normality_risk:
             print("Normality confirmed")
             return True
         else:
@@ -176,14 +175,14 @@ class Analyser:
             return False
 
 
-    def test_correlation_hypothesis_similarity_counter_articles(self):
-
-        for topic_id in range(self.nb_topics):
-            similarity_topic = [result.similarities_score["without"][topic_id] for result in
-                                self.results.results]
-            similarity_topic = list(itertools.chain.from_iterable(similarity_topic))
-            count_topic = [[window_count[topic_id] for window_count in result.label_counter_ref] for result in
-                                  self.results.results]
-            count_topic = list(itertools.chain.from_iterable(count_topic))
-            corr, _ = pearsonr(similarity_topic, count_topic)
-            print(f'Pearsons correlation for topic {topic_id}: %.3f' % corr)
+    # def test_correlation_hypothesis_similarity_counter_articles(self):
+    #
+    #     for topic_id in range(self.nb_topics):
+    #         similarity_topic = [result.similarities_score[topic_id] for result in
+    #                             self.results.results]
+    #         similarity_topic = list(itertools.chain.from_iterable(similarity_topic))
+    #         count_topic = [[window_count[topic_id] for window_count in result.label_counter_ref] for result in
+    #                               self.results.results]
+    #         count_topic = list(itertools.chain.from_iterable(count_topic))
+    #         corr, _ = pearsonr(similarity_topic, count_topic)
+    #         print(f'Pearsons correlation for topic {topic_id}: %.3f' % corr)

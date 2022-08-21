@@ -30,3 +30,6 @@ class CompareWindowsException(Exception):
 
 class ServiceException(Exception):
     pass
+
+class NoWordsClusterException(Exception):
+    pass
