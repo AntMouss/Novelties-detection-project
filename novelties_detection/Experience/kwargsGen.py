@@ -8,13 +8,8 @@ from typing import List, Callable, Dict, Type
 import random
 import math
 from novelties_detection.Experience.Sequential_Module import (MetaSequencialLangageSimilarityCalculator,
-                                                              GuidedSequantialLangageSimilarityCalculator,
                                                               SupervisedSequantialLangageSimilarityCalculator,
-                                                              LFIDFSequentialSimilarityCalculator,
-                                                              GuidedCoreXSequentialSimilarityCalculator,
-                                                              GuidedLDASequentialSimilarityCalculator,
-                                                              LDASequentialSimilarityCalculator,
-                                                              CoreXSequentialSimilarityCalculator)
+                                                              )
 from novelties_detection.Collection.data_processing import  absoluteThresholding , linearThresholding , exponentialThresholding , transformS , transformU
 from novelties_detection.Experience.config_arguments import Thematic , ProcessorText , KWARGS
 
@@ -30,62 +25,27 @@ class UpdateBadWordsKwargs:
         self.thresholding_fct_bellow = thresholding_fct_bellow
         self.thresholding_fct_above = thresholding_fct_above
 
-class MetaCalculatorKwargs:
+class CalculatorKwargs:
     """
     class that contain kwargs of MetaSequantialCalculator instance
     """
-    def __init__(self, nb_topics: int , bad_words_args : UpdateBadWordsKwargs , training_args = None):
+    def __init__(self, calculator_type : Type[MetaSequencialLangageSimilarityCalculator], nb_topics: int , bad_words_args : UpdateBadWordsKwargs ,
+                 seed : Dict = None  , memory_length : int = None,  labels_idx : List = None,  training_args : dict = None):
+        self.memory_length = memory_length
+        self.labels_idx = labels_idx
+        self.seed = seed
         self.bad_words_args = bad_words_args.__dict__
         self.nb_topics = nb_topics
-        self.calculator_type = MetaSequencialLangageSimilarityCalculator
+        self.calculator_type = calculator_type
         if training_args is None:
             self.training_args = {}
 
+    def __getitem__(self, item):
+        if item == "kwargs":
+            tmp = self.__dict__
+            del tmp["calculator_type"]
+            return tmp
 
-class SupervisedCalculatorKwargs(MetaCalculatorKwargs):
-    def __init__(self, labels_idx, **kwargs):
-        super().__init__(**kwargs)
-        self.calculator_type = SupervisedSequantialLangageSimilarityCalculator
-        self.labels_idx = labels_idx
-
-
-class GuidedCalculatorKwargs(SupervisedCalculatorKwargs):
-    def __init__(self, seed , **kwargs):
-        super().__init__(**kwargs)
-        self.calculator_type = GuidedSequantialLangageSimilarityCalculator
-        self.seed = seed
-
-class LFIDFCalculatorKwargs(SupervisedCalculatorKwargs):
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-        self.calculator_type = LFIDFSequentialSimilarityCalculator
-
-
-class LDACalculatorKwargs(MetaCalculatorKwargs):
-    def __init__(self, passes, **kwargs):
-        super().__init__(**kwargs)
-        self.calculator_type = LDASequentialSimilarityCalculator
-        self.training_args["passes"] = passes
-
-
-class CoreXCalculatorKwargs(MetaCalculatorKwargs):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.calculator_type = CoreXSequentialSimilarityCalculator
-
-
-class GuidedLDACalculatorKwargs(GuidedCalculatorKwargs , LDACalculatorKwargs):
-    def __init__(self, overrate ,  **kwargs):
-        super().__init__(**kwargs)
-        self.calculator_type = GuidedLDASequentialSimilarityCalculator
-        self.training_args["overrate"] = overrate
-
-
-class GuidedCoreXCalculatorKwargs(GuidedCalculatorKwargs):
-    def __init__(self, anchor_strength , **kwargs):
-        super().__init__(**kwargs)
-        self.calculator_type = GuidedCoreXSequentialSimilarityCalculator
-        self.training_args["anchor_strength"] = anchor_strength
 
 
 
@@ -114,7 +74,7 @@ class KwargsDataset:
 
 class KwargsResults:
     def __init__(self, ntop: int,
-                  remove_seed_words: bool , back : int ):
+                  remove_seed_words: bool = False , back : int  = 1):
         self.back = back
         self.remove_seed_words = remove_seed_words
         self.ntop = ntop
@@ -130,13 +90,30 @@ class KwargsAnalyse:
         self.trim = trim
         self.risk = risk
 
+
+
 class FullKwargs:
-    def __init__(self , kwargs_dataset : KwargsDataset , kwargs_experiences : KwargsExperiences ,
-                 kwargs_engine : MetaCalculatorKwargs , kwargs_result : KwargsResults ,
-                 kwargs_analyse : KwargsAnalyse):
-        self.kwargs_analyse = kwargs_analyse
+    def __init__(self, kwargs_engine : CalculatorKwargs, kwargs_result : KwargsResults):
         self.kwargs_result = kwargs_result
         self.kwargs_engine = kwargs_engine
+
+    def __getitem__(self, item):
+
+        kwargs = {}
+        if item == 'results_args':
+            kwargs.update(self.kwargs_result.__dict__)
+        elif item == "calculator_args":
+            kwargs.update(self.kwargs_engine.__dict__)
+        else:
+            raise KeyError(f"{item}")
+        return kwargs
+
+
+class FullKwargsForExperiences(FullKwargs):
+    def __init__(self, kwargs_dataset: KwargsDataset, kwargs_experiences: KwargsExperiences,
+                 kwargs_engine: CalculatorKwargs, kwargs_result: KwargsResults, kwargs_analyse: KwargsAnalyse):
+        super().__init__(kwargs_engine, kwargs_result)
+        self.kwargs_analyse = kwargs_analyse
         self.kwargs_experiences = kwargs_experiences
         self.kwargs_dataset = kwargs_dataset
 
@@ -163,16 +140,6 @@ class FullKwargs:
 
 
 
-
-class RandomMetaKwargsGenerator:
-
-    @staticmethod
-    def choose_arg(kwarg , key_name = None):
-        if key_name is None:
-            return {kwarg: random.choice(KWARGS[kwarg])}
-        else:
-            return {key_name: random.choice(KWARGS[kwarg])}
-
 class RandomKwargsBadWordsGenerator:
     def __new__(cls):
         kwargs_dictionnary = {}
@@ -183,32 +150,40 @@ class RandomKwargsBadWordsGenerator:
             [kwargs_dictionnary["thresholding_fct_above"], kwargs_dictionnary["thresholding_fct_bellow"]]))
         return UpdateBadWordsKwargs(**kwargs_dictionnary)
 
+
+class RandomMetaKwargsGenerator:
+
+    @staticmethod
+    def choose_arg(kwarg , key_name = None):
+        if key_name is None:
+            return {kwarg: random.choice(KWARGS[kwarg])}
+        else:
+            return {key_name: random.choice(KWARGS[kwarg])}
+
+
 class RandomKwargsCalculatorGenerator(RandomMetaKwargsGenerator):
 
     def __new__(cls, calculator_type : Type[MetaSequencialLangageSimilarityCalculator]):
         global kwargs_calculator_type
         kwargs_dictionnary = {}
+        kwargs_dictionnary["calculator_type"] = calculator_type
         kwargs_dictionnary["bad_words_args"] = RandomKwargsBadWordsGenerator()
+        kwargs_dictionnary["training_args"] = {}
         if calculator_type.__name__ == 'GuidedLDASequentialSimilarityCalculator':
-            kwargs_calculator_type = GuidedCalculatorKwargs
-            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("overrate"))
-            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("passes"))
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("seed"))
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("labels_idx"))
+            kwargs_dictionnary["training_args"].update(RandomKwargsCalculatorGenerator.choose_arg("passes"))
+            kwargs_dictionnary["training_args"].update(RandomKwargsCalculatorGenerator.choose_arg("overrate"))
+
         elif calculator_type.__name__ == 'GuidedCoreXSequentialSimilarityCalculator':
-            kwargs_calculator_type = GuidedCoreXCalculatorKwargs
-            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("anchor_strength"))
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("seed"))
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("labels_idx"))
+            kwargs_dictionnary["training_args"].update(RandomKwargsCalculatorGenerator.choose_arg("anchor_strength"))
+
         elif calculator_type.__name__ == 'LFIDFSequentialSimilarityCalculator':
-            kwargs_calculator_type = LFIDFCalculatorKwargs
             kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("labels_idx"))
-        elif calculator_type.__name__ == 'CoreXSequentialSimilarityCalculator':
-            kwargs_calculator_type = CoreXCalculatorKwargs
-            pass
         elif calculator_type.__name__ == 'LDASequentialSimilarityCalculator':
-            kwargs_calculator_type = LDACalculatorKwargs
-            kwargs_dictionnary.update(RandomKwargsCalculatorGenerator.choose_arg("passes"))
+            kwargs_dictionnary["training_args"].update(RandomKwargsCalculatorGenerator.choose_arg("passes"))
             pass
         return kwargs_calculator_type(**kwargs_dictionnary)
 
@@ -294,11 +269,11 @@ class RandomKwargsAnalyseGenerator:
 
 class RandomFullProcessKwargsGenerator:
 
-    def __new__(cls , kwargs_calculator_type : Type[MetaCalculatorKwargs] = None):
-        if kwargs_calculator_type is None:
-            kwargs_calculator_type = random.choice(KWARGS["kwargs_calculator_type"])
-        kwargs_engine = RandomKwargsCalculatorGenerator(kwargs_calculator_type)
-        if issubclass(kwargs_calculator_type , SupervisedCalculatorKwargs):
+    def __new__(cls, calculator_type : Type[CalculatorKwargs] = None):
+        if calculator_type is None:
+            calculator_type = random.choice(KWARGS["kwargs_calculator_type"])
+        kwargs_calculator = RandomKwargsCalculatorGenerator(calculator_type)
+        if issubclass(calculator_type , SupervisedSequantialLangageSimilarityCalculator):
             kwargs_result = RandomKwargsResultsGenerator(mode='s')
         else:
             kwargs_result = RandomKwargsResultsGenerator(mode='u')
@@ -309,7 +284,7 @@ class RandomFullProcessKwargsGenerator:
         delta = kwargs_dataset.delta
         timeline_size = math.ceil((end_date - start_date) / (delta * 3600))
         kwargs_experience = RandomKwargsExperiencesGenerator(timeline_size)
-        return FullKwargs(kwargs_dataset , kwargs_experience , kwargs_engine , kwargs_result , kwarg_analyse)
+        return FullKwargsForExperiences(kwargs_dataset, kwargs_experience, kwargs_calculator, kwargs_result, kwarg_analyse)
 
 class RandomKwargsGenerator:
     def __init__(self , n : int):

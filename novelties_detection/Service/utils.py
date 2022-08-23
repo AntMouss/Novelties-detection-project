@@ -3,18 +3,14 @@ from novelties_detection.Experience.Sequential_Module import MetaSequencialLanga
 from flask import Blueprint, Flask
 from flask_restx import Api
 from novelties_detection.Service.apis import nsp_windows_api , nsp_interface_api , nsp_rss_feed_api
+from novelties_detection.Experience.kwargsGen import FullKwargs
 
 
 
-
-def initialize_calculator(kwargs_calculator):
-    calculator_type = kwargs_calculator['initialize_engine']['calculator_type']
-    training_args = kwargs_calculator['initialize_engine']['training_args']
-    comparaison_args = kwargs_calculator['generate_result']
-    bad_words_args_keys = ['thresholding_fct_above','thresholding_fct_bellow','kwargs_above','kwargs_bellow']
-    kwargs_calculator["initialize_engine"]['bad_words_args'] = { key: kwargs_calculator["initialize_engine"][key] for key in bad_words_args_keys }
-    del kwargs_calculator['initialize_engine']['calculator_type']
-    del kwargs_calculator['initialize_engine']['training_args']
+def initialize_calculator(kwargs_calculator : FullKwargs ):
+    calculator_type = kwargs_calculator['calculator_args']['calculator_type']
+    training_args = kwargs_calculator['calculator_args']['training_args']
+    comparaison_args = kwargs_calculator['results_args']
 
     sequential_model = calculator_type
     calculator: MetaSequencialLangageSimilarityCalculator = sequential_model(
@@ -24,8 +20,6 @@ def initialize_calculator(kwargs_calculator):
         "comparaison_args" : comparaison_args ,
         "training_args"  : training_args
     }
-
-
 
 
 def createApp(injected_object_apis : list):

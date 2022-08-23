@@ -6,7 +6,7 @@ from itertools import repeat
 from multiprocessing import Pool
 import bisect
 from typing import List , Union , Tuple
-from novelties_detection.Experience.kwargsGen import RandomKwargsGenerator , FullKwargs
+from novelties_detection.Experience.kwargsGen import RandomKwargsGenerator , FullKwargsForExperiences
 from novelties_detection.Experience.ExperienceGen import ExperiencesProcessor , MetadataGenerationException
 from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte , TimeLineArticlesDataset , MacroThematic , ExperiencesMetadata
 import pickle
@@ -36,7 +36,7 @@ NB_CALCULATORS = 15
 
 class CalculatorInfo:
 
-    def __init__(self , calculator_id , score : float , resultats : ExperiencesResults = None , full_kwargs : FullKwargs = None ):
+    def __init__(self, calculator_id, score : float, resultats : ExperiencesResults = None, full_kwargs : FullKwargsForExperiences = None):
         self.full_kwargs = full_kwargs
         self.resultats = resultats
         self.calculator_id = calculator_id
@@ -62,7 +62,7 @@ class MetaCalculatorSelector:
         self.kwargs_calculator_generator = kwargs_calculator_generator
 
     @timer_func
-    def process_selection(self, full_kwargs : FullKwargs, max_to_save : int, path = None):
+    def process_selection(self, full_kwargs : FullKwargsForExperiences, max_to_save : int, path = None):
         pass
 
     def run(self, max_to_save : int, nb_workers : int = 1, path = None):
@@ -113,7 +113,7 @@ class MacroCalculatorSelector(MetaCalculatorSelector):
             return 0
 
     @timer_func
-    def process_selection(self, full_kwargs : FullKwargs, max_to_save : int, path = None):
+    def process_selection(self, full_kwargs : FullKwargsForExperiences, max_to_save : int, path = None):
 
         global l
         calculator_id = id(full_kwargs)

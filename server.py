@@ -1,88 +1,61 @@
 import os
-from typing import Dict
-import json
 import argparse
 import pickle
-from novelties_detection.Service.utils import initialize_calculator , createApp
+from novelties_detection.Service.utils import createApp
 from novelties_detection.Service.server_module import CollectThread ,NoveltiesDetectionThread
-from novelties_detection.Experience.WindowClassification import WindowClassifierModel
+from config.config_server import (
+    model_path,
+    LOOP_DELAY_PROCESS,
+    LOOP_DELAY_COLLECT,
+    rss_feeds_path,
+    output_path,
+    HOST,
+    PORT,
+    macro_calculator_kwargs,
+    micro_calculator_kwargs,
+    macro_training_args,
+    micro_training_args,
+    macro_kwargs_results,
+    PROCESSOR
+)
 
-DEFAULT_CONFIG_PATH = "config/default_config_service.json"
+
 DEFAULT_LENGTH_CACHE = 20
 
 parser = argparse.ArgumentParser(description="pass config_file with model , kwargs_calculator paths",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("config_path", default= DEFAULT_CONFIG_PATH, help="paths of the model and kwargs calculator")
 parser.add_argument("-l", "--length", default=DEFAULT_LENGTH_CACHE, type=int, help="Length of time series length cache")
 
 args = parser.parse_args()
 args = vars(args)
 ROOT = os.getcwd()
-config_path = args["config_path"]
-LENGTH_CACHE = args["length"]
-config_path = os.path.join(ROOT , config_path)
-with open(config_path , 'r') as f:
-    config = json.load(f)
-
-MODEL_PATH = os.path.join(ROOT , config["model_path"])
-KWARGS_CALCULATOR_PATH = os.path.join(ROOT , config["kwargs_calculator_path"])
-KWARGS_MICRO_CALCULATOR_PATH = os.path.join(ROOT , config["kwargs_micro_calculator_path"])
-PROCESSOR_PATH = os.path.join(ROOT , config["processor_path"])
-LOOP_DELAY_PROCESS = config["loop_delay_process"] # in minutes
-LOOP_DELAY_COLLECT = config["loop_delay_collect"]
-RSS_FEEDS_PATH = os.path.join(ROOT, config["rss_feeds_path"])
-OUTPUT_PATH = config["output_path"]
-HOST = config["host"]
-PORT = config["port"]
+MODELS_PATH = os.path.join(ROOT, model_path)
+RSS_FEEDS_PATH = os.path.join(ROOT, rss_feeds_path)
+OUTPUT_PATH = output_path
+LOOP_DELAY_PROCESS = LOOP_DELAY_PROCESS
+LOOP_DELAY_COLLECT = LOOP_DELAY_COLLECT
+HOST = HOST
+PORT = PORT
+PROCESSOR = PROCESSOR
 
 if LOOP_DELAY_COLLECT > LOOP_DELAY_PROCESS:
     raise Exception("collect loop delay can't be superior to process loop delay ")
 
+LENGTH_CACHE = args["length"]
 
-def load_stuff() -> Dict:
-    """
-    load stuff necessary for server working. calculator , training arguments , variable etc
-    @return: dictionnary
-    """
-    global LOOP_DELAY_PROCESS
-    global LENGTH_CACHE
-    global MODEL_PATH
-    global KWARGS_CALCULATOR_PATH
-    global KWARGS_MICRO_CALCULATOR_PATH
-    global PROCESSOR_PATH
-    with open(MODEL_PATH , "rb") as f:
-        model : WindowClassifierModel = pickle.load(f)
-    with open(KWARGS_CALCULATOR_PATH , "rb") as f:
-        kwargs_calculator = pickle.load(f)
-        kwargs_calculator["initialize_engine"]["memory_length"] = LENGTH_CACHE
-    with open(KWARGS_MICRO_CALCULATOR_PATH , "rb") as f:
-        kwargs_micro_calculator = pickle.load(f)
-        kwargs_micro_calculator["initialize_engine"]["memory_length"] = LENGTH_CACHE
-    with open(PROCESSOR_PATH , "rb") as f:
-        processor = pickle.load(f)
-    stuff : Dict = initialize_calculator(kwargs_calculator)
-    micro_stuff : Dict = initialize_calculator(kwargs_micro_calculator)
-    stuff.update({
-        "classifier_models" : [model,model] , "loop_delay" : LOOP_DELAY_PROCESS , "processor" : processor,
-        "micro_calculator" : micro_stuff["calculator"] , "micro_training_args" : micro_stuff["training_args"],
+macro_calculator_kwargs.memory_length = LENGTH_CACHE
+macro_type = macro_calculator_kwargs.calculator_type
+MACRO_CALCULATOR = macro_type(**macro_calculator_kwargs["kwargs"])
+MACRO_TRAININGS_ARGS = macro_training_args
+MACRO_RESULTS_ARGS = macro_kwargs_results
 
-    })
-    stuff["supervised_calculator"] = stuff["calculator"]
-    del stuff["calculator"]
-    del stuff["comparaison_args"]["back"]
-    del stuff["comparaison_args"]["first_w"]
-    del stuff["comparaison_args"]["last_w"]
-    return stuff
+micro_calculator_kwargs.memory_length = LENGTH_CACHE
+micro_type = micro_calculator_kwargs.calculator_type
+MICRO_CALCULATOR = micro_type(**micro_calculator_kwargs["kwargs"])
+MICRO_TRAININGS_ARGS = micro_training_args
 
-def launch_app(stuff):
-    injected_object_apis = [
-        {"rss_feed_path": RSS_FEEDS_PATH},
-        {"calculator": stuff["supervised_calculator"]},
-        {"calculator": stuff["supervised_calculator"], "topics_finder": stuff["micro_calculator"]}
-    ]
-    app = createApp(injected_object_apis)
-    app.run(HOST, port=PORT, debug=False)
-    print("Running Server")
+with open(MODELS_PATH , "rb") as f:
+    MODELS = pickle.load(f)
 
 
 def start_Server():
@@ -93,15 +66,41 @@ def start_Server():
     global RSS_FEEDS_PATH
     global OUTPUT_PATH
     global LOOP_DELAY_COLLECT
-    stuff = load_stuff()
-    extractor = CollectThread(RSS_FEEDS_PATH,OUTPUT_PATH,stuff["processor"],loop_delay=LOOP_DELAY_COLLECT)
-    del stuff["processor"]
-    detector = NoveltiesDetectionThread(**stuff)
+    global LOOP_DELAY_PROCESS
+    global PROCESSOR
+    global MACRO_CALCULATOR
+    global MICRO_CALCULATOR
+    global MICRO_TRAININGS_ARGS
+    global MACRO_TRAININGS_ARGS
+    global MACRO_RESULTS_ARGS
+    global MODELS
+
+    extractor = CollectThread(
+        rss_feed_source_path=RSS_FEEDS_PATH,
+        output_path=OUTPUT_PATH ,
+        processor=PROCESSOR,
+        loop_delay=LOOP_DELAY_COLLECT)
+
+    detector = NoveltiesDetectionThread(
+        supervised_calculator=MACRO_CALCULATOR ,
+        micro_calculator=MICRO_CALCULATOR ,
+        training_args=MACRO_TRAININGS_ARGS,
+        comparaison_args=MACRO_RESULTS_ARGS,
+        micro_training_args = MICRO_TRAININGS_ARGS,
+        loop_delay=LOOP_DELAY_PROCESS,
+        classifier_models= MODELS
+    )
+
     extractor.start()
     detector.start()
-    launch_app(stuff)
-
-
+    injected_object_apis = [
+        {"rss_feed_path": RSS_FEEDS_PATH},
+        {"calculator": MACRO_CALCULATOR},
+        {"calculator": MACRO_CALCULATOR, "topics_finder": MICRO_CALCULATOR}
+    ]
+    app = createApp(injected_object_apis)
+    app.run(HOST, port=PORT, debug=False)
+    print("Running Server")
 
 
 

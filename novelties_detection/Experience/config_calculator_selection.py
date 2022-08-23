@@ -1,14 +1,12 @@
 import json
 import numpy as np
 from novelties_detection.Experience.kwargsGen import (KwargsAnalyse ,
-                       KwargsResults ,
-                       KwargsDataset ,
-                       KwargsExperiences  ,
-                        UpdateBadWordsKwargs,
-                       LFIDFCalculatorKwargs  ,
-                       GuidedCoreXCalculatorKwargs ,
-                       GuidedLDACalculatorKwargs,
-                        FullKwargs)
+                                                      KwargsResults ,
+                                                      KwargsDataset ,
+                                                      KwargsExperiences  ,
+                                                      UpdateBadWordsKwargs,
+                                                        CalculatorKwargs,
+                                                      FullKwargsForExperiences)
 from novelties_detection.Experience.config_path import DATASET_HOURS_PATH , DATASET_DAYS_PATH , MACRO_THEMATICS_HOURS_PATH , MACRO_THEMATICS_DAYS_PATH , MICRO_THEMATICS_PATH
 from novelties_detection.Collection.data_processing import transformS ,absoluteThresholding , exponentialThresholding
 from novelties_detection.Experience.data_utils import TimeLineArticlesDataset , MicroThematic , ExperiencesMetadata
@@ -112,39 +110,44 @@ kwargs_experiences = KwargsExperiences(
 kwargs_bad_words = UpdateBadWordsKwargs(THRESHOLDING_FCT_ABOVE , THRESHOLDING_FCT_BELLOW , ABOVE_KWARGS , BELLOW_KWARGS)
 
 # DEFAULT ENGINE KWARGS
-default_lfidf_kwargs_engine = LFIDFCalculatorKwargs(
+default_lfidf_kwargs_engine = CalculatorKwargs(
     nb_topics=NB_TOPICS ,
     bad_words_args=kwargs_bad_words ,
     labels_idx=LABELS_IDX
 )
-default_guidedlda_kwargs_engine = GuidedLDACalculatorKwargs(
+default_guidedlda_kwargs_engine = CalculatorKwargs(
     nb_topics=NB_TOPICS ,
     bad_words_args=kwargs_bad_words ,
     labels_idx=LABELS_IDX ,
     seed=SEED,
-    overrate=OVERRATE,
-    passes = 2
+    training_args={
+        "overrate" : OVERRATE,
+        "passes" : 2
+    }
 )
-default_guidedcorex_kwargs_engine = GuidedCoreXCalculatorKwargs(
+
+default_guidedcorex_kwargs_engine = CalculatorKwargs(
     nb_topics=NB_TOPICS,
     bad_words_args=kwargs_bad_words,
     labels_idx=LABELS_IDX,
     seed=SEED,
-    anchor_strength=ANCHOR_STRENGTH
+    training_args={
+        "anchor_strength" : ANCHOR_STRENGTH
+    }
 )
 
 STATIC_KWARGS_GENERATOR_HOURS = [
-    FullKwargs(kwargs_dataset_hour, kwargs_experiences, default_guidedcorex_kwargs_engine, kwargs_results,
-               kwargs_analyse),
-    FullKwargs(kwargs_dataset_hour, kwargs_experiences, default_guidedlda_kwargs_engine, kwargs_results,
-               kwargs_analyse),
-    FullKwargs(kwargs_dataset_hour, kwargs_experiences, default_lfidf_kwargs_engine, kwargs_results, kwargs_analyse)
+    FullKwargsForExperiences(kwargs_dataset_hour, kwargs_experiences, default_guidedcorex_kwargs_engine, kwargs_results,
+                             kwargs_analyse),
+    FullKwargsForExperiences(kwargs_dataset_hour, kwargs_experiences, default_guidedlda_kwargs_engine, kwargs_results,
+                             kwargs_analyse),
+    FullKwargsForExperiences(kwargs_dataset_hour, kwargs_experiences, default_lfidf_kwargs_engine, kwargs_results, kwargs_analyse)
 ]
 
 STATIC_KWARGS_GENERATOR_DAYS = [
-    FullKwargs(kwargs_dataset_days, kwargs_experiences, default_guidedlda_kwargs_engine, kwargs_results, kwargs_analyse),
-    FullKwargs(kwargs_dataset_days, kwargs_experiences, default_guidedcorex_kwargs_engine, kwargs_results, kwargs_analyse),
-    FullKwargs(kwargs_dataset_days, kwargs_experiences, default_lfidf_kwargs_engine, kwargs_results, kwargs_analyse)
+    FullKwargsForExperiences(kwargs_dataset_days, kwargs_experiences, default_guidedlda_kwargs_engine, kwargs_results, kwargs_analyse),
+    FullKwargsForExperiences(kwargs_dataset_days, kwargs_experiences, default_guidedcorex_kwargs_engine, kwargs_results, kwargs_analyse),
+    FullKwargsForExperiences(kwargs_dataset_days, kwargs_experiences, default_lfidf_kwargs_engine, kwargs_results, kwargs_analyse)
 ]
 
 
