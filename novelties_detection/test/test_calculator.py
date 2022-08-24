@@ -5,12 +5,12 @@ from novelties_detection.Collection.data_processing import transformU, transform
 from novelties_detection.Experience.Engine_module import Engine
 from novelties_detection.Experience.Sequential_Module import (
     MetaSequencialLangageSimilarityCalculator,
-    NoSupervisedSequantialLangageSimilarityCalculator,
+    NoSupervisedFixedSequantialLangageSimilarityCalculator,
     LFIDFSequentialSimilarityCalculator,
     GuidedCoreXSequentialSimilarityCalculator,
     GuidedLDASequentialSimilarityCalculator,
-    LDASequentialSimilarityCalculator,
-    CoreXSequentialSimilarityCalculator
+    LDASequentialSimilarityCalculatorFixed,
+    CoreXSequentialSimilarityCalculatorFixed
 )
 from novelties_detection.Experience.data_utils import TimeLineArticlesDataset
 from novelties_detection.Experience.kwargsGen import (
@@ -26,8 +26,8 @@ sequential_calculator_types = [
     LFIDFSequentialSimilarityCalculator,
     GuidedCoreXSequentialSimilarityCalculator,
     GuidedLDASequentialSimilarityCalculator,
-    LDASequentialSimilarityCalculator,
-    CoreXSequentialSimilarityCalculator
+    LDASequentialSimilarityCalculatorFixed,
+    CoreXSequentialSimilarityCalculatorFixed
 ]
 
 kwargs_calculator_generators = [
@@ -71,7 +71,7 @@ def test_sequential_calculators_treat_window(kwargs_calculator_type):
     del full_kwargs['initialize_engine']['calculator_type']
     del full_kwargs['initialize_engine']['training_args']
     calculator: MetaSequencialLangageSimilarityCalculator = calculator_type(**full_kwargs['initialize_engine'])
-    if issubclass(type(calculator), NoSupervisedSequantialLangageSimilarityCalculator):
+    if issubclass(type(calculator), NoSupervisedFixedSequantialLangageSimilarityCalculator):
         model, dictionnary = calculator.treat_Window(unsupervised_data_window[1], **training_args)
     else:
         model, dictionnary = calculator.treat_Window(supervised_data_window[1], **training_args)

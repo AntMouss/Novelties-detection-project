@@ -1,34 +1,14 @@
 import requests
-import pickle
 from urllib.parse import urljoin
-import os
 import pytest
 from .requests_examples import REQUESTS_EXAMPLES
 import json
-
-ROOT = "/home/mouss/PycharmProjects/novelties-detection-git"
-RSS_FEEDS_PATH = "tmp_test_obj/rss_sport_test.json"
-macro_calculator_path = "tmp_test_obj/macro_calculator.pck"
-macro_calculator_path = os.path.join(ROOT, macro_calculator_path)
-micro_calculator_path = "tmp_test_obj/micro_calculator.pck"
-micro_calculator_path = os.path.join(ROOT , micro_calculator_path)
-RSS_FEEDS_PATH = os.path.join(ROOT , RSS_FEEDS_PATH)
-
-with open(macro_calculator_path , "rb") as f:
-    MACRO_CALC = pickle.load(f)
-with open(micro_calculator_path , "rb") as f:
-    MICRO_CALC = pickle.load(f)
-with open(RSS_FEEDS_PATH , "r") as f:
-    RSS_FEEDS = json.load(f)
 
 requests_examples = {
     endpoint : [
         (request_args["requests_params"] , request_args["expected"]) for request_args in requests_args
     ] for endpoint , requests_args in REQUESTS_EXAMPLES.items()
                      }
-
-injected_object_apis = [{"rss_feed_path": RSS_FEEDS_PATH} , {"calculator" : MACRO_CALC} , {"calculator" : MACRO_CALC, "topics_finder" : MICRO_CALC}]
-
 
 
 BASE_URL = "http://127.0.0.1:5000/api/v1/"

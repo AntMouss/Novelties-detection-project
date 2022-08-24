@@ -5,7 +5,7 @@ from novelties_detection.Experience.kwargsGen import (KwargsAnalyse ,
                                                       KwargsDataset ,
                                                       KwargsExperiences  ,
                                                       UpdateBadWordsKwargs,
-                                                        CalculatorKwargs,
+                                                      SupervisedCalculatorKwargs,
                                                       FullKwargsForExperiences)
 from novelties_detection.Experience.config_path import DATASET_HOURS_PATH , DATASET_DAYS_PATH , MACRO_THEMATICS_HOURS_PATH , MACRO_THEMATICS_DAYS_PATH , MICRO_THEMATICS_PATH
 from novelties_detection.Collection.data_processing import transformS ,absoluteThresholding , exponentialThresholding
@@ -110,12 +110,12 @@ kwargs_experiences = KwargsExperiences(
 kwargs_bad_words = UpdateBadWordsKwargs(THRESHOLDING_FCT_ABOVE , THRESHOLDING_FCT_BELLOW , ABOVE_KWARGS , BELLOW_KWARGS)
 
 # DEFAULT ENGINE KWARGS
-default_lfidf_kwargs_engine = CalculatorKwargs(
+default_lfidf_kwargs_engine = SupervisedCalculatorKwargs(
     nb_topics=NB_TOPICS ,
     bad_words_args=kwargs_bad_words ,
     labels_idx=LABELS_IDX
 )
-default_guidedlda_kwargs_engine = CalculatorKwargs(
+default_guidedlda_kwargs_engine = SupervisedCalculatorKwargs(
     nb_topics=NB_TOPICS ,
     bad_words_args=kwargs_bad_words ,
     labels_idx=LABELS_IDX ,
@@ -126,7 +126,7 @@ default_guidedlda_kwargs_engine = CalculatorKwargs(
     }
 )
 
-default_guidedcorex_kwargs_engine = CalculatorKwargs(
+default_guidedcorex_kwargs_engine = SupervisedCalculatorKwargs(
     nb_topics=NB_TOPICS,
     bad_words_args=kwargs_bad_words,
     labels_idx=LABELS_IDX,

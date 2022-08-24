@@ -3,7 +3,7 @@ import json
 from novelties_detection.Experience.config_path import DATA_PATH, SEED_PATH, THEMATICS_PATH
 from novelties_detection.Experience.data_utils import Thematic
 from novelties_detection.Collection.data_processing import ProcessorText
-from novelties_detection.Experience.Sequential_Module import LFIDFSequentialSimilarityCalculator , LDASequentialSimilarityCalculator , CoreXSequentialSimilarityCalculator , GuidedCoreXSequentialSimilarityCalculator , GuidedLDASequentialSimilarityCalculator
+from novelties_detection.Experience.Sequential_Module import LFIDFSequentialSimilarityCalculator , LDASequentialSimilarityCalculatorFixed , CoreXSequentialSimilarityCalculatorFixed , GuidedCoreXSequentialSimilarityCalculator , GuidedLDASequentialSimilarityCalculator
 from novelties_detection.Collection.data_processing import exponentialThresholding , linearThresholding
 
 #extremeum = [(1622900733.0  , Sat, 05 Jun 2021 15:45:33 GMT) , (1624642856.0 , Fri, 25 Jun 2021 19:40:56 GMT)]
@@ -36,8 +36,8 @@ PROCESSOR = ProcessorText()
 KWARGS = {
     #GuidedLDAModelKwargs,LFIDFModelKwargs,GuidedCoreXKwargs
     "kwargs_calculator_type": [LFIDFSequentialSimilarityCalculator ,
-                               LDASequentialSimilarityCalculator ,
-                               CoreXSequentialSimilarityCalculator ,
+                               LDASequentialSimilarityCalculatorFixed ,
+                               CoreXSequentialSimilarityCalculatorFixed ,
                                GuidedCoreXSequentialSimilarityCalculator ,
                                GuidedLDASequentialSimilarityCalculator],
     #32, 48, 64

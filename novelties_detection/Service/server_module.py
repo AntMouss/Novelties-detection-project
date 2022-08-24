@@ -2,7 +2,7 @@ from threading import Thread , Lock
 from typing import List , Dict
 import schedule
 from novelties_detection.Collection.RSSCollector import RSSCollect
-from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator , NoSupervisedSequantialLangageSimilarityCalculator
+from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator , NoSupervisedFixedSequantialLangageSimilarityCalculator
 from novelties_detection.Experience.WindowClassification import WindowClassifierModel
 from novelties_detection.Collection.data_processing import transformS
 from novelties_detection.Experience.Exception_utils import CompareWindowsException
@@ -73,8 +73,8 @@ class NoveltiesDetectionThread(Thread):
     Service to detect and return novelties in the collect information flow
     """
     def __init__(self, supervised_calculator : SupervisedSequantialLangageSimilarityCalculator
-                 , micro_calculator : NoSupervisedSequantialLangageSimilarityCalculator , training_args : Dict ,
-                 comparaison_args : Dict, micro_training_args : Dict,  loop_delay : int , classifier_models :List[WindowClassifierModel] ):
+                 , micro_calculator : NoSupervisedFixedSequantialLangageSimilarityCalculator, training_args : Dict,
+                 comparaison_args : Dict, micro_training_args : Dict, loop_delay : int, classifier_models :List[WindowClassifierModel]):
         """
 
         @param supervised_calculator: supervised calculator to get novelties on the labels (topics) in the flow

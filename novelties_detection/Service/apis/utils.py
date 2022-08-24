@@ -43,13 +43,14 @@ def build_series(similarities_score : list , labels_counters : List[dict] , labe
                             ]
     """
     series = []
-    for label in labels:
+    for label_idx , (label , similarities_topic_score ) in enumerate (zip(labels ,similarities_score )):
         serie = {
             "name" : label,
             "data" : []
         }
-        for window_id , (similarities_topic_score , labels_counter) in enumerate(zip(similarities_score , labels_counters)):
-            serie["data"].append([window_id , similarities_topic_score[window_id] , labels_counter[label]])
+        for i in range (1 , len(labels_counters)):
+            serie["data"].append([i - 1 , similarities_topic_score[i - 1] , labels_counters[i][label_idx]])
         series.append(serie)
+
     return series
 
