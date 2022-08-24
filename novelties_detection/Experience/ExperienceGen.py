@@ -161,7 +161,7 @@ class ExperiencesProcessor:
             lookback = dataset_args["lookback"]
             self.info["mode"] = "s"
             for timeline_w in self.generate_timelines(dataset_args):
-                sq_calculator_w = calculator_type(nb_topics, **kwargs)
+                sq_calculator_w = calculator_type(**kwargs)
                 sq_calculator_w.add_windows(timeline_w, lookback, **training_args)
                 yield  sq_calculator_w
 

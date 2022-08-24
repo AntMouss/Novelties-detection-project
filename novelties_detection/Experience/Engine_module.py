@@ -15,13 +15,14 @@ class Engine:
     and different training way : no supervised , supervised and Guided (semi-supervised)
     """
 
-    def __init__(self, texts: List[List], nb_topics : int = 5, random_state : int = 42):
+    def __init__(self, texts: List[List], nb_topics : int = 5, dictionnary: corpora.Dictionary = None,  random_state : int = 42):
         """
 
         @param texts: texts ,data
         @param nb_topics: number of relevant topics
         @param random_state:
         """
+        self.dictionnary = dictionnary
         self.random_state = random_state
         self.texts = texts
         self.nb_topics = nb_topics
@@ -135,8 +136,7 @@ class LFIDF(SupervisedEngine):
 
 class LDA(Engine):
 
-    def __init__(self, dictionnary: corpora.Dictionary = None,
-                 random_state=42, passes : int = 1 , **kwargs):
+    def __init__(self, random_state=42, passes : int = 1 , **kwargs):
         """
 
         @param dictionnary: specific gensim dictionnary linked to the data corpus
@@ -147,7 +147,6 @@ class LDA(Engine):
         super().__init__(**kwargs)
         self.passes = passes
         self.random_state = random_state
-        self.dictionnary = dictionnary
         self.corpus_bow = [self.dictionnary.doc2bow(text) for text in self.texts]
         self.ldaargs = {
             "corpus" : self.corpus_bow,

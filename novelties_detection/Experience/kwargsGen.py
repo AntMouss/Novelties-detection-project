@@ -4,12 +4,15 @@ used to generate automaticely random kwargs that we need to make random experien
 to select final macro calculator and micro calculator that we finaly use for the service.
 the DATA_PATH pointed on the main window articles dataset that isn't available on this repo
 """
+import copy
 from typing import List, Callable, Dict, Type
 import random
 import math
-from novelties_detection.Experience.Sequential_Module import (MetaSequencialLangageSimilarityCalculator,
-                                                              SupervisedSequantialLangageSimilarityCalculator,
-                                                              )
+from novelties_detection.Experience.Sequential_Module import (
+    NoSupervisedSequantialLangageSimilarityCalculator,
+    SupervisedSequantialLangageSimilarityCalculator,
+    MetaSequencialLangageSimilarityCalculator
+)
 from novelties_detection.Collection.data_processing import  absoluteThresholding , linearThresholding , exponentialThresholding , transformS , transformU
 from novelties_detection.Experience.config_arguments import Thematic , ProcessorText , KWARGS
 
@@ -27,25 +30,60 @@ class UpdateBadWordsKwargs:
 
 class CalculatorKwargs:
     """
+       class that contain kwargs of MetaSequantialCalculator instance
+       """
+
+    def __init__(self, calculator_type: Type[MetaSequencialLangageSimilarityCalculator],
+                 bad_words_args: UpdateBadWordsKwargs, memory_length: int = None, training_args: dict = None):
+        self.memory_length = memory_length
+        self.bad_words_args = bad_words_args.__dict__
+        self.calculator_type = calculator_type
+        if training_args is None:
+            self.training_args = {}
+        else:
+            self.training_args = training_args
+
+    def __getitem__(self, item):
+
+        if item == "calculator_kwargs":
+            tmp = copy.deepcopy(self.__dict__)
+            del tmp["calculator_type"]
+            del tmp["training_args"]
+        elif item == "training_kwargs":
+            tmp = self.training_args
+        else:
+            raise KeyError(f"{item}")
+        keys_to_delete = []
+        for key, item in tmp.items():
+            if item is None:
+                keys_to_delete.append(key)
+        for key in keys_to_delete:
+            del tmp[key]
+        return tmp
+
+class SupervisedCalculatorKwargs(CalculatorKwargs):
+    """
     class that contain kwargs of MetaSequantialCalculator instance
     """
-    def __init__(self, calculator_type : Type[MetaSequencialLangageSimilarityCalculator], nb_topics: int , bad_words_args : UpdateBadWordsKwargs ,
-                 seed : Dict = None  , memory_length : int = None,  labels_idx : List = None,  training_args : dict = None):
+    def __init__(self, calculator_type: Type[SupervisedSequantialLangageSimilarityCalculator], labels_idx: List,
+                 bad_words_args: UpdateBadWordsKwargs, seed: Dict = None, memory_length: int = None,
+                 training_args: dict = None):
+        super().__init__(calculator_type, bad_words_args, memory_length, training_args)
         self.memory_length = memory_length
         self.labels_idx = labels_idx
         self.seed = seed
         self.bad_words_args = bad_words_args.__dict__
-        self.nb_topics = nb_topics
         self.calculator_type = calculator_type
         if training_args is None:
             self.training_args = {}
 
-    def __getitem__(self, item):
-        if item == "kwargs":
-            tmp = self.__dict__
-            del tmp["calculator_type"]
-            return tmp
 
+
+class NoSupervisedCalculatorKwargs(CalculatorKwargs):
+    def __init__(self, calculator_type: Type[NoSupervisedSequantialLangageSimilarityCalculator],
+                 bad_words_args: UpdateBadWordsKwargs , nb_topics : int = None, memory_length: int = None, training_args: dict = None):
+        super().__init__(calculator_type, bad_words_args , memory_length , training_args)
+        self.nb_topics = nb_topics
 
 
 
@@ -93,7 +131,7 @@ class KwargsAnalyse:
 
 
 class FullKwargs:
-    def __init__(self, kwargs_engine : CalculatorKwargs, kwargs_result : KwargsResults):
+    def __init__(self, kwargs_engine : SupervisedCalculatorKwargs, kwargs_result : KwargsResults):
         self.kwargs_result = kwargs_result
         self.kwargs_engine = kwargs_engine
 
@@ -111,7 +149,7 @@ class FullKwargs:
 
 class FullKwargsForExperiences(FullKwargs):
     def __init__(self, kwargs_dataset: KwargsDataset, kwargs_experiences: KwargsExperiences,
-                 kwargs_engine: CalculatorKwargs, kwargs_result: KwargsResults, kwargs_analyse: KwargsAnalyse):
+                 kwargs_engine: SupervisedCalculatorKwargs, kwargs_result: KwargsResults, kwargs_analyse: KwargsAnalyse):
         super().__init__(kwargs_engine, kwargs_result)
         self.kwargs_analyse = kwargs_analyse
         self.kwargs_experiences = kwargs_experiences
@@ -269,7 +307,7 @@ class RandomKwargsAnalyseGenerator:
 
 class RandomFullProcessKwargsGenerator:
 
-    def __new__(cls, calculator_type : Type[CalculatorKwargs] = None):
+    def __new__(cls, calculator_type : Type[SupervisedCalculatorKwargs] = None):
         if calculator_type is None:
             calculator_type = random.choice(KWARGS["kwargs_calculator_type"])
         kwargs_calculator = RandomKwargsCalculatorGenerator(calculator_type)

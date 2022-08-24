@@ -13,10 +13,10 @@ from novelties_detection.Experience.data_utils import ArticlesDataset
 from novelties_detection.Experience.config_calculator_selection import micro_thematics , original_dataset_hours
 from novelties_detection.Experience.data_utils import MicroThematic
 from novelties_detection.Experience.Sequential_Module import (
-NoSupervisedSequantialLangageSimilarityCalculator,
-LFIDFSequentialSimilarityCalculator,
-LDASequentialSimilarityCalculator,
-CoreXSequentialSimilarityCalculator
+    NoSupervisedFixedSequantialLangageSimilarityCalculator,
+    LFIDFSequentialSimilarityCalculator,
+    LDASequentialSimilarityCalculatorFixed,
+    CoreXSequentialSimilarityCalculatorFixed
 )
 import numpy as np
 from novelties_detection.Experience.kwargsGen import(
@@ -42,7 +42,7 @@ kwargs_micro_calculators = [kwargs_lda_micro_calculator , kwargs_corex_micro_cal
 
 class MicroCalculatorGenerator:
 
-    unsupervised_kernels = [LDASequentialSimilarityCalculator ]#CoreXSequentialSimilarityCalculator
+    unsupervised_kernels = [LDASequentialSimilarityCalculatorFixed]#CoreXSequentialSimilarityCalculator
 
     def __init__(self, max_nb_clusters : int, kwargs_calculators , seed : int = None):
         self.seed = seed
@@ -89,8 +89,8 @@ class MicroCalculatorSelector(MetaCalculatorSelector):
         self.res = {}
 
 
-    def select_micro(self , micro_calculator : NoSupervisedSequantialLangageSimilarityCalculator ,
-               training_args : dict, kernel_type : str , max_to_save : int):
+    def select_micro(self, micro_calculator : NoSupervisedFixedSequantialLangageSimilarityCalculator,
+                     training_args : dict, kernel_type : str, max_to_save : int):
 
 
         calculator_id = id(micro_calculator)
