@@ -176,7 +176,7 @@ class MetaSequencialLangageSimilarityCalculator:
         topWordsTopics = []
         nb_topics = self.models[model_idx].nb_topics
         for topic_id in range(nb_topics):
-            topWordsTopic = self.getTopWordsTopic(topic_id, model_idx, ntop, **kwargs)
+            topWordsTopic = self.getTopWordsTopic(topic_id, model_idx, ntop, )
             topWordsTopics.append(topWordsTopic)
 
         if exclusive == False:
@@ -197,7 +197,7 @@ class MetaSequencialLangageSimilarityCalculator:
                 topWordsTopics_tmp[j] = topWordsTopics_tmp[j].difference(intersection)
         return [{word: topWordsTopics[i][word] for word in topWordsTopics_tmp[i]} for i in range(len(topWordsTopics))]
 
-    def getTopWordsTopic(self, topic_id, model_idx: int, ntop: int = 100, **kwargs):
+    def getTopWordsTopic(self, topic_id, model_idx: int, ntop: int = 100 , **kwargs):
         model = self.models[model_idx]
         # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
         topWords = model.get_topic_terms(topic_id=topic_id, topn=ntop)
@@ -512,7 +512,7 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
         self.models.append(model)
         return model, window_dictionnary_f
 
-    def getTopWordsTopic(self, topic_id, model_idx: int, ntop: int = 100, remove_seed_words: bool = True):
+    def getTopWordsTopic(self, topic_id, model_idx: int, ntop: int = 100 , remove_seed_words = True):
 
         # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
         model = self.models[model_idx]

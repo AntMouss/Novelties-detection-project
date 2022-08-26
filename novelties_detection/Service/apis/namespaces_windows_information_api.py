@@ -9,7 +9,7 @@ from novelties_detection.Service.apis.config import N_TOP_DEFAULT , MAX_N_TOP_WO
 namesp = Namespace('WindowInformation',
                    description='api to get information about window (revelant words and topics)', validate=True)
 parser = namesp.parser()
-parser.add_argument("topic" , type = str , required = True , help = "label that we want to return revelant words")
+parser.add_argument("topic" , type = str , required = True , help = "label that we want to return revelant words" , location="form")
 parser.add_argument("ntop", type=int, default = N_TOP_DEFAULT , help="number of top world used for similarity computation", location="form")
 parser.add_argument("other_kwargs", type=str , default = "{}", help="other key words arguments like 'remove_seed_words' , 'exclusive'...", location="form")
 
@@ -46,8 +46,9 @@ class WindowInformationApi(Resource):
             topic_id  = self.supervised_calculator.labels_idx.index(topic)
             total_kwargs = {"ntop" : request_kwargs["ntop"]}
             total_kwargs.update(o_kwargs)
-            revelants_words = self.supervised_calculator.getTopWordsTopic(topic_id ,window_id, **total_kwargs)
-            res["revelant_words_supervised"] = revelants_words
+            revelants_words = self.supervised_calculator.getTopWordsTopics(window_id, **total_kwargs)
+            revelant_topic_words = revelants_words[topic_id]
+            res["revelant_words_supervised"] = revelant_topic_words
             label_counter = self.supervised_calculator.label_articles_counters[window_id]
             res["label_counter"] = label_counter
             if self.micro_topics_finder is not None:
