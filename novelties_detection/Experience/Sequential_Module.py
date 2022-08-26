@@ -508,7 +508,7 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
         self.updateBadwords()
         window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
-        model = self.engine(texts=texts, nb_topics=self.nb_topics, seed=self.seed, **kwargs)
+        model = self.engine(texts=texts, dictionnary=window_dictionnary_f, nb_topics=self.nb_topics, seed=self.seed, **kwargs)
         self.models.append(model)
         return model, window_dictionnary_f
 
