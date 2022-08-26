@@ -14,6 +14,7 @@ from novelties_detection.Experience.data_utils import (TimeLineArticlesDataset,
 from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator
 from novelties_detection.Experience.data_analysis import Analyser , SupervisedSampler
 from novelties_detection.Experience.Exception_utils import *
+import pandas as pd
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -125,7 +126,7 @@ class ExperiencesMetadataGenerator:
 
 
 
-class ExperiencesProcessor:
+class SupervisedExperiencesProcessor:
     """
     use this class to generate 2 differents timeline ,one with thematics injection and another one without
     then we compute similarity score for each time line and we analyse the similarity score to see if thematics injection
@@ -143,7 +144,10 @@ class ExperiencesProcessor:
         try:
             for metadata , thematics in self.metadata_generator:
                 self.new_experience["metadata"] = metadata
-                timelinew = EditedTimeLineArticlesDataset(thematics=thematics, metadata=metadata, optimize_mode=True,**dataset_args)
+                timelinew = EditedTimeLineArticlesDataset(thematics=thematics,
+                                                          metadata=metadata,
+                                                          optimize_mode=True,
+                                                          **dataset_args)
                 yield timelinew
 
         except MetadataGenerationException:
@@ -153,15 +157,19 @@ class ExperiencesProcessor:
             raise TimelinesGenerationException("Exception occurred in Timeline Generation" , e)
 
 
-    def generate_calculator(self, nb_topics : int, calculator_type : Type[SupervisedSequantialLangageSimilarityCalculator]
-                            , training_args : dict, dataset_args : dict, **kwargs):
+    def generate_calculator(self, calculator_type : Type[SupervisedSequantialLangageSimilarityCalculator],
+                             labels_idx: list, training_args : dict, dataset_args : dict, **kwargs):
 
         try:
-            self.info["nb_topics"] = nb_topics
             lookback = dataset_args["lookback"]
+            self.info["type_calculator"] = calculator_type.__name__
             self.info["mode"] = "s"
+            self.info["nb_topics"] = len(labels_idx)
+            self.info["labels"] = labels_idx
+            self.info["delta"] = dataset_args["delta"]
+
             for timeline_w in self.generate_timelines(dataset_args):
-                sq_calculator_w = calculator_type(**kwargs)
+                sq_calculator_w = calculator_type(labels_idx = labels_idx , **kwargs)
                 sq_calculator_w.add_windows(timeline_w, lookback, **training_args)
                 yield  sq_calculator_w
 

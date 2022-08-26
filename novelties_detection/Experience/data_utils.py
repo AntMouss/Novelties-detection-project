@@ -421,6 +421,9 @@ class LabelisedSample(Data):
     def __len__(self):
         return len(self.labels)
 
+    def __getitem__(self, item):
+        return self.samples_window[item]
+
     @property
     def to_dataframe(self):
         dataframe = []

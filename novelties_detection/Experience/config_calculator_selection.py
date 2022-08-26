@@ -6,12 +6,24 @@ from novelties_detection.Experience.kwargsGen import (KwargsAnalyse ,
                                                       KwargsExperiences  ,
                                                       UpdateBadWordsKwargs,
                                                       SupervisedCalculatorKwargs,
+                                                        GuidedCalculatorKwargs,
                                                       FullKwargsForExperiences)
-from novelties_detection.Experience.config_path import DATASET_HOURS_PATH , DATASET_DAYS_PATH , MACRO_THEMATICS_HOURS_PATH , MACRO_THEMATICS_DAYS_PATH , MICRO_THEMATICS_PATH
+from novelties_detection.Experience.config_path import (
+    DATASET_HOURS_PATH ,
+    DATASET_DAYS_PATH ,
+    MACRO_THEMATICS_HOURS_PATH ,
+    MACRO_THEMATICS_DAYS_PATH ,
+    MICRO_THEMATICS_PATH
+)
 from novelties_detection.Collection.data_processing import transformS ,absoluteThresholding , exponentialThresholding
 from novelties_detection.Experience.data_utils import TimeLineArticlesDataset , MicroThematic , ExperiencesMetadata
 import pickle
-from novelties_detection.Experience.config_arguments import SEED , LABELS_IDX , NB_TOPICS
+from novelties_detection.Experience.config_arguments import SEED , LABELS_IDX
+from novelties_detection.Experience.Sequential_Module import (
+    LFIDFSequentialSimilarityCalculator ,
+    GuidedCoreXSequentialSimilarityCalculator ,
+    GuidedLDASequentialSimilarityCalculator
+)
 
 def found_nan_window(dataset : TimeLineArticlesDataset , min_article):
     nan_window_idxs = []
@@ -97,7 +109,7 @@ BELLOW_KWARGS = {"absolute_value" : 2}
 OVERRATE = 1000
 ANCHOR_STRENGTH = 4
 
-NAN_WINDOW_IDX = found_nan_window(  original_dataset_hours, 20)
+NAN_WINDOW_IDX = found_nan_window( original_dataset_hours, 20)
 
 #DEFAULT KWARGS
 
@@ -111,12 +123,12 @@ kwargs_bad_words = UpdateBadWordsKwargs(THRESHOLDING_FCT_ABOVE , THRESHOLDING_FC
 
 # DEFAULT ENGINE KWARGS
 default_lfidf_kwargs_engine = SupervisedCalculatorKwargs(
-    nb_topics=NB_TOPICS ,
+    calculator_type= LFIDFSequentialSimilarityCalculator,
     bad_words_args=kwargs_bad_words ,
     labels_idx=LABELS_IDX
 )
-default_guidedlda_kwargs_engine = SupervisedCalculatorKwargs(
-    nb_topics=NB_TOPICS ,
+default_guidedlda_kwargs_engine = GuidedCalculatorKwargs(
+    calculator_type= GuidedLDASequentialSimilarityCalculator,
     bad_words_args=kwargs_bad_words ,
     labels_idx=LABELS_IDX ,
     seed=SEED,
@@ -126,8 +138,8 @@ default_guidedlda_kwargs_engine = SupervisedCalculatorKwargs(
     }
 )
 
-default_guidedcorex_kwargs_engine = SupervisedCalculatorKwargs(
-    nb_topics=NB_TOPICS,
+default_guidedcorex_kwargs_engine = GuidedCalculatorKwargs(
+    calculator_type= GuidedCoreXSequentialSimilarityCalculator,
     bad_words_args=kwargs_bad_words,
     labels_idx=LABELS_IDX,
     seed=SEED,
@@ -145,9 +157,10 @@ STATIC_KWARGS_GENERATOR_HOURS = [
 ]
 
 STATIC_KWARGS_GENERATOR_DAYS = [
+    FullKwargsForExperiences(kwargs_dataset_days, kwargs_experiences, default_lfidf_kwargs_engine, kwargs_results,
+                             kwargs_analyse),
     FullKwargsForExperiences(kwargs_dataset_days, kwargs_experiences, default_guidedlda_kwargs_engine, kwargs_results, kwargs_analyse),
-    FullKwargsForExperiences(kwargs_dataset_days, kwargs_experiences, default_guidedcorex_kwargs_engine, kwargs_results, kwargs_analyse),
-    FullKwargsForExperiences(kwargs_dataset_days, kwargs_experiences, default_lfidf_kwargs_engine, kwargs_results, kwargs_analyse)
+    FullKwargsForExperiences(kwargs_dataset_days, kwargs_experiences, default_guidedcorex_kwargs_engine, kwargs_results, kwargs_analyse)
 ]
 
 
@@ -302,6 +315,6 @@ TEST_EXPERIENCES_METADATA_GENERATOR_HOURS = EXPERIENCES_METADATA_GENERATOR_HOURS
 
 
 TEST_EXPERIENCES_METADATA_GENERATOR_DAYS = [
-(ExperiencesMetadata("nimp1" , TEST_RANGES_DAYS_1 , begin_window_idx= 2), macro_thematics_days),
 (ExperiencesMetadata("nimp2" , TEST_RANGES_DAYS_2 ,begin_window_idx=14), macro_thematics_days),
 ]
+#(ExperiencesMetadata("nimp1" , TEST_RANGES_DAYS_1 , begin_window_idx= 2), macro_thematics_days),

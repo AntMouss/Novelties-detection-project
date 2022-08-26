@@ -66,17 +66,23 @@ class SupervisedCalculatorKwargs(CalculatorKwargs):
     class that contain kwargs of MetaSequantialCalculator instance
     """
     def __init__(self, calculator_type: Type[SupervisedSequantialLangageSimilarityCalculator], labels_idx: List,
-                 bad_words_args: UpdateBadWordsKwargs, seed: Dict = None, memory_length: int = None,
+                 bad_words_args: UpdateBadWordsKwargs, memory_length: int = None,
                  training_args: dict = None):
         super().__init__(calculator_type, bad_words_args, memory_length, training_args)
         self.memory_length = memory_length
         self.labels_idx = labels_idx
-        self.seed = seed
         self.bad_words_args = bad_words_args.__dict__
         self.calculator_type = calculator_type
         if training_args is None:
             self.training_args = {}
 
+
+class GuidedCalculatorKwargs(SupervisedCalculatorKwargs):
+    def __init__(self, calculator_type: Type[SupervisedSequantialLangageSimilarityCalculator], labels_idx: List,
+                 bad_words_args: UpdateBadWordsKwargs , seed : dict , memory_length: int = None,
+                 training_args: dict = None):
+        super().__init__(calculator_type, labels_idx, bad_words_args , memory_length ,training_args)
+        self.seed = seed
 
 
 class NoSupervisedCalculatorKwargs(CalculatorKwargs):

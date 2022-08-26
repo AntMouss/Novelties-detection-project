@@ -5,8 +5,10 @@ The base hypothesis is: this two type of window have a different similarity scor
 """
 
 import functools
+from typing import List
 import numpy as np
 import copy
+import pandas as pd
 from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte , LabelisedSample
 from scipy.stats import ttest_ind , normaltest  , energy_distance
 
@@ -24,25 +26,17 @@ def check_topic_id(func):
     return wrapper
 
 
-class SupervisedSampler:
-    """
-    format results data obtain during experience and transform it to being ready to use
-    """
+class MetaSampler:
 
     def __init__(self , results : ExperiencesResults ):
 
         self.results = results.results
         self.info = results.info
-        self.labels = self.info["labels"]
 
     def __len__(self):
-        if self.info["mode"] == "u":
-            return 1
-        else:
-            return self.info["nb_topics"]
+        return 1
 
-    @property
-    def samples(self) -> LabelisedSample:
+    def generate_samples(self) :
 
         topic_samples = {
             "outside": [],
@@ -64,8 +58,36 @@ class SupervisedSampler:
                     key = SupervisedSampler.choose_key(window_id, full_flat_ranges)
                     samples[topic_id][key].append(difference_score)
 
-        return LabelisedSample(self.labels, samples)
+        return samples
 
+    @property
+    def samples(self) -> LabelisedSample:
+        """
+        we return labelisedSample but the only sample admit is "None" because we assume that this class handle
+        no labelised results
+        @return:
+        """
+        return LabelisedSample(["None"], self.generate_samples())
+
+
+class SupervisedSampler(MetaSampler):
+    """
+    format results data obtain during experience and transform it to being ready to use.
+    This class handle supervised case
+    """
+
+    def __init__(self, results: ExperiencesResults):
+
+        super().__init__(results)
+        self.labels = self.info["labels"]
+
+    def __len__(self):
+        return self.info["nb_topics"]
+
+
+    @property
+    def samples(self) -> LabelisedSample:
+        return LabelisedSample(self.labels, self.generate_samples())
 
     @staticmethod
     def choose_key(idx_window , ranges):
@@ -83,6 +105,21 @@ class SupervisedSampler:
                 elif entry < idx_window < out:
                     return 'inside'
             return 'outside'
+
+class MultiSamples:
+
+    def __new__(cls, samplers : List[MetaSampler] , *args, **kwargs):
+        for sampler in samplers:
+            samples = sampler.samples
+            df = samples.to_dataframe
+            type_calculator = sampler.info["type_calculator"]
+            type_calculator_serie = [type_calculator]*len(df)
+            type_calculator_serie = pd.Series(type_calculator_serie)
+            delta = sampler.info["delta"]
+            delta_serie = [delta] * len(df)
+            delta_serie = pd.Series(delta_serie)
+            return pd.concat([df , type_calculator_serie , delta_serie] , axis=1)
+
 
 
 class Analyser:
@@ -146,6 +183,8 @@ class Analyser:
         elif pvalue < self.risk and (test_normality == False or (test_normality and is_normal) and mean_distance > 0) :
             return Alerte(topic_id , mean_distance , en_distance, risk=self.risk , windows=[type_window1 , type_window2]
                           , pvalue= pvalue , is_normal=is_normal)
+        else:
+            return None
 
 
     def multi_test_hypothesis_topic_injection(self, test_normality = True):
@@ -164,7 +203,7 @@ class Analyser:
 
         similarity_samples = []
         topic_samples = self.sample[topic_id]
-        for window_type in self.other_window_types:
+        for window_type in self.types_window:
             similarity_samples += topic_samples[window_type]
         _ , pvalue = normaltest(similarity_samples)
         if pvalue >= self.normality_risk:
@@ -186,3 +225,5 @@ class Analyser:
     #         count_topic = list(itertools.chain.from_iterable(count_topic))
     #         corr, _ = pearsonr(similarity_topic, count_topic)
     #         print(f'Pearsons correlation for topic {topic_id}: %.3f' % corr)
+
+

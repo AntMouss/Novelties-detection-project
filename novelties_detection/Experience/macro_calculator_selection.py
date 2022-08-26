@@ -7,18 +7,16 @@ from multiprocessing import Pool
 import bisect
 from typing import List , Union , Tuple
 from novelties_detection.Experience.kwargsGen import RandomKwargsGenerator , FullKwargsForExperiences
-from novelties_detection.Experience.ExperienceGen import ExperiencesProcessor , MetadataGenerationException
+from novelties_detection.Experience.ExperienceGen import SupervisedExperiencesProcessor , MetadataGenerationException
 from novelties_detection.Experience.data_utils import ExperiencesResults , Alerte , TimeLineArticlesDataset , MacroThematic , ExperiencesMetadata
 import pickle
 import logging
 from threading import Lock
 from novelties_detection.Experience.Exception_utils import SelectionException , AnalyseException , ResultsGenerationException
-from novelties_detection.Experience.config_path import RES_HOUR_CALCULATOR_SELECTION_PATH , RES_DAY_CALCULATOR_SELECTION_PATH, LOG_PATH
+from novelties_detection.Experience.config_path import LOG_PATH
 from novelties_detection.Experience.config_calculator_selection import (
     STATIC_KWARGS_GENERATOR_HOURS ,
-    EXPERIENCES_METADATA_GENERATOR_HOURS ,
     STATIC_KWARGS_GENERATOR_DAYS ,
-    EXPERIENCES_METADATA_GENERATOR_DAYS ,
     TEST_EXPERIENCES_METADATA_GENERATOR_HOURS,
     TEST_EXPERIENCES_METADATA_GENERATOR_DAYS
 )
@@ -123,10 +121,10 @@ class MacroCalculatorSelector(MetaCalculatorSelector):
         try:
 
             dataset = TimeLineArticlesDataset(**kwargs_dataset)
-            experience_generator = ExperiencesProcessor(self.experiences_metadata_generator, dataset)
+            experience_generator = SupervisedExperiencesProcessor(self.experiences_metadata_generator, dataset)
             experience_generator.generate_results(**full_kwargs["results_args"])
             experiences_results = ExperiencesResults(experience_generator.experiences_res , experience_generator.info)
-            alerts = ExperiencesProcessor.analyse_results(experiences_results, **full_kwargs["analyse_args"])
+            alerts = SupervisedExperiencesProcessor.analyse_results(experiences_results, **full_kwargs["analyse_args"])
             energy_distance = self.compute_calculator_score(alerts)
             print(f"hypothesis mean distance equals to {energy_distance} for calculator {calculator_id}")
         except ResultsGenerationException:
@@ -158,13 +156,14 @@ class RandomMacroCalculatorSelector(MacroCalculatorSelector):
 
 
 
-
 def main():
 
+    path_day = "/home/mouss/PycharmProjects/novelties-detection-git/results/day2.pck"
+    path_hour = "/home/mouss/PycharmProjects/novelties-detection-git/results/hour2.pck"
     static_selector_hours = MacroCalculatorSelector(STATIC_KWARGS_GENERATOR_HOURS, TEST_EXPERIENCES_METADATA_GENERATOR_HOURS)
     static_selector_days = MacroCalculatorSelector(STATIC_KWARGS_GENERATOR_DAYS, TEST_EXPERIENCES_METADATA_GENERATOR_DAYS)
-    static_selector_days.run(max_to_save=3, nb_workers=1 , path="/home/mouss/PycharmProjects/novelties-detection-git/results/day2.pck")
-    static_selector_hours.run( max_to_save=3 , nb_workers=1 , path="/home/mouss/PycharmProjects/novelties-detection-git/results/hour2.pck")
+    static_selector_days.run(max_to_save=3, nb_workers=1 , path=path_day)
+    static_selector_hours.run( max_to_save=3 , nb_workers=1 , path=path_hour)
 
 
 if __name__ == '__main__':
