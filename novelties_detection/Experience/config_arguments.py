@@ -2,7 +2,7 @@ import json
 
 from novelties_detection.Experience.config_path import DATA_PATH, SEED_PATH, THEMATICS_PATH
 from novelties_detection.Experience.data_utils import Thematic
-from novelties_detection.Collection.data_processing import ProcessorText
+from novelties_detection.Collection.data_processing import FrenchTextPreProcessor
 from novelties_detection.Experience.Sequential_Module import LFIDFSequentialSimilarityCalculator , LDASequentialSimilarityCalculatorFixed , CoreXSequentialSimilarityCalculatorFixed , GuidedCoreXSequentialSimilarityCalculator , GuidedLDASequentialSimilarityCalculator
 from novelties_detection.Collection.data_processing import exponentialThresholding , linearThresholding
 
@@ -31,7 +31,7 @@ with open(THEMATICS_PATH, 'r') as f:
 #     MICRO_THEMATICS = pickle.load(f)
 
 
-PROCESSOR = ProcessorText()
+PREPROCESSOR = FrenchTextPreProcessor()
 
 KWARGS = {
     #GuidedLDAModelKwargs,LFIDFModelKwargs,GuidedCoreXKwargs
@@ -51,7 +51,7 @@ KWARGS = {
     "path": [DATA_PATH],
     "lookback": [i for i in range(5, 100, 5)],
     "delta": [1],
-    "processor": [PROCESSOR],
+    "processor": [PREPROCESSOR],
     "nb_topics": [len(LABELS_IDX)],
     "labels_idx": [LABELS_IDX],
     "topic_id": [i for i in range(len(LABELS_IDX))],
