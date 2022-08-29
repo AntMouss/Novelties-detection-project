@@ -3,7 +3,7 @@ from novelties_detection.Experience.Sequential_Module import SupervisedSequantia
 from novelties_detection.Experience.Exception_utils import ServiceException
 from flask import jsonify , make_response
 from novelties_detection.Service.apis.utils import build_series
-from novelties_detection.Service.apis.config import N_TOP_DEFAULT , BACK_DEFAULT , MAX_N_TOP_WORDS , MIN_N_TOP_WORDS
+from novelties_detection.Service.apis.config_apis import N_TOP_DEFAULT , BACK_DEFAULT , MAX_N_TOP_WORDS , MIN_N_TOP_WORDS
 
 namesp = Namespace('ResultInterface',
                    description='results generate by the calculator for the interface topic visualisation', validate=True)
