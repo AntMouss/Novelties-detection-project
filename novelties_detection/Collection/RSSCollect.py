@@ -115,7 +115,7 @@ class RSSCollector():
                 remove_tag_list = self.global_remove_tags
             try:
                 # Get information from the rss config file
-                listOfReadEntries += self.treatRSSEntry(label, url , remove_tag_list, print_log,**kwargs)
+                listOfReadEntries += self.treatRSSEntry(label, url , remove_tag_list, print_log=print_log,**kwargs)
                 self.evaluateCollect(
                     listOfReadEntries, url, print_log = print_log, **kwargs)
                 if self.rootOutputFolder is not None:
@@ -475,7 +475,7 @@ class RSSCollector():
         if print_log:
             print(msg_perf)
 
-    def evaluateCollect(self, listOfReadEntry : List[Dict], url_rss : str , collectImageArticle : bool,collectRssImage : bool , print_log : bool = True , **kwargs):
+    def evaluateCollect(self, listOfReadEntry : List[Dict], url_rss : str , collectArticleImages : bool,collectRssImage : bool , print_log : bool = True , **kwargs):
         """
         read the output of our feedlist and evaluate the percentage of field empty and no collected rss
         and give the average of collected images per articles for each feed
@@ -494,7 +494,7 @@ class RSSCollector():
                 for feed in listOfReadEntry:
                     if collectRssImage:
                         countImage+=len(feed["rss_media"])
-                    if collectImageArticle:
+                    if collectArticleImages:
                         countImage+=len(feed["images"])
 
                     for field in self.listOfFields:
@@ -517,9 +517,9 @@ rootOutputFolder="/home/mouss/tmpTest18"
 if __name__ == '__main__':
 
     preprocessor = FrenchTextPreProcessor()
-    RSS_URL_file= "../../tmp_test_obj/rssfeed_news_test.json"
+    RSS_URL_file= "../../config/RSSfeeds_test.json"
     rssc = RSSCollector(RSS_URL_file, preprocessor = preprocessor , rootOutputFolder=rootOutputFolder)
-    rssc.treatNewsFeedList(collectFullHtml=True, collectRssImage=True,collectArticleImages=True)
+    rssc.treatNewsFeedList(collectFullHtml=True, collectRssImage=True,collectArticleImages=True , print_log=True)
 
 
 

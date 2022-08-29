@@ -364,7 +364,7 @@ class MetaTextPreProcessor:
         return word.lower()
 
     @functools.lru_cache(maxsize=100)
-    @wrapt_timeout_decorator.timeout(10)
+    @wrapt_timeout_decorator.timeout(120)
     def preprocessText(self, text: str, **kwargs):
 
         textProcessed = []
