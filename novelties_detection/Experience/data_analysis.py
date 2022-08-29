@@ -109,6 +109,8 @@ class SupervisedSampler(MetaSampler):
 class MultiSamples:
 
     def __new__(cls, samplers : List[MetaSampler] , *args, **kwargs):
+
+        df_to_return = None
         for sampler in samplers:
             samples = sampler.samples
             df = samples.to_dataframe
@@ -118,7 +120,13 @@ class MultiSamples:
             delta = sampler.info["delta"]
             delta_serie = [delta] * len(df)
             delta_serie = pd.Series(delta_serie)
-            return pd.concat([df , type_calculator_serie , delta_serie] , axis=1)
+            sampler_df =  pd.concat([df , type_calculator_serie , delta_serie] , axis=1)
+            if df_to_return is None:
+                df_to_return = sampler_df
+            else:
+                df_to_return = pd.concat([df_to_return , sampler_df] , axis=0)
+        return df_to_return
+
 
 
 

@@ -14,7 +14,7 @@ from novelties_detection.Experience.Sequential_Module import (
     MetaSequencialLangageSimilarityCalculator
 )
 from novelties_detection.Collection.data_processing import  absoluteThresholding , linearThresholding , exponentialThresholding , transformS , transformU
-from novelties_detection.Experience.config_arguments import Thematic , ProcessorText , KWARGS
+from novelties_detection.Experience.config_arguments import Thematic , FrenchTextPreProcessor , KWARGS
 
 
 class UpdateBadWordsKwargs:
@@ -106,7 +106,7 @@ class KwargsExperiences:
 
 class KwargsDataset:
     def __init__(self, start, end, path: str,
-                 lookback: int, delta: int, processor: ProcessorText = None , transform_fct = None):
+                 lookback: int, delta: int, processor: FrenchTextPreProcessor = None, transform_fct = None):
         self.transform_fct = transform_fct
         self.processor = processor
         self.delta = delta

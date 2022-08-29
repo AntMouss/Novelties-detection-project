@@ -1,13 +1,14 @@
 from threading import Thread , Lock
 from typing import List , Dict
 import schedule
-from novelties_detection.Collection.RSSCollector import RSSCollect
+from novelties_detection.Collection.RSSCollect import RSSCollector
 from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator , NoSupervisedFixedSequantialLangageSimilarityCalculator
 from novelties_detection.Experience.WindowClassification import WindowClassifierModel
-from novelties_detection.Collection.data_processing import transformS
+from novelties_detection.Collection.data_processing import transformS , MetaTextPreProcessor
 from novelties_detection.Experience.Exception_utils import CompareWindowsException
 from datetime import datetime
 import logging
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -32,19 +33,32 @@ class CollectThread(Thread):
     """
     Service to periodically collect information from the selected sources
     """
-    def __init__(self, rss_feed_source_path, output_path, processor, loop_delay):
+    default_collect_kwargs = {
+        "collectFullHtml" : True,
+        "collectRssImage" : True,
+        "collectArticleImages" : True,
+        "print_log" : True
+    }
+    def __init__(
+            self, rss_feed_source_path : str, loop_delay : int ,
+            preprocessor : MetaTextPreProcessor  = None,  output_path : str = None , collect_kwargs : dict = None  ):
         """
 
         @param rss_feed_source_path: path to json file that contain rss feed source like url , label and removing tags
         @param output_path: path from Root Directory where we save information about articles (images , html , metadata)
-        @param processor: engine that process (preprocess) text for being ready to use
+        @param preprocessor: engine that process (preprocess) text for being ready to use
         @param loop_delay: delay between two collect
         """
         Thread.__init__(self)
+        if collect_kwargs is None:
+            self.collect_kwargs = self.default_collect_kwargs
+        else:
+            self.collect_kwargs = collect_kwargs
         self.loop_delay = loop_delay
         self.rss_feed_config=rss_feed_source_path
         self.output_path=output_path
-        self.rssCollect=RSSCollect(self.rss_feed_config, self.output_path , processor=processor)
+        self.rssCollector=RSSCollector(self.rss_feed_config, preprocessor=preprocessor, rootOutputFolder=self.output_path)
+        self.lang = self.rssCollector.preprocessor.lang
 
     @log_time_function
     def update_window_data(self):
@@ -56,10 +70,19 @@ class CollectThread(Thread):
         COLLECT_LOCKER.acquire()
         if PROCESS_IN_PROGRESS == False:
             COLLECT_IN_PROGRESS = True
-            new_data = self.rssCollect.treatNewsFeedList()
+            new_data = self.rssCollector.treatNewsFeedList(**self.collect_kwargs)
+            new_data = self.clean_lang(new_data)
             WINDOW_DATA += new_data
             COLLECT_IN_PROGRESS = False
         COLLECT_LOCKER.release()
+
+    def clean_lang(self , articles):
+        articles_idx_to_remove = []
+        for idx ,  article in enumerate(articles):
+            if article["lang"] != self.lang:
+                articles_idx_to_remove.append(idx)
+        for idx in articles_idx_to_remove:
+            del articles[idx]
 
     def run(self):
         logging.info("Collect will start")
@@ -74,20 +97,20 @@ class NoveltiesDetectionThread(Thread):
     """
     def __init__(self, supervised_calculator : SupervisedSequantialLangageSimilarityCalculator
                  , micro_calculator : NoSupervisedFixedSequantialLangageSimilarityCalculator, training_args : Dict,
-                 comparaison_args : Dict, micro_training_args : Dict, loop_delay : int, classifier_models :List[WindowClassifierModel]):
+                 results_args : Dict, micro_training_args : Dict, loop_delay : int, classifier_models :List[WindowClassifierModel]):
         """
 
         @param supervised_calculator: supervised calculator to get novelties on the labels (topics) in the flow
         @param micro_calculator: no supervised calculator to get more detail information about "micro-topic" in the flow
         @param training_args: args use to treat new window
-        @param comparaison_args: args use to compute similarity between windows recursively
+        @param results_args: args use to compute similarity between windows recursively
         @param micro_training_args:
         @param loop_delay: delay between two process
         @param classifier_models: window classifier model to get the rarety level of the window (rarety of the similarity score with the previous one)
         """
         Thread.__init__(self)
         self.micro_training_args = micro_training_args
-        self.comparaison_args = comparaison_args
+        self.results_args = results_args
         self.training_args = training_args
         self.supervised_reference_calculator = supervised_calculator
         self.micro_calculator = micro_calculator
@@ -113,12 +136,12 @@ class NoveltiesDetectionThread(Thread):
     def print_res(self):
 
         try:
-            self.supervised_reference_calculator.print_novelties(n_words_to_print=10 , **self.comparaison_args)
+            self.supervised_reference_calculator.print_novelties(n_words_to_print=10, **self.results_args)
             # we call the function calcul_similarity_topics_W_W in the function print_novelties above but we keep the
             # result in cache so it's more comprehensive to recall the function another time bellow
             new_window_idx = len(self.supervised_reference_calculator)  -1
             previous_window_idx = new_window_idx - 1
-            similarities, _ = self.supervised_reference_calculator.calcule_similarity_topics_W_W(previous_window_idx , new_window_idx , **self.comparaison_args)
+            similarities, _ = self.supervised_reference_calculator.calcule_similarity_topics_W_W(previous_window_idx, new_window_idx, **self.results_args)
             print("@" * 30)
             for topic_id, (similarity_score, classifier) in enumerate(zip(similarities, self.classifier_models)):
                 classifier.print(similarity_score)

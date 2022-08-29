@@ -1,8 +1,6 @@
 import os
 import json
 from typing import List, Dict
-
-from html2text import HTML2Text
 import feedparser
 from bs4 import BeautifulSoup
 import hashlib
@@ -12,7 +10,7 @@ from urllib.parse import urlparse
 from datetime import datetime
 import logging
 import threading
-from novelties_detection.Collection.data_processing import ProcessorText , dateToDateTime
+from novelties_detection.Collection.data_processing import MetaTextPreProcessor , FrenchTextPreProcessor , dateToDateTime
 from novelties_detection.Collection.data_cleaning import extract_text
 import sys
 import validators
@@ -32,7 +30,7 @@ def urlId(url):
 lock = threading.Lock()
 
 
-class RSSCollect():
+class RSSCollector():
     '''
     Main class to collect rss feeds
     '''
@@ -54,25 +52,29 @@ class RSSCollect():
     HTML_TAIL="</body></html>"
     listOfFields = ["title", "url", "text", "label", "rss", "updated", "date", "summary", "content"]
 
-    def __init__(self, sourcesList, rootOutputFolder , processor : ProcessorText):
+    def __init__(self, sourcesList, preprocessor : MetaTextPreProcessor = None, rootOutputFolder = None):
         '''
         Constructor
         :param sourcesList: File where the sources are stored
         :param rootOutputFolder: Folder where we will save the results
         '''
-        self.processor = processor
+        self.preprocessor = preprocessor
         self.sourcesList = sourcesList
-        self.dayOutputFolder = os.path.join(rootOutputFolder, self.dayFolderName)
-        self.rootHashFolder=os.path.join(rootOutputFolder, self.hashFolderName)
-        self.hashs = self.getProcessedNews()
-        self.rootOutputFolder=rootOutputFolder
-        self.logFolderPath = os.path.join(rootOutputFolder , self.log_folder)
-        self.log_performance_path = os.path.join(self.logFolderPath , self.log_performance_file)
-        self.log_error_path = os.path.join(self.logFolderPath , self.log_error_file)
+        if rootOutputFolder is not None:
+            self.dayOutputFolder = os.path.join(rootOutputFolder, self.dayFolderName)
+            self.rootHashFolder=os.path.join(rootOutputFolder, self.hashFolderName)
+            self.rootOutputFolder=rootOutputFolder
+            self.logFolderPath = os.path.join(rootOutputFolder , self.log_folder)
+            self.log_performance_path = os.path.join(self.logFolderPath , self.log_performance_file)
+            self.log_error_path = os.path.join(self.logFolderPath , self.log_error_file)
+            self.hashs = self.getProcessedNews()
+
+        else:
+            self.hashs = []
         self.global_remove_tags = []
 
 
-    def treatNewsFeedList(self, **kwargs):
+    def treatNewsFeedList(self, print_log = True,**kwargs):
         '''
         Collects the information from the news feeds
         :param collectFullHtml: If the full
@@ -113,12 +115,14 @@ class RSSCollect():
                 remove_tag_list = self.global_remove_tags
             try:
                 # Get information from the rss config file
-                listOfReadEntries += self.treatRSSEntry(label, url , remove_tag_list,**kwargs)
-                self.saveProcessedNewsHashes(self.hashs)
+                listOfReadEntries += self.treatRSSEntry(label, url , remove_tag_list, print_log,**kwargs)
+                self.evaluateCollect(
+                    listOfReadEntries, url, print_log = print_log, **kwargs)
+                if self.rootOutputFolder is not None:
+                    self.saveProcessedNewsHashes(self.hashs)
 
             except Exception as e:
-
-                self.updateLogError(e , 1 , url)
+                self.writeLogError(e, 1, url)
                 pass
         # Add the news information (if there's new news) in the database
         print("RSS news extraction end")
@@ -127,7 +131,7 @@ class RSSCollect():
 
 
     def treatRSSEntry(self, label : list, rss_url : str, remove_tags_list : list,
-                      collectFullHtml=True, collectRssImage=True, collectArticleImages=True):
+                      collectFullHtml=True, collectRssImage=True, collectArticleImages=True , print_log = True):
         '''
         Treats a given Rss entry
         :param label:
@@ -143,7 +147,7 @@ class RSSCollect():
                 feed_date= ""
             feedList=[]
         except Exception as e:
-            self.updateLogError(e, 1, rss_url)
+            self.writeLogError(e, 1, rss_url , print_log=print_log)
             return []
         # For each news in the rss feed
         j=0
@@ -154,14 +158,11 @@ class RSSCollect():
                 if article_id in self.hashs:
                     continue
                 domain = urlparse(rss_url).netloc
-                folderName = os.path.join(domain, article_id[:5], article_id)
-                targetDir = os.path.join(self.dayOutputFolder, folderName)
-                os.makedirs(targetDir, exist_ok=True)
                 r = requests.get(entry["link"], timeout=10)  # Get HTML from links
                 if r.status_code != 200:
                     continue
             except Exception as e:
-                self.updateLogError(e, 2, entry['link'])
+                self.writeLogError(e, 2, entry['link'] , print_log=print_log)
                 continue
 
             try:
@@ -173,6 +174,7 @@ class RSSCollect():
                         "updated": False,
                         "id": article_id
                         }
+                feed["lang"] = self.preprocessor.detectLanguage(feed["title"])
                 if "published" in entry.keys():
                     feed["date"] = entry["published"]
                 else:
@@ -188,7 +190,7 @@ class RSSCollect():
                 else:
                     feed["content"] = ""
 
-                feed['domainName'] = urlparse(feed['url']).netloc
+                feed['domainName'] = domain
                 # Check if the article is already in the database
                 # Extract information from the website
                 soup = BeautifulSoup(r.text, "lxml")  # Parse HTML
@@ -197,53 +199,56 @@ class RSSCollect():
                 feed.update(text_fields)
 
             except Exception as e:
-                self.updateLogError(e, 2, entry['link'])
+                self.writeLogError(e, 2, entry['link'] , print_log=print_log)
                 continue
-
-
-            try:
-                if collectRssImage:
-                    feed["rss_media"]=[]
-                    collectedImagesNames=self.treatRssImages(entry, targetDir, entry['link'])
-                    feed["rss_media"]=collectedImagesNames
-            except Exception as e:
-                pass
-
-
-            try: #on gère pas les erreurs de treatArticleImages
-                if collectArticleImages:
-                    feed["images"]=[]
-                    article,collectedImagesNames=self.treatGetArticleImages(article,targetDir , entry['link'])
-                    feed["images"]=collectedImagesNames
-            except Exception as e:
-                exc_tb = sys.exc_info()[2]
-                exc_line = exc_tb.tb_lineno
-                pass
-                # Saves the full html text
-
-
-            if article is not None:
-                try: #on gère pas les erreurs html
-                    if collectFullHtml:
-                        with open(os.path.join(targetDir, self.htmlFileName), "w" , encoding='UTF-8') as f:
-                            page=self.HTML_HEADER + str(article_copy) + self.HTML_TAIL
-                            f.write(page)
-                # erreur corrigée avec le bon encodage
-                except UnicodeError as e:
-                    print(e)
-                    pass
-                except:
-                    pass
-
-            with open(os.path.join(targetDir, self.targetDataFile), "w") as f:
-                json.dump(feed, f)
 
             feedList.append(feed)
             self.hashs.append(article_id)
 
-        self.evaluateCollect(
-            feedList, rss_url, collectRssImage=collectRssImage ,
-            collectImageArticle=collectArticleImages)
+
+            if self.rootOutputFolder is not None:
+
+                folderName = os.path.join(domain, article_id[:5], article_id)
+                targetDir = os.path.join(self.dayOutputFolder, folderName)
+                os.makedirs(targetDir, exist_ok=True)
+
+                try:
+                    if collectRssImage:
+                        feed["rss_media"]=[]
+                        collectedImagesNames=self.treatRssImages(entry, targetDir, entry['link'] , print_log = print_log)
+                        feed["rss_media"]=collectedImagesNames
+                except Exception as e:
+                    pass
+
+
+                try: #on gère pas les erreurs de treatArticleImages
+                    if collectArticleImages:
+                        feed["images"]=[]
+                        article,collectedImagesNames=self.treatGetArticleImages(article,targetDir , entry['link'] , print_log = print_log)
+                        feed["images"]=collectedImagesNames
+                except Exception as e:
+                    exc_tb = sys.exc_info()[2]
+                    exc_line = exc_tb.tb_lineno
+                    pass
+                    # Saves the full html text
+
+
+                if article is not None:
+                    try: #on gère pas les erreurs html
+                        if collectFullHtml:
+                            with open(os.path.join(targetDir, self.htmlFileName), "w" , encoding='UTF-8') as f:
+                                page=self.HTML_HEADER + str(article_copy) + self.HTML_TAIL
+                                f.write(page)
+                    # erreur corrigée avec le bon encodage
+                    except UnicodeError as e:
+                        print(e)
+                        pass
+                    except:
+                        pass
+
+                with open(os.path.join(targetDir, self.targetDataFile), "w") as f:
+                    json.dump(feed, f)
+
         return feedList
 
 
@@ -262,7 +267,10 @@ class RSSCollect():
             text = extract_text(article, remove_tags_list, clean=False)
             cleansed_text = extract_text(article, remove_tags_list, clean=True)
             try:
-                process_text = self.processor.processText(cleansed_text)
+                if self.preprocessor is not None:
+                    process_text = self.preprocessor.preprocessText(cleansed_text)
+                else:
+                    process_text = None
             except TimeoutError:
                 process_text = None
                 pass
@@ -282,7 +290,7 @@ class RSSCollect():
         } , article_copy
 
 
-    def treatRssImages (self, entry_rss, targetDir, link) :
+    def treatRssImages (self, entry_rss, targetDir, link , **kwargs) :
         """
         we want to
         :param entry_rss: the entry corresponding to the article in the rssfeed Parser
@@ -295,7 +303,7 @@ class RSSCollect():
             for eMedia in entry_rss["media_content"]:
 
                 if "url" in eMedia:
-                    mediaName = self.downloadMedia(eMedia["url"], targetDir,link)
+                    mediaName = self.downloadMedia(eMedia["url"], targetDir,link , **kwargs)
                     if mediaName != '':
                         collectedImagesNames.append(mediaName)
 
@@ -305,19 +313,19 @@ class RSSCollect():
 
                 if "type" in link.keys():
                     if "image" in link["type"] or "jpeg" in link["type"]:
-                        mediaName = self.downloadMedia(link["href"],targetDir,link)
+                        mediaName = self.downloadMedia(link["href"],targetDir,link , **kwargs)
                         if mediaName != '':
                             collectedImagesNames.append(mediaName)
 
                     else:
                         if "image" in link['href']:
-                            mediaName = self.downloadMedia(link["href"], targetDir,link)
+                            mediaName = self.downloadMedia(link["href"], targetDir,link , **kwargs)
                             if mediaName != '':
                                 collectedImagesNames.append(mediaName)
         return collectedImagesNames
 
 
-    def treatGetArticleImages(self,article,targetDir , link):
+    def treatGetArticleImages(self,article,targetDir , link , **kwargs):
         '''
         Treats the case where we need to download a media content from the RSS feed
         :param targetDir:
@@ -334,7 +342,7 @@ class RSSCollect():
             try:
                 src=img['src']
                 if src:
-                    mediaName=self.downloadMedia(src, targetDir, link )
+                    mediaName=self.downloadMedia(src, targetDir, link , **kwargs )
                     if mediaName != '':
                         img['src']=mediaName
                         collectedImagesNames.append(mediaName)
@@ -345,7 +353,7 @@ class RSSCollect():
 
 
 
-    def downloadMedia(self, url_media, targetDir , link):
+    def downloadMedia(self, url_media, targetDir , link , print_log = True):
         '''
         Downloads a media content from the main page
         :param url_media:
@@ -379,7 +387,7 @@ class RSSCollect():
             with open(mediaName, 'wb') as fMedia:
                 fMedia.write(mediaContent.content)
         except Exception as e:
-            self.updateLogError(e , 3 , url_media)
+            self.writeLogError(e, 3, url_media , print_log=print_log)
 
             return ''
 
@@ -437,30 +445,37 @@ class RSSCollect():
         return hashs
 
 
-    def updateLogError(self , exception , nu_type , link):
+    def writeLogError(self, exception, nu_type, link , print_log : bool = True):
 
             exc_tb = sys.exc_info()[2]
             exc_line = exc_tb.tb_lineno
             msg_err = f" {str(datetime.now())}-----New Error type {str(nu_type)}: {str(exception)} for link: {link} at line {exc_line}"
 
+            if self.rootOutputFolder is None:
+                if not os.path.exists(self.logFolderPath):
+                    os.makedirs(self.logFolderPath)
+
+                with open(self.log_error_path , 'a') as f:
+                    f.write(msg_err + "\n")
+
+            if print_log:
+                print(msg_err)
+
+
+    def writeLogPerf(self, msg_perf , print_log : bool = True):
+
+
+        if self.rootOutputFolder is not None:
             if not os.path.exists(self.logFolderPath):
                 os.makedirs(self.logFolderPath)
 
-            with open(self.log_error_path , 'a') as f:
-                f.write(msg_err + "\n")
+            with open(self.log_performance_path, 'a') as f:
+                f.write(msg_perf + "\n")
 
+        if print_log:
+            print(msg_perf)
 
-
-    def updateLogPerf(self, msg_perf):
-
-        if not os.path.exists(self.logFolderPath):
-            os.makedirs(self.logFolderPath)
-
-        with open(self.log_performance_path, 'a') as f:
-            f.write(msg_perf + "\n")
-
-
-    def evaluateCollect(self, listOfReadEntry : List[Dict], url_rss : str,collectImageArticle : bool,collectRssImage : bool):
+    def evaluateCollect(self, listOfReadEntry : List[Dict], url_rss : str , collectImageArticle : bool,collectRssImage : bool , print_log : bool = True , **kwargs):
         """
         read the output of our feedlist and evaluate the percentage of field empty and no collected rss
         and give the average of collected images per articles for each feed
@@ -492,18 +507,19 @@ class RSSCollect():
                 pass
             except Exception as e:
                 pass
-        self.updateLogPerf(msg_perf)
+
+        self.writeLogPerf(msg_perf , print_log=print_log)
 
 
 
-# rootOutputFolder="/home/mouss/tmpTest18"
-#
-# if __name__ == '__main__':
-#
-#     processor = ProcessorText()
-#     RSS_URL_file= "../../tmp_test_obj/rssfeed_news_test.json"
-#     rssc = RSSCollect(RSS_URL_file,rootOutputFolder , processor = processor)
-#     rssc.treatNewsFeedList(collectFullHtml=True, collectRssImage=False,collectArticleImages=False)
+rootOutputFolder="/home/mouss/tmpTest18"
+
+if __name__ == '__main__':
+
+    preprocessor = FrenchTextPreProcessor()
+    RSS_URL_file= "../../tmp_test_obj/rssfeed_news_test.json"
+    rssc = RSSCollector(RSS_URL_file, preprocessor = preprocessor , rootOutputFolder=rootOutputFolder)
+    rssc.treatNewsFeedList(collectFullHtml=True, collectRssImage=True,collectArticleImages=True)
 
 
 

@@ -273,22 +273,33 @@ class imputerData:
                     fo.write(json.dumps(data))
 
 
-class ProcessorText:
-    """
-    we use this class for text processing
-    """
-    def __init__(self):
-        # we load the data for french lemmatization just one time because we will just treat french text
-        self.frenchData  = simplemma.load_data('fr')
-        self.setStopWords  = stopwordsiso.stopwords('fr')
-        self.specialWords1 = ['commenter','réagir','envoyer','mail','partager','facebook','twitter','commenter' , 'cliquer' , 'publier' ,'commentaire' , 'lire' , 'journal']
-        self.specialWords2 = ['commenter','réagir','envoyer','mail','partager' , 'publier' , 'lire' , 'journal' , "abonnez-vous"]
-        self.specialWords3 = []
-        self.undesirableChar = ['/' , '=' , '#' , '&']
 
-    def tokenizeText(self, text : str):
-        return word_tokenize(text , language='french')
-        # return [word for word in text.lower().split()]
+class MetaTextPreProcessor:
+    default_undesirable_characters = ['/', '=', '#', '&']
+    default_undesirable_words = []
+
+    def __init__(self, lang  : str = "" , long_lang  : str = "",undesirable_words : list = None,
+                 undesirable_characters : list = None, max_word_size : int = 18,
+                 min_word_size : int = 3):
+        self.long_lang = long_lang
+        self.lang = lang
+        self.min_word_size = min_word_size
+        self.max_word_size = max_word_size
+        if undesirable_words is None:
+            undesirable_words = []
+        if undesirable_characters is None:
+            undesirable_characters = []
+        self.undesirable_words = undesirable_words + self.default_undesirable_words
+        self.undesirable_characters  = undesirable_characters + self.default_undesirable_characters
+
+    @property
+    def langData(self):
+        return simplemma.load_data(self.lang)
+
+    @property
+    def stop_words(self):
+        return stopwordsiso.stopwords(self.lang)
+
 
     @staticmethod
     def detectLanguage(text):
@@ -310,72 +321,96 @@ class ProcessorText:
         except:
             pass
 
-    def processWord(self, word, langData , lemmatize=True , filtreStopWords=True , filtreSmallWords=True , filtreNumber = True):
+    def tokenizeText(self, text: str):
+        return word_tokenize(text, language=self.long_lang)
+        # return [word for word in text.lower().split()]
+
+    def lemmatize(self, word):
+        return simplemma.lemmatize(word, self.langData)
+
+    @staticmethod
+    def check_lang(text : str , lang : str):
+        tmp_lang = MetaTextPreProcessor.detectLanguage(text)
+        if tmp_lang == lang:
+            return True
+        else:
+            return False
 
 
-        if filtreSmallWords:
-            if len(word)<3:
+    def processWord(self, word, lemmatize=True, remove_stop_words=True, remove_small_words=True, remove_numbers = True):
+
+        if remove_small_words:
+            if len(word) < self.min_word_size:
                 return None
-        if filtreNumber:
-            try:
-                int(word[0])
-                return  None
-            except:
-                pass
-            try:
-                int(word[1])
-                return None
-            except:
-                pass
+        if remove_numbers and word.isdigit():
+            return None
             # 'aux' is lemmatize as 'à les' but 'à les' isn't a stop words so we did filterstopwords twice before and after lemmatization
-        if filtreStopWords:
-            if word in self.setStopWords:
+        if remove_stop_words:
+            if word in self.stop_words:
                 return None
         if lemmatize:
-            word=simplemma.lemmatize(word, langData)
-        if filtreStopWords:
-            if word in self.setStopWords:
+            word= self.lemmatize(word)
+        if remove_stop_words:
+            if word in self.stop_words:
                 return None
-        if len(word)>18:
+        if len(word)> self.max_word_size:
             return None
-        if word.lower() in self.specialWords2:
+        if word.lower() in self.undesirable_words:
             return None
-        for char in self.undesirableChar:
+        for char in self.undesirable_characters:
             if char in word:
                 return None
 
         return word.lower()
 
-
     @functools.lru_cache(maxsize=100)
     @wrapt_timeout_decorator.timeout(10)
-    def processText(self, text : str,**kwargs ):
+    def preprocessText(self, text: str, **kwargs):
 
-        lang = ProcessorText.detectLanguage(text)
-        text = self.tokenizeText(text)
-        textProcessed=[]
-
-        if lang == 'fr':
+        textProcessed = []
+        if MetaTextPreProcessor.check_lang(text , self.lang):
+            text = self.tokenizeText(text)
             for word in text:
-                word = self.processWord(word, self.frenchData, **kwargs)
+                word = self.processWord(word, **kwargs)
                 # to remove None type words
-                if isinstance(word , str):
+                if isinstance(word, str):
                     textProcessed.append(word)
             return textProcessed
         else:
             return None
 
 
-    def processTexts(self, texts,**kwargs):
+    def preprocessTexts(self, texts, **kwargs):
 
         textsProcessed = []
         for i, text in enumerate(texts):
-            textprocessed = self.processText(text , **kwargs)
+            textprocessed = self.preprocessText(text, **kwargs)
             # to remove None type text
-            if isinstance(textprocessed , list):
+            if isinstance(textprocessed, list):
                 textsProcessed.append(textprocessed)
-
         return textsProcessed
+
+
+class FrenchTextPreProcessor(MetaTextPreProcessor):
+    """
+    we use this class for process french text
+    """
+    # we load the data for french lemmatization just one time because we will just treat french text
+
+    default_undesirable_words = ['commenter', 'réagir', 'envoyer', 'mail', 'partager', 'facebook', 'twitter', 'commenter',
+                              'cliquer', 'publier', 'commentaire', 'lire', 'journal']
+    def __init__(self , **kwargs):
+        super().__init__("fr" , "french" , **kwargs )
+
+
+
+class EnglishTextPreProcessor(MetaTextPreProcessor):
+
+    default_undesirable_words = ['subscribe', 'reaction', 'send', 'mail', 'partager', 'facebook', 'twitter',
+                                 'like','click', 'publish', 'comment', 'read', 'paper']
+    def __init__(self , **kwargs):
+        super().__init__("en" , "english" , **kwargs )
+
 
 
 
@@ -444,132 +479,7 @@ def cleanDictionnary(dictionnary, filterStopwords=False, filterSmallWord=False, 
 
 
 
-
-
-def imputeFieldAfterCollect (rootDatabase, configPath,fileName = 'data.json', htmlFileName ='news.html'):
-
-    er=0
-    HTML_HEADER = '<html><body>'
-    HTML_TAIL = "</body></html>"
-    #open config
-    with open (configPath , 'r') as fc:
-        config = json.load(fc)
-    with open (config['rss_feed_config_file'] , 'r') as frss:
-        rss = json.load(frss)
-
-    #search all data.json path
-    listOfPath = getDataPathList(rootDatabase , fileName)
-    total_count = len(listOfPath) // 2000
-    nb_articles = 0
-    count = 0
-
-    for path in listOfPath:
-        with open(path , 'r') as f:
-            article = json.load(f)
-        if len(article['label']) != 0:
-            for label in article['label']:
-                if label in ['actuality' , 'no label']:
-                    label = 'general'
-        else:
-            article['label'].append('general')
-        try:
-            if 'cleansed_text' not in article.keys():
-
-                link = article['url']
-                dirPath = os.path.dirname(path)
-                htmlPath = os.path.join(dirPath, htmlFileName)
-                # page are encoded in utf-8 or default encoding so we need to handle the 2 encoding when we open page
-                try:
-                    with open(htmlPath, 'r') as f:
-                        article_html = f.read()
-                        article_html = BeautifulSoup(article_html, 'lxml')
-                        if article_html.text != 'None  ':
-                            article['htmlCollected'] = True
-                            remove_list_rss = []
-                            for j in range(len(rss['rss_feed_url'])):
-                                if rss['rss_feed_url'][j]['url'] == article['rss']:
-                                    remove_list_rss += rss['rss_feed_url'][j]['toRemove']
-                                    break
-                            remove_list = rss['global'] + remove_list_rss
-                            article['cleansed_text'] = extract_text(article_html, remove_list, clean=True)
-                            with open(path, 'w') as f:
-                                f.write(json.dumps(article))
-
-                        else:
-                            article['htmlCollected'] = False
-                            article['cleansed_text'] = ''
-                            article['text'] = ''
-
-                    nb_articles += 1
-                    if nb_articles % 2000 == 0:
-                        count += 1
-                        print((f"{count}/{total_count}"))
-
-
-
-                except UnicodeDecodeError:
-                    with open(htmlPath, 'r' , encoding='UTF-8') as f:
-                        article_html = f.read()
-                    article_html = BeautifulSoup(article_html, 'lxml')
-                    article['htmlCollected'] = True
-                    remove_list_rss = []
-                    for j in range(len(rss['rss_feed_url'])):
-                        if rss['rss_feed_url'][j]['url'] == article['rss']:
-                            remove_list_rss += rss['rss_feed_url'][j]['toRemove']
-                            break
-                    remove_list = rss['global'] + remove_list_rss
-                    article['cleansed_text'] = extract_text(article_html, remove_list, clean=True)
-                    with open(path, 'w') as f:
-                        f.write(json.dumps(article))
-                    nb_articles += 1
-
-                    if nb_articles % 2000 == 0:
-                        count += 1
-                        print((f"{count}/{total_count}"))
-
-
-                except FileNotFoundError as ef:
-                    r = requests.get(link, timeout=4)
-                    if r.status_code != 200:
-                        continue
-                    soup = BeautifulSoup(r.text, 'lxml')
-                    article_html = soup.find("article")
-
-                    if article_html is None:
-                        article['htmlCollected'] = False
-                        article['cleansed_text'] = ''
-                        article['text'] = ''
-                        pass
-                    else:
-                        article['htmlCollected'] = True
-                        with open(htmlPath, 'w', encoding='UTF-8') as fh:
-                            page = HTML_HEADER + str(article_html) + HTML_TAIL
-                            fh.write(page)
-                        remove_list_rss = []
-                        for j in range(len(rss['rss_feed_url'])):
-                            if rss['rss_feed_url'][j]['url'] == article['rss']:
-                                remove_list_rss += rss['rss_feed_url'][j]['toRemove']
-                                break
-                        remove_list = rss['global'] + remove_list_rss
-                        article['cleansed_text'] = extract_text(article_html, remove_list, clean=True)
-                    with open(path, 'w') as f:
-                        f.write(json.dumps(article))
-                    print(article['url'])
-                    nb_articles += 1
-                    if nb_articles % 2000 == 0:
-                        count += 1
-                        print((f"{count}/{total_count}"))
-            #we find the according rss url by this way that is not conventionnal
-
-        except Exception as e:
-            exc_tb = sys.exc_info()[2]
-            exc_line = exc_tb.tb_lineno
-            er+=1
-            pass
-
-
-
-def transformU(articles, processor : ProcessorText = None, process_already_done = True):
+def transformU(articles, processor : FrenchTextPreProcessor = None, process_already_done = True):
     """
     change format of the articles list to being ready to use
     @param articles: articles in list of dictionnary format
@@ -583,19 +493,19 @@ def transformU(articles, processor : ProcessorText = None, process_already_done 
         if process_already_done:
             text = article['process_text']
         else:
-            text =processor.processText(article['text'])
+            text =processor.preprocessText(article['text'])
         texts.append(text)
     return texts
 
 
-def transformS(articles, processor : ProcessorText = None, process_already_done = True):
+def transformS(articles, processor : FrenchTextPreProcessor = None, process_already_done = True):
 
     res = []
     for article in articles:
         if process_already_done:
             res.append((article['process_text'] , article['label'][0]))
         else:
-            res.append((processor.processText(article['text']) , article['label'][0]))
+            res.append((processor.preprocessText(article['text']) , article['label'][0]))
     texts , labels = list(zip(*res))
     labels = list(labels)
     return texts , labels

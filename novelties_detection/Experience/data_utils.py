@@ -4,7 +4,7 @@ from typing import List, Tuple, Dict
 import math
 import ijson
 import numpy as np
-from novelties_detection.Collection.data_processing import ProcessorText
+from novelties_detection.Collection.data_processing import FrenchTextPreProcessor
 import pandas as pd
 
 
@@ -178,8 +178,8 @@ class ArticlesDataset:
 class TimeLineArticlesDataset(ArticlesDataset):
 
 
-    def __init__(self, path ,start = 1615105271 , end = 1630999271, lang = 'fr', delta = 1 , lookback = 0  ,
-                 processor : ProcessorText = None , transform_fct: callable = None):
+    def __init__(self, path, start = 1615105271, end = 1630999271, lang = 'fr', delta = 1, lookback = 0,
+                 processor : FrenchTextPreProcessor = None, transform_fct: callable = None):
         """
 
         @param delta: duration of each window
