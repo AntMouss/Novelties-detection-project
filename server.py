@@ -1,7 +1,7 @@
 import os
 import pickle
 import json
-from novelties_detection.Service.utils import createApp
+from novelties_detection.Service.server_utils import createApp
 from novelties_detection.Service.server_module import CollectThread ,NoveltiesDetectionThread
 from config.server_settings import (
     LOOP_DELAY_PROCESS,

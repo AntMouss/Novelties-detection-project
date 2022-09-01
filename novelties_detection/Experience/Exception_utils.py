@@ -28,8 +28,6 @@ class AnalyseException(SelectionException):
 class CompareWindowsException(Exception):
     pass
 
-class ServiceException(Exception):
-    pass
 
 class NoWordsClusterException(Exception):
     pass

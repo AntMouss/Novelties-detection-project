@@ -2,7 +2,7 @@ from flask import request
 from flask_restx import Resource , Namespace
 import json
 from novelties_detection.Service.apis.Models import rss_requests_model , tags_requests_model , tag_element , url_element
-
+from novelties_detection.Service.apis.apis_utils import LabelsException
 
 namesp = Namespace('RSSNewsDocument',
                    description='Extract news from RSS feeds and store them into JSON file', validate=True)
@@ -21,6 +21,7 @@ class RSSNewsSource(Resource):
     def __init__(self, api=None, *args, **kwargs):
         # sessions is a black box dependency
         self.rss_feed_path = kwargs['rss_feed_path']
+        self.labels = kwargs["labels"]
         super().__init__(api, *args, **kwargs)
 
 
@@ -33,9 +34,19 @@ class RSSNewsSource(Resource):
             # Add rss feed to existing rss feed list
             with open(self.rss_feed_path, "r") as f:
                 rss_feed_url = json.load(f)
-            rss_feed_url["rss_feed_url"] = rss_feed_url["rss_feed_url"] + request.json['rss_feed']
+            posted_rss_feeds = request.json["rss_feed"]
+            for feed in posted_rss_feeds:
+                if "label" in feed.keys():
+                    for label in feed["label"]:
+                        if label not in self.labels:
+                            raise LabelsException
+            rss_feed_url["rss_feed_url"] = rss_feed_url["rss_feed_url"] + posted_rss_feeds
             with open(self.rss_feed_path, "w") as f:
                 f.write(json.dumps(rss_feed_url))
+        except LabelsException as e:
+            namesp.abort(410, e.__doc__,
+                         status="you can't post a request with labels that are not declared during api initialization",
+                         statusCode="410")
         except KeyError as e:
             namesp.abort(500, e.__doc__, status="Could not retrieve information", statusCode="500")
         except Exception as e:
@@ -47,9 +58,19 @@ class RSSNewsSource(Resource):
             # Add rss feed to existing rss feed list
             with open(self.rss_feed_path, "r") as f:
                 rss_feed_url = json.load(f)
-            rss_feed_url["rss_feed_url"] = rss_feed_url["rss_feed_url"] + request.json['rss_feed']
+            posted_rss_feeds = request.json["rss_feed"]
+            for feed in posted_rss_feeds:
+                if "label" in feed.keys():
+                    for label in feed["label"]:
+                        if label not in self.labels:
+                            raise LabelsException
+            rss_feed_url["rss_feed_url"] = rss_feed_url["rss_feed_url"] + posted_rss_feeds
             with open(self.rss_feed_path, "w") as f:
                 f.write(json.dumps(rss_feed_url))
+        except LabelsException as e:
+            namesp.abort(410, e.__doc__,
+                         status="you can't post a request with labels that are not declared during api initialization",
+                         statusCode="410")
         except KeyError as e:
             namesp.abort(500, e.__doc__, status="Could not retrieve information", statusCode="500")
         except Exception as e:

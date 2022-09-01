@@ -1,4 +1,4 @@
-from novelties_detection.Service.apis.utils import load_ressources , NumpyEncoder
+from novelties_detection.Service.apis.apis_utils import load_ressources , NumpyEncoder
 from novelties_detection.Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator
 from flask import Blueprint, Flask
 from flask_restx import Api
