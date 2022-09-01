@@ -37,20 +37,26 @@ class RSSNewsSource(Resource):
             posted_rss_feeds = request.json["rss_feed"]
             for feed in posted_rss_feeds:
                 if "label" in feed.keys():
-                    for label in feed["label"]:
-                        if label not in self.labels:
-                            raise LabelsException
+                    if len(feed["label"]) == 0:
+                        feed["label"].append("general")
+                    else:
+                        for label in feed["label"]:
+                            if label not in self.labels:
+                                raise LabelsException
+                else:
+                    feed["label"] = ["general"]
             rss_feed_url["rss_feed_url"] = rss_feed_url["rss_feed_url"] + posted_rss_feeds
             with open(self.rss_feed_path, "w") as f:
                 f.write(json.dumps(rss_feed_url))
         except LabelsException as e:
             namesp.abort(410, e.__doc__,
-                         status="you can't post a request with labels that are not declared during api initialization",
+                         status="unauthorized labels",
                          statusCode="410")
         except KeyError as e:
             namesp.abort(500, e.__doc__, status="Could not retrieve information", statusCode="500")
         except Exception as e:
             namesp.abort(400, e.__doc__, status="Could not retrieve information", statusCode="400")
+
 
     @namesp.expect(rss_requests_model , validate = True)
     def put(self):
@@ -61,15 +67,20 @@ class RSSNewsSource(Resource):
             posted_rss_feeds = request.json["rss_feed"]
             for feed in posted_rss_feeds:
                 if "label" in feed.keys():
-                    for label in feed["label"]:
-                        if label not in self.labels:
-                            raise LabelsException
+                    if len(feed["label"]) == 0:
+                        feed["label"].append("general")
+                    else:
+                        for label in feed["label"]:
+                            if label not in self.labels:
+                                raise LabelsException
+                else:
+                    feed["label"] = ["general"]
             rss_feed_url["rss_feed_url"] = rss_feed_url["rss_feed_url"] + posted_rss_feeds
             with open(self.rss_feed_path, "w") as f:
                 f.write(json.dumps(rss_feed_url))
         except LabelsException as e:
             namesp.abort(410, e.__doc__,
-                         status="you can't post a request with labels that are not declared during api initialization",
+                         status="unauthorized labels",
                          statusCode="410")
         except KeyError as e:
             namesp.abort(500, e.__doc__, status="Could not retrieve information", statusCode="500")
