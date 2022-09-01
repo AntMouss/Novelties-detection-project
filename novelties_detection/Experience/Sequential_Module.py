@@ -23,6 +23,8 @@ def check_size(func):
 
 
 class MetaSequencialLangageSimilarityCalculator:
+
+    min_nb_docs = 10
     semi_filtred_dictionnary = corpora.Dictionary()
     seedFileName = '_seed.json'
     bad_words = []
@@ -125,15 +127,18 @@ class MetaSequencialLangageSimilarityCalculator:
         kwargs_above = self.bad_words_args["kwargs_above"]
         kwargs_bellow = self.bad_words_args["kwargs_bellow"]
         nb_docs = self.semi_filtred_dictionnary.num_docs
-        abs_no_above = thresholding_fct_above(nb_docs=nb_docs, **kwargs_above)
-        abs_no_bellow = thresholding_fct_bellow(nb_docs=nb_docs, **kwargs_bellow)
-        if abs_no_bellow >= abs_no_above:
-            raise Exception("abs_no_bellow should be inferior to abs_no_above")
-        if abs_no_above <= 0:
-            raise Exception("abs_no_above should be superior to zero")
-        self.bad_words = [word for id, word in self.semi_filtred_dictionnary.items() if
-                          self.semi_filtred_dictionnary.dfs[id] < abs_no_bellow or self.semi_filtred_dictionnary.dfs[
-                              id] > abs_no_above]
+        if nb_docs < self.min_nb_docs:
+            self.bad_words = []
+        else:
+            abs_no_above = thresholding_fct_above(nb_docs=nb_docs, **kwargs_above)
+            abs_no_bellow = thresholding_fct_bellow(nb_docs=nb_docs, **kwargs_bellow)
+            if abs_no_bellow >= abs_no_above:
+                raise Exception("abs_no_bellow should be inferior to abs_no_above")
+            if abs_no_above <= 0:
+                raise Exception("abs_no_above should be superior to zero")
+            self.bad_words = [word for id, word in self.semi_filtred_dictionnary.items() if
+                              self.semi_filtred_dictionnary.dfs[id] < abs_no_bellow or self.semi_filtred_dictionnary.dfs[
+                                  id] > abs_no_above]
         self.bad_words += self.predefinedBadWords
 
     def updateResults(self, end_date, dictionnary_window: corpora.Dictionary, window_idx: int,
