@@ -35,7 +35,7 @@ PORT = PORT
 PREPROCESSOR = PREPROCESSOR
 LANG = LANG
 
-if OUTPUT_PATH is None and (COLLECT_HTML_ARTICLE_PAGE or COLLECT_ARTICLE_IMAGES , COLLECT_RSS_IMAGES):
+if OUTPUT_PATH is None and (COLLECT_HTML_ARTICLE_PAGE or COLLECT_ARTICLE_IMAGES or COLLECT_RSS_IMAGES):
     raise Exception("if you want collect html page or rss images or articles images you need to specify an output directory")
 else:
     COLLECT_KWARGS = {
@@ -60,7 +60,7 @@ labels_idx = list(seed.keys())
 
 
 MACRO_CALCULATOR = MACRO_CALCULATOR_TYPE(
-    bad_words_args=bad_words_kwargs,
+    bad_words_args=bad_words_kwargs.__dict__,
     labels_idx=labels_idx ,
     memory_length= MEMORY_LENGTH
 )
@@ -70,7 +70,7 @@ MACRO_RESULTS_ARGS = macro_kwargs_results
 
 MICRO_CALCULATOR = MICRO_CALCULATOR_TYPE(
     nb_topics=7,
-    bad_words_args=bad_words_kwargs,
+    bad_words_args=bad_words_kwargs.__dict__,
     memory_length= MEMORY_LENGTH
 )
 MICRO_TRAININGS_ARGS = micro_training_args
@@ -93,6 +93,7 @@ def start_Server():
     global MACRO_RESULTS_ARGS
     global MODELS
     global COLLECT_KWARGS
+    global labels_idx
 
     extractor = CollectThread(
         rss_feed_source_path=RSS_FEEDS_PATH,
@@ -115,7 +116,7 @@ def start_Server():
     extractor.start()
     detector.start()
     injected_object_apis = [
-        {"rss_feed_path": RSS_FEEDS_PATH},
+        {"rss_feed_path": RSS_FEEDS_PATH , "labels" : labels_idx},
         {"calculator": MACRO_CALCULATOR},
         {"calculator": MACRO_CALCULATOR, "topics_finder": MICRO_CALCULATOR}
     ]

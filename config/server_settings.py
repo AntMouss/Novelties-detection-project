@@ -11,7 +11,7 @@ rss_feeds_path = "config/RSSfeeds_test.json"
 
 
 #collect info
-LOOP_DELAY_COLLECT = 20#minutes
+LOOP_DELAY_COLLECT = 5#minutes
 COLLECT_RSS_IMAGES = False
 COLLECT_ARTICLE_IMAGES = False
 COLLECT_HTML_ARTICLE_PAGE = False
@@ -20,13 +20,18 @@ PRINT_LOG = True
 
 
 # Process info
-LOOP_DELAY_PROCESS = 60#minutes
+LOOP_DELAY_PROCESS = 20#minutes
 MEMORY_LENGTH = 10
 
 
 # text pre-processing info
 PREPROCESSOR = FrenchTextPreProcessor()
 LANG = "fr"
+LEMMATIZE = True
+REMOVE_STOP_WORDS = True
+REMOVE_NUMBERS = True
+REMOVE_SMALL_WORDS = True
+
 
 
 #macro-calculator info
@@ -42,6 +47,7 @@ macro_kwargs_results = KwargsResults(
     back = 3
 )
 
+
 #micro-calculator info
 MICRO_CALCULATOR_TYPE = Sequential_Module.LDASequentialSimilarityCalculatorFixed
 micro_training_args = {"passes" : 2}
@@ -52,7 +58,9 @@ micro_kwargs_results = KwargsResults(
 
 
 #bad words info for remove words that no satisfing some frequency condition
+fct_above = exponentialThresholding
+fct_bellow = linearThresholding
 kwargs_above = {"limit" : 0.5 , "pente" : 100}
 kwargs_bellow = {"relative_value" : 0.001}
-bad_words_kwargs = UpdateBadWordsKwargs(exponentialThresholding , linearThresholding , kwargs_above  , kwargs_bellow)
+bad_words_kwargs = UpdateBadWordsKwargs(fct_above , fct_bellow , kwargs_above  , kwargs_bellow)
 

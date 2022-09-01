@@ -1,13 +1,13 @@
 from threading import Thread , Lock
 from typing import List , Dict
 import schedule
-from novelties_detection.Collection.RSSCollect import RSSCollector
+from novelties_detection.Collection.RSSCollect import RSSCollector , initialize_hashs
 from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator , NoSupervisedFixedSequantialLangageSimilarityCalculator
 from novelties_detection.Experience.WindowClassification import WindowClassifierModel
 from novelties_detection.Collection.data_processing import transformS , MetaTextPreProcessor
 from novelties_detection.Experience.Exception_utils import CompareWindowsException
-from datetime import datetime
 import logging
+from novelties_detection.Experience.utils import timer_func
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,14 +19,6 @@ COLLECT_LOCKER = Lock()
 PROCESS_LOCKER = Lock()
 
 
-def log_time_function(func):
-    def wrapper():
-        start_time = datetime.now()
-        logging.info(f"{func.__name__} begin at {start_time}")
-        func()
-        end_time = datetime.now()
-        logging.info(f"{func.__name__} finish at {end_time}  , collect duration : {start_time - end_time}")
-    return wrapper
 
 
 class CollectThread(Thread):
@@ -55,12 +47,15 @@ class CollectThread(Thread):
         else:
             self.collect_kwargs = collect_kwargs
         self.loop_delay = loop_delay
-        self.rss_feed_config=rss_feed_source_path
+        self.rss_feed_config_path=rss_feed_source_path
         self.output_path=output_path
-        self.rssCollector=RSSCollector(self.rss_feed_config, preprocessor=preprocessor, rootOutputFolder=self.output_path)
+        self.rssCollector=RSSCollector(self.rss_feed_config_path,
+                                       preprocessor=preprocessor, rootOutputFolder=self.output_path)
+        hashs = initialize_hashs(self.rss_feed_config_path)
+        self.rssCollector.update_hashs(hashs)
         self.lang = self.rssCollector.preprocessor.lang
 
-    @log_time_function
+    @timer_func
     def update_window_data(self):
         global WINDOW_DATA
         global COLLECT_LOCKER
@@ -83,6 +78,7 @@ class CollectThread(Thread):
                 articles_idx_to_remove.append(idx)
         for idx in articles_idx_to_remove:
             del articles[idx]
+        return articles
 
     def run(self):
         logging.info("Collect will start")
@@ -155,7 +151,7 @@ class NoveltiesDetectionThread(Thread):
         except Exception as e:
             pass
 
-    @log_time_function
+    @timer_func
     def do_process(self):
         global WINDOW_DATA
         global PROCESS_LOCKER

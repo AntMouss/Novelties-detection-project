@@ -16,6 +16,8 @@ import sys
 import validators
 import pathlib
 
+lock = threading.Lock()
+
 
 def urlId(url):
     '''
@@ -27,10 +29,29 @@ def urlId(url):
     '''
     return hashlib.md5(url.encode()).hexdigest()
 
-lock = threading.Lock()
+
+def initialize_hashs(sourcesList : str) -> list:
+
+    hashs = []
+
+    with open(sourcesList, "r") as f:
+        rss_config_urls = json.load(f)["rss_feed_url"]
+    rss_urls = [feed["url"] for feed in rss_config_urls]
+
+    for rss_url in rss_urls:
+        try:
+            rss_feed = feedparser.parse(rss_url)
+            for entry in rss_feed.entries:
+                article_id = urlId(entry["link"])
+                hashs.append(article_id)
+        except Exception as e:
+            print(e)
+            continue
+    return hashs
 
 
-class RSSCollector():
+
+class RSSCollector:
     '''
     Main class to collect rss feeds
     '''
@@ -60,10 +81,11 @@ class RSSCollector():
         '''
         self.preprocessor = preprocessor
         self.sourcesList = sourcesList
+        self.rootOutputFolder = rootOutputFolder
+
         if rootOutputFolder is not None:
             self.dayOutputFolder = os.path.join(rootOutputFolder, self.dayFolderName)
             self.rootHashFolder=os.path.join(rootOutputFolder, self.hashFolderName)
-            self.rootOutputFolder=rootOutputFolder
             self.logFolderPath = os.path.join(rootOutputFolder , self.log_folder)
             self.log_performance_path = os.path.join(self.logFolderPath , self.log_performance_file)
             self.log_error_path = os.path.join(self.logFolderPath , self.log_error_file)
@@ -72,6 +94,15 @@ class RSSCollector():
         else:
             self.hashs = []
         self.global_remove_tags = []
+
+
+    def update_hashs(self, hashs : list):
+        if len(self.hashs) == 0:
+            self.hashs = hashs
+        else:
+            for hash_ in hashs:
+                if hash_ not in self.hashs:
+                    self.hashs.append(hash_)
 
 
     def treatNewsFeedList(self, print_log = True,**kwargs):
@@ -89,10 +120,11 @@ class RSSCollector():
         # no thread will start while the previous is still "inUse"  state
         lock.acquire()
 
-        # To guarantee that the folder date will be respected for this run
-        dateNow = datetime.now()
-        dayFolderName = "rss" + format(dateNow.year, '04d') + format(dateNow.month, '02d') + format(dateNow.day, '02d')
-        self.dayOutputFolder = os.path.join(self.rootOutputFolder, dayFolderName)
+        if self.rootOutputFolder is not None:
+            # To guarantee that the folder date will be respected for this run
+            dateNow = datetime.now()
+            dayFolderName = "rss" + format(dateNow.year, '04d') + format(dateNow.month, '02d') + format(dateNow.day, '02d')
+            self.dayOutputFolder = os.path.join(self.rootOutputFolder, dayFolderName)
 
         if not os.path.exists(self.sourcesList):
             logging.warning(f"ERROR: RSS sources list file not found!{self.sourcesList} ")
@@ -103,11 +135,11 @@ class RSSCollector():
             rss_config = json.load(f)
         url_rss = rss_config["rss_feed_url"]
         self.global_remove_tags = rss_config["global_remove_tags"]
-        listOfReadEntries = []
+        totalListOfReadEntries = []
 
         for i in range(len(url_rss)):
-            print(i)
-            label = url_rss[i]["label"]
+            #print(i)
+            labels = url_rss[i]["label"]
             url = url_rss[i]["url"]
             if "remove_tags" in url_rss[i].keys():
                 remove_tag_list = url_rss[i]["remove_tags"] + self.global_remove_tags
@@ -115,9 +147,11 @@ class RSSCollector():
                 remove_tag_list = self.global_remove_tags
             try:
                 # Get information from the rss config file
-                listOfReadEntries += self.treatRSSEntry(label, url , remove_tag_list, print_log=print_log,**kwargs)
+                rssListOfReadEntries =self.treatRSSEntry(labels, url ,
+                                                         remove_tag_list, print_log=print_log,**kwargs)
+                totalListOfReadEntries += rssListOfReadEntries
                 self.evaluateCollect(
-                    listOfReadEntries, url, print_log = print_log, **kwargs)
+                    rssListOfReadEntries, url, print_log=print_log, **kwargs)
                 if self.rootOutputFolder is not None:
                     self.saveProcessedNewsHashes(self.hashs)
 
@@ -127,14 +161,15 @@ class RSSCollector():
         # Add the news information (if there's new news) in the database
         print("RSS news extraction end")
         lock.release()
-        return listOfReadEntries
+
+        return totalListOfReadEntries
 
 
-    def treatRSSEntry(self, label : list, rss_url : str, remove_tags_list : list,
-                      collectFullHtml=True, collectRssImage=True, collectArticleImages=True , print_log = True):
+    def treatRSSEntry(self, labels : list, rss_url : str, remove_tags_list : list,
+                      collectFullHtml=True, collectRssImage=True, collectArticleImages=True, print_log = True):
         '''
         Treats a given Rss entry
-        :param label:
+        :param labels:
         :param rss_url:
         :return: list of readed feed information
         '''
@@ -169,7 +204,7 @@ class RSSCollector():
                 # Complete the news information for the database
                 feed = {"title": entry["title"],
                         "url": entry["link"],
-                        "label": label,
+                        "label": labels,
                         "rss": rss_url,
                         "updated": False,
                         "id": article_id
@@ -502,7 +537,7 @@ class RSSCollector():
                             countField+=1
 
                 msg_perf = msg_perf + f" {countField / (len(self.listOfFields) * len(listOfReadEntry)) * 100} % of field empty \n"
-                msg_perf = msg_perf + f"{countImage} images \n"
+                msg_perf = msg_perf + f"{countImage} images collected \n"
             except KeyError as e:
                 pass
             except Exception as e:
@@ -518,8 +553,8 @@ if __name__ == '__main__':
 
     preprocessor = FrenchTextPreProcessor()
     RSS_URL_file= "../../config/RSSfeeds_test.json"
-    rssc = RSSCollector(RSS_URL_file, preprocessor = preprocessor , rootOutputFolder=rootOutputFolder)
-    rssc.treatNewsFeedList(collectFullHtml=True, collectRssImage=True,collectArticleImages=True , print_log=True)
+    rssc = RSSCollector(RSS_URL_file, preprocessor = preprocessor , rootOutputFolder=None)
+    test = rssc.treatNewsFeedList(collectFullHtml=False, collectRssImage=False,collectArticleImages=False , print_log=True)
 
 
 
