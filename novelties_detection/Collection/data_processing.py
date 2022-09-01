@@ -11,11 +11,9 @@ import simplemma
 import stopwordsiso
 import copy
 from bs4 import BeautifulSoup
-import sys
 import functools
 import signal
 from contextlib import contextmanager
-from novelties_detection.Collection.data_cleaning import extract_text
 import wrapt_timeout_decorator
 
 @contextmanager
@@ -275,6 +273,7 @@ class imputerData:
 
 
 class MetaTextPreProcessor:
+
     default_undesirable_characters = ['/', '=', '#', '&']
     default_undesirable_words = []
 
@@ -293,10 +292,12 @@ class MetaTextPreProcessor:
         self.undesirable_characters  = undesirable_characters + self.default_undesirable_characters
 
     @property
+    @functools.lru_cache(maxsize=1)
     def langData(self):
         return simplemma.load_data(self.lang)
 
     @property
+    @functools.lru_cache(maxsize=1)
     def stop_words(self):
         return stopwordsiso.stopwords(self.lang)
 
@@ -410,7 +411,6 @@ class EnglishTextPreProcessor(MetaTextPreProcessor):
                                  'like','click', 'publish', 'comment', 'read', 'paper']
     def __init__(self , **kwargs):
         super().__init__("en" , "english" , **kwargs )
-
 
 
 
