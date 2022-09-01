@@ -11,6 +11,6 @@ def timer_func(func):
         end_time = time()
         duration = end_time - start_time
         #print(f"duration : {duration}")
-        logging.info(f"{func.__name__} finish  , collect duration : {duration}")
+        logging.info(f"{func.__name__} finish  , with duration : {duration}")
 
     return wrap_func

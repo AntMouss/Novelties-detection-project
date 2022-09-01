@@ -1,6 +1,6 @@
 
 from novelties_detection.Experience import Sequential_Module
-from novelties_detection.Experience.kwargsGen import KwargsResults , UpdateBadWordsKwargs
+from novelties_detection.Experience.kwargsGen import UpdateBadWordsKwargs
 from novelties_detection.Collection.data_processing import exponentialThresholding , linearThresholding , FrenchTextPreProcessor
 
 
@@ -11,7 +11,7 @@ rss_feeds_path = "config/RSSfeeds_test.json"
 
 
 #collect info
-LOOP_DELAY_COLLECT = 5#minutes
+LOOP_DELAY_COLLECT = 3#minutes
 COLLECT_RSS_IMAGES = False
 COLLECT_ARTICLE_IMAGES = False
 COLLECT_HTML_ARTICLE_PAGE = False
@@ -20,7 +20,7 @@ PRINT_LOG = True
 
 
 # Process info
-LOOP_DELAY_PROCESS = 20#minutes
+LOOP_DELAY_PROCESS = 12#minutes
 MEMORY_LENGTH = 10
 
 
@@ -41,20 +41,17 @@ MACRO_CALCULATOR_TYPE = Sequential_Module.LFIDFSequentialSimilarityCalculator
 #     "overrate" : 1000
 # }
 macro_training_args = {}
-macro_kwargs_results = KwargsResults(
-    ntop=100,
-    remove_seed_words=True,
-    back = 3
-)
+macro_kwargs_results = {
+    "ntop" : 100,
+    "remove_seed_words" : True,
+    "back"  :  3
+}
 
 
 #micro-calculator info
 MICRO_CALCULATOR_TYPE = Sequential_Module.LDASequentialSimilarityCalculatorFixed
 micro_training_args = {"passes" : 2}
-micro_kwargs_results = KwargsResults(
-    ntop=100,
-    back=3
-)
+micro_kwargs_results ={"ntop" : 100, "back" : 3}
 
 
 #bad words info for remove words that no satisfing some frequency condition

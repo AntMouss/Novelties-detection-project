@@ -1,4 +1,5 @@
-from threading import Thread , Lock
+import time
+from threading import Thread , Lock , get_ident
 from typing import List , Dict
 import schedule
 from novelties_detection.Collection.RSSCollect import RSSCollector , initialize_hashs
@@ -68,6 +69,7 @@ class CollectThread(Thread):
             new_data = self.rssCollector.treatNewsFeedList(**self.collect_kwargs)
             new_data = self.clean_lang(new_data)
             WINDOW_DATA += new_data
+            logging.info(f"the thread with id : {get_ident()} collect {len(new_data)} articles")
             COLLECT_IN_PROGRESS = False
         COLLECT_LOCKER.release()
 
@@ -82,9 +84,10 @@ class CollectThread(Thread):
 
     def run(self):
         logging.info("Collect will start")
-        schedule.every(self.loop_delay).minutes.do(self.update_window_data)
+        time.sleep(self.loop_delay * 60)
         while True:
-            schedule.run_pending()
+            self.update_window_data()
+            time.sleep(self.loop_delay * 60)
 
 
 class NoveltiesDetectionThread(Thread):
@@ -173,6 +176,7 @@ class NoveltiesDetectionThread(Thread):
 
     def run(self):
         logging.info("Process will start")
-        schedule.every(self.loop_delay).minutes.do(self.do_process)
+        time.sleep(self.loop_delay * 60)
         while True:
-            schedule.run_pending()
+            self.do_process()
+            time.sleep(self.loop_delay * 60)
