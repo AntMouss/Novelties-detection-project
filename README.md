@@ -24,27 +24,27 @@ then you can follow the commands bellow to install the service and run it :
 
 ```bash
 #first download repo from github and unzip.
-$ wget https://github.com/AntMouss/Novelties-detection-project/archive/master.zip -O novelties-detection-master.zip
-$ unzip novelties-detection-master.zip
+wget https://github.com/AntMouss/Novelties-detection-project/archive/master.zip -O novelties-detection-master.zip
+unzip novelties-detection-master.zip
 
 #changes current directory to novelties-detection-master.
-$ cd novelties-detection-master
+cd novelties-detection-master
 
 #create service environnement
 python3 -m venv ./venv
 
 #activate environment
-$ source ./venv/bin/activate
+source ./venv/bin/activate
 
 #install dependencies with pip
-$ pip install -r requirements.txt
+pip install -r requirements.txt
 
 # set OUTPUT_PATH environment variable to activate writing mode and have the service persistent
 # else ignore this command
-$ export OUTPUT_PATH=<output_path>
+export OUTPUT_PATH=<output_path>
 
 #launch the service
-$ python server.py
+python server.py
 
 ```
 if you don't specify `output_path` the collect service will not be persistent.
@@ -53,24 +53,24 @@ if you don't specify `output_path` the collect service will not be persistent.
 
 ```bash
 # build image from github repo.
-$ docker build --tag novelties-detection-image https://github.com/AntMouss/Novelties-detection-project.git
+docker build --tag novelties-detection-image https://github.com/AntMouss/Novelties-detection-project.git
 
 # run container from the image that we build previously with creating volume that contain collect data (persistence activate) .
-$ docker run -d -p 5000:5000 \
-  --name <container_name> \
-  --mount source=<volume_name>,target=/collect_data \
-  -e OUTPUT_PATH=/collect_data \
-  novelties-detection-image:latest
+docker run -d -p 5000:5000 \
+--name <container_name> \
+--mount source=<volume_name>,target=/collect_data \
+-e OUTPUT_PATH=/collect_data \
+novelties-detection-image:latest
   
 # if you don't want persistence activate , you need to pass this command instead without volume name.
-$ docker run -d -p 5000:5000 --name <container_name> novelties-detection-image:latest
+docker run -d -p 5000:5000 --name <container_name> novelties-detection-image:latest
 
 # to check the logs from the container ,
 # use this command with the same container_name of the command above.
-$ docker logs <container_name>
+docker logs <container_name>
 
 # you can access the volume data with this command if you are on Ubuntu with sudo privilege.
-$ sudo ls /var/lib/docker/volumes/<volume_name>/_data
+sudo ls /var/lib/docker/volumes/<volume_name>/_data
 
 ```
 The service run on port 5000 so make sure there isn't other application running on this port before launching.
