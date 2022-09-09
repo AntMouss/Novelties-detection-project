@@ -5,7 +5,7 @@ RUN pip install -r requirements.txt
 ENV PORT=5000
 EXPOSE $PORT
 COPY . .
-CMD ["python" , "-u","server.py"]
+CMD ["python3" , "-u","server.py"]
 
 
 
