@@ -4,18 +4,12 @@ from novelties_detection.Experience.kwargsGen import UpdateBadWordsKwargs
 from novelties_detection.Collection.data_processing import exponentialThresholding , linearThresholding , FrenchTextPreProcessor
 
 
-#server info
-HOST = "127.0.0.1"
-PORT = 5000
-rss_feeds_path = "config/RSSfeeds_test.json"
-
 
 #collect info
 LOOP_DELAY_COLLECT = 3#minutes
 COLLECT_RSS_IMAGES = False
 COLLECT_ARTICLE_IMAGES = False
 COLLECT_HTML_ARTICLE_PAGE = False
-OUTPUT_PATH = None
 PRINT_LOG = True
 
 

@@ -6,14 +6,10 @@ from novelties_detection.Service.server_module import CollectThread ,NoveltiesDe
 from config.server_settings import (
     LOOP_DELAY_PROCESS,
     LOOP_DELAY_COLLECT,
-    rss_feeds_path,
-    OUTPUT_PATH,
     COLLECT_RSS_IMAGES,
     COLLECT_ARTICLE_IMAGES,
     COLLECT_HTML_ARTICLE_PAGE,
     PRINT_LOG,
-    HOST,
-    PORT,
     macro_training_args,
     micro_training_args,
     macro_kwargs_results,
@@ -25,13 +21,16 @@ from config.server_settings import (
     MEMORY_LENGTH
 )
 
+#server info
+HOST = "127.0.0.1"
+PORT = 5000
+rss_feeds_path = "config/RSSfeeds_test.json"
+
 ROOT = os.getcwd()
 RSS_FEEDS_PATH = os.path.join(ROOT, rss_feeds_path)
-OUTPUT_PATH = OUTPUT_PATH
+OUTPUT_PATH = os.getenv("OUTPUT_PATH")
 LOOP_DELAY_PROCESS = LOOP_DELAY_PROCESS
 LOOP_DELAY_COLLECT = LOOP_DELAY_COLLECT
-HOST = HOST
-PORT = PORT
 PREPROCESSOR = PREPROCESSOR
 LANG = LANG
 

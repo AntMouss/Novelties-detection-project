@@ -1,0 +1,17 @@
+config/RSSfeeds_without_tags.json
+config/RSSfeeds_test.json
+tmp_test_obj/
+__pycache__/
+.idea/
+.pytest_cache/
+log/
+/note.md
+venv/
+novelties_detection/test/requests_examples.py
+results/
+static_server.py
+data/
+novelties_detection/Experience/ThematicsGen.py
+novelties_detection/Experience/config_path.py
+novelties_detection/Experience/visualisation_resultats.py
+
