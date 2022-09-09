@@ -1,12 +1,12 @@
 ## Installation
 
-###prerequisite
+### Prerequisite
 
 if you are on Ubuntu 20.04 , you can run the `linux-script-installation.bash` as refered [here](#with-bash) . 
 else you can use docker , refered to this [section](#with-docker) but first you need to install docker-engine on
 your machine . The installation steps of docker engine for your operating systems might be slightly different, please refer to the [docker documentation](https://docs.docker.com/engine/install/) for details.
 
-###with bash
+### With Bash
 
 ```bash
 #first download repo from github and unzip.
@@ -24,7 +24,7 @@ $ linux-script-installation.bash <output_path>
 
 ```
 if you don't specify `output_path` the collect service will not persistent. 
-###with docker
+### With Docker
 
 ```bash
 # build image from github repo.
