@@ -1,14 +1,14 @@
 import json
 import numpy as np
-from novelties_detection.Experience.kwargsGen import (KwargsAnalyse ,
-                                                      KwargsResults ,
-                                                      KwargsDataset ,
-                                                      KwargsExperiences  ,
-                                                      UpdateBadWordsKwargs,
-                                                      SupervisedCalculatorKwargs,
-                                                        GuidedCalculatorKwargs,
-                                                      FullKwargsForExperiences)
-from novelties_detection.Experience.config_path import (
+from novelties_detection.Experience.kwargs_utils import (KwargsAnalyse ,
+                                                         KwargsResults ,
+                                                         KwargsDataset ,
+                                                         KwargsExperiences  ,
+                                                         UpdateBadWordsKwargs,
+                                                         SupervisedCalculatorKwargs,
+                                                         GuidedCalculatorKwargs,
+                                                         FullKwargsForExperiences)
+from novelties_detection.Experience.config.config_path import (
     DATASET_HOURS_PATH ,
     DATASET_DAYS_PATH ,
     MACRO_THEMATICS_HOURS_PATH ,
@@ -18,7 +18,7 @@ from novelties_detection.Experience.config_path import (
 from novelties_detection.Collection.data_processing import transformS ,absoluteThresholding , exponentialThresholding
 from novelties_detection.Experience.data_utils import TimeLineArticlesDataset , MicroThematic , ExperiencesMetadata
 import pickle
-from novelties_detection.Experience.config_arguments import SEED , LABELS_IDX
+from novelties_detection.Experience.config.config_arguments import SEED , LABELS_IDX
 from novelties_detection.Experience.Sequential_Module import (
     LFIDFSequentialSimilarityCalculator ,
     GuidedCoreXSequentialSimilarityCalculator ,

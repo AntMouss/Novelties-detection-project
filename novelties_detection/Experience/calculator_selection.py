@@ -1,46 +1,41 @@
 """
 this module isn't made to be used.
-used to select best micro calculator with MICRO_THEMATICS data that isn't available on this repo.
+used to select best macro calculator with MACRO_THEMATICS data and associated window articles dataset that aren't available on this repo.
 """
-import os
-import copy
 import random
 from collections import Counter
 from itertools import repeat
 from multiprocessing import Pool
-from typing import List
-from novelties_detection.Experience.data_utils import ArticlesDataset
-from novelties_detection.Experience.config_calculator_selection import micro_thematics , original_dataset_hours
-from novelties_detection.Experience.data_utils import MicroThematic
-from novelties_detection.Experience.Sequential_Module import (
-    NoSupervisedFixedSequantialLangageSimilarityCalculator,
-    LFIDFSequentialSimilarityCalculator,
-    LDASequentialSimilarityCalculatorFixed,
-    CoreXSequentialSimilarityCalculatorFixed
-)
+import bisect
+from typing import List , Union , Tuple
+
 import numpy as np
-from novelties_detection.Experience.kwargsGen import(
-    UpdateBadWordsKwargs)
-from novelties_detection.Collection.data_processing import transformU , transformS , linearThresholding ,absoluteThresholding
 from sklearn.metrics import normalized_mutual_info_score
-from macro_calculator_selection import MicroCalculatorInfo , MetaCalculatorSelector
 
-MAX_NB_CLUSTERS = 20
-kwargs_above = {"relative_value" : 0.7}
-kwargs_bellow = {"absolute_value" : 2}
-labels_idx = ["None" , "target0"]
-kwargs_bad_words = UpdateBadWordsKwargs(linearThresholding , absoluteThresholding , kwargs_above , kwargs_bellow )
-REF_CALCULATOR_kwargs = {"bad_words_args" : kwargs_bad_words.__dict__}
-kwargs_lda_micro_calculator = {
-    "bad_words_args" : kwargs_bad_words.__dict__,
-    "training_args" : {}
-}
-kwargs_corex_micro_calculators= copy.deepcopy(kwargs_lda_micro_calculator)
-kwargs_lda_micro_calculator["training_args"]["passes"] = 2
-kwargs_micro_calculators = [kwargs_lda_micro_calculator , kwargs_corex_micro_calculators]
+from novelties_detection.Collection.data_processing import transformS, transformU
+from novelties_detection.Experience.Sequential_Module import LDASequentialSimilarityCalculatorFixed, \
+    NoSupervisedFixedSequantialLangageSimilarityCalculator, LFIDFSequentialSimilarityCalculator
+from novelties_detection.Experience.kwargs_utils import FullKwargsForExperiences
+from novelties_detection.Experience.ExperienceGen import SupervisedExperiencesProcessor , MetadataGenerationException
+from novelties_detection.Experience.data_utils import ExperiencesResults, Alerte, TimeLineArticlesDataset, \
+    MacroThematic, ExperiencesMetadata, ArticlesDataset, MicroThematic
+import pickle
+import logging
+from threading import Lock
+from novelties_detection.Experience.Exception_utils import  AnalyseException , ResultsGenerationException
+from novelties_detection.Experience.utils import timer_func
+
+l = Lock()
+
+logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , level=logging.CRITICAL)
+logger = logging.getLogger(__name__)
+logger.propagate = False
+
+NB_BEST_CALCULATORS = 3
+NB_CALCULATORS = 15
 
 
-class MicroCalculatorGenerator:
+class MicroCalculatorKwargsGenerator:
 
     unsupervised_kernels = [LDASequentialSimilarityCalculatorFixed]#CoreXSequentialSimilarityCalculator
 
@@ -71,19 +66,141 @@ class MicroCalculatorGenerator:
                 yield kernel(**kwargs), training_args , kernel.__name__
 
 
+class CalculatorInfo:
+
+    def __init__(self, calculator_id, score : float, resultats : ExperiencesResults = None, full_kwargs : FullKwargsForExperiences = None):
+        self.full_kwargs = full_kwargs
+        self.resultats = resultats
+        self.calculator_id = calculator_id
+        self.score = score
+    def __lt__(self, other):
+        return self.score < other.score
+    def __gt__(self, other):
+        return self.score > other.score
+
+class MicroCalculatorInfo(CalculatorInfo):
+    def __init__(self, calculator_id, score : float , nb_clusters : int , kernel_type : str):
+        super().__init__(calculator_id, score)
+        self.kernel_type = kernel_type
+        self.nb_clusters = nb_clusters
+
+
+
+
+class MetaCalculatorSelector:
+    best_calculators = []
+    calculators_info = []
+    def __init__(self, kwargs_calculator_generator):
+        self.kwargs_calculator_generator = kwargs_calculator_generator
+
+    @timer_func
+    def process_selection(self, full_kwargs : FullKwargsForExperiences, max_to_save : int, path = None):
+        pass
+
+    def run(self, max_to_save : int, nb_workers : int = 1, path = None):
+        if nb_workers == 1:
+            for i , kwargs in enumerate(self.kwargs_calculator_generator):
+                self.process_selection(kwargs, max_to_save=max_to_save, path=path)
+                print(f"-------------"
+                    f"calculator numero {i} process over {len(self.kwargs_calculator_generator)} from selector {id(self)}"
+                      f"-------------")
+
+        else:
+            with Pool(nb_workers) as p:
+                p.starmap(self.process_selection, zip(self.kwargs_calculator_generator, repeat(max_to_save), repeat(path)))
+        return self.best_calculators
+
+    def save(self,save_path : str ) :
+        to_save = {
+            "calculators_info" : self.calculators_info,
+            "best_calculators" : self.best_calculators
+        }
+        with open(save_path , "wb") as f:
+            f.write(pickle.dumps(to_save))
+
+    def update_best_calculators(self, calculator_id  , max_to_save : int):
+        bisect.insort(self.best_calculators, calculator_id)
+        if len(self.best_calculators) > max_to_save:
+            del self.best_calculators[0]
+
+
+
+class MacroCalculatorSelector(MetaCalculatorSelector):
+
+    def __init__(self, kwargs_calculator_generator , experiences_metadata_generator : Union[List[Tuple[ExperiencesMetadata , List[MacroThematic]]] , MetadataGenerationException]):
+        super().__init__(kwargs_calculator_generator)
+        self.experiences_metadata_generator = experiences_metadata_generator
+
+    @staticmethod
+    def compute_calculator_score(alerts : List[Alerte] , average=True):
+        total_energy_distance = 0
+        try:
+            for alert in alerts:
+                total_energy_distance += alert.mean_distance
+            if average:
+                return total_energy_distance / len(alerts)
+            else:
+                return total_energy_distance
+        except ZeroDivisionError:
+            return 0
+
+    @timer_func
+    def process_selection(self, full_kwargs : FullKwargsForExperiences, max_to_save : int, path = None):
+
+        global l
+        calculator_id = id(full_kwargs)
+        energy_distance = 0
+        kwargs_dataset = full_kwargs["dataset_args"]
+        experiences_results = None
+        try:
+
+            dataset = TimeLineArticlesDataset(**kwargs_dataset)
+            experience_generator = SupervisedExperiencesProcessor(self.experiences_metadata_generator, dataset)
+            experience_generator.generate_results(**full_kwargs["results_args"])
+            experiences_results = ExperiencesResults(experience_generator.experiences_res , experience_generator.info)
+            alerts = SupervisedExperiencesProcessor.analyse_results(experiences_results, **full_kwargs["analyse_args"])
+            energy_distance = self.compute_calculator_score(alerts)
+            print(f"hypothesis mean distance equals to {energy_distance} for calculator {calculator_id}")
+        except ResultsGenerationException:
+            pass
+        except AnalyseException:
+            pass
+        except Exception as e:
+            logger.critical(f"Unknown Problem affect runtime : {e}")
+            raise
+        finally:
+            calculator_info = CalculatorInfo(calculator_id, energy_distance , experiences_results , full_kwargs)
+            self.update_best_calculators(calculator_id, max_to_save)
+            self.calculators_info.append(calculator_info)
+            l.acquire()
+            if path is not None:
+                self.save(path)
+            l.release()
+            del experience_generator
+
+
+
+class RandomMacroCalculatorSelector(MacroCalculatorSelector):
+    """
+    Select macro calculator with random kwargs parameters and choose the best according to many criteria
+    """
+
+    def __init__(self, kwargs_calculator_generator , experiences_metadata_generator : Union[List[Tuple[ExperiencesMetadata , List[MacroThematic]]] , MetadataGenerationException]):
+        super().__init__(kwargs_calculator_generator , experiences_metadata_generator)
+
+
 
 
 class MicroCalculatorSelector(MetaCalculatorSelector):
 
-    ref_calculator_kwargs = REF_CALCULATOR_kwargs
 
-    def __init__(self, micro_calculator_generator: MicroCalculatorGenerator, micro_thematics: List[MicroThematic],
-                 dataset: ArticlesDataset ):
+    def __init__(self, micro_calculator_kwargs_generator: MicroCalculatorKwargsGenerator, micro_thematics: List[MicroThematic],
+                 dataset: ArticlesDataset, ref_calculator_kwargs : dict ):
 
-        super().__init__()
+        super().__init__(micro_calculator_kwargs_generator)
+        self.ref_calculator_kwargs = ref_calculator_kwargs
         self.dataset = dataset
         self.micro_thematics = micro_thematics
-        self.micro_calculator_generator = micro_calculator_generator
         self.best_micro_calculator_idx = []
         self.microth_window_idx = [ micro_thematic.window_idx_begin for micro_thematic in self.micro_thematics]
         self.res = {}
@@ -113,7 +230,7 @@ class MicroCalculatorSelector(MetaCalculatorSelector):
                 label_counter = {k: v for k, v in sorted(label_counter.items(), key=lambda item: item[1] , reverse=True)}
                 labels_unique = list(label_counter.keys())
                 nb_topics = len(labels_unique)
-                ref_calculator = LFIDFSequentialSimilarityCalculator(nb_topics , labels_idx=labels_unique , **self.ref_calculator_kwargs)
+                ref_calculator = LFIDFSequentialSimilarityCalculator(labels_idx=labels_unique , **self.ref_calculator_kwargs)
                 micro_calculator.treat_Window(unsupervised_window , **training_args)
                 ref_calculator.treat_Window(supervised_window)
                 micro_topics_words = micro_calculator.getTopWordsTopics(len(micro_calculator) - 1 , ntop = 300, exclusive=True)
@@ -177,23 +294,11 @@ class MicroCalculatorSelector(MetaCalculatorSelector):
 
     def run(self, max_to_save : int, nb_workers : int = 1, path = None):
         if nb_workers == 1:
-            for micro_calculator , training_args , kernel_type in self.micro_calculator_generator:
+            for micro_calculator , training_args , kernel_type in self.kwargs_calculator_generator:
                 self.select_micro(micro_calculator , training_args , kernel_type , max_to_save=max_to_save )
         else:
             with Pool(nb_workers) as p:
-                p.starmap(self.select_micro, zip(self.micro_calculator_generator, repeat(max_to_save), repeat(path)))
+                p.starmap(self.select_micro, zip(self.kwargs_calculator_generator, repeat(max_to_save), repeat(path)))
         if path is not None:
             self.save(path)
         return self.best_calculators
-
-
-
-
-if __name__ == '__main__':
-    root = "/home/mouss/PycharmProjects/novelties-detection-git/results"
-    path = os.path.join(root , "LDA_micro_selection_res")
-    micro_calculator_generator = MicroCalculatorGenerator(15 , kwargs_micro_calculators , 42 )
-    micro_calculator_selector = MicroCalculatorSelector(micro_calculator_generator, micro_thematics, original_dataset_hours)
-    best_micro_calculators = micro_calculator_selector.run(max_to_save=3 )
-
-

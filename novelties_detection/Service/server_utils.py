@@ -1,25 +1,8 @@
 from novelties_detection.Service.apis.apis_utils import load_ressources , NumpyEncoder
-from novelties_detection.Experience.Sequential_Module import MetaSequencialLangageSimilarityCalculator
 from flask import Blueprint, Flask
 from flask_restx import Api
 from novelties_detection.Service.apis import nsp_windows_api , nsp_interface_api , nsp_rss_feed_api
-from novelties_detection.Experience.kwargsGen import FullKwargs
 
-
-
-def initialize_calculator(kwargs_calculator : FullKwargs ):
-    calculator_type = kwargs_calculator['calculator_args']['calculator_type']
-    training_args = kwargs_calculator['calculator_args']['training_args']
-    comparaison_args = kwargs_calculator['results_args']
-
-    sequential_model = calculator_type
-    calculator: MetaSequencialLangageSimilarityCalculator = sequential_model(
-        **kwargs_calculator['initialize_engine'])
-    return {
-        "calculator" : calculator ,
-        "comparaison_args" : comparaison_args ,
-        "training_args"  : training_args
-    }
 
 
 def createApp(injected_object_apis : list):

@@ -1,6 +1,6 @@
 
 from novelties_detection.Experience import Sequential_Module
-from novelties_detection.Experience.kwargsGen import UpdateBadWordsKwargs
+from novelties_detection.Experience.kwargs_utils import UpdateBadWordsKwargs
 from novelties_detection.Collection.data_processing import exponentialThresholding , linearThresholding , FrenchTextPreProcessor
 
 

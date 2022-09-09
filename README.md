@@ -44,7 +44,7 @@ pip install -r requirements.txt
 export OUTPUT_PATH=<output_path>
 
 #launch the service
-python server.py
+python3 server.py
 
 ```
 if you don't specify `output_path` the collect service will not be persistent.
