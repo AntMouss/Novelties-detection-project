@@ -1,7 +1,6 @@
 import time
 from threading import Thread , Lock , get_ident
 from typing import List , Dict
-import schedule
 from novelties_detection.Collection.RSSCollect import RSSCollector , initialize_hashs
 from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator , NoSupervisedFixedSequantialLangageSimilarityCalculator
 from novelties_detection.Experience.WindowClassification import WindowClassifierModel

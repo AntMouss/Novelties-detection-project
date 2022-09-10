@@ -13,8 +13,7 @@ data/
 novelties_detection/test/requests_examples.py
 novelties_detection/Experience/ThematicsGen.py
 novelties_detection/Experience/visualisation_resultats.py
-novelties_detection/Experience/config
 novelties_detection/Experience/randomKwargsGen.py
 novelties_detection/Experience/main_macro_selection.py
 novelties_detection/Experience/main_micro_selection.py
-
+novelties_detection/Experience/config/

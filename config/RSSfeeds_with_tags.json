@@ -50,7 +50,7 @@
     },
     {
       "url": "https://feeds.leparisien.fr/leparisien/rss",
-      "label": [],
+      "label": ["general"],
       "remove_tags" :  [{"tag" : "div" ,"class" : "grid"},{"tag" : "div" ,"class" : "mb_8_ad"} , {"tag" : "div" ,"class" : "article-read-also_container"},{"tag" : "div" ,"id" : "right_rail"},{"tag" : "div" ,"class" : "comments-wrapper"} , {"tag" : "span"}]
     },
     {

@@ -24,7 +24,7 @@ from config.server_settings import (
 #server info
 HOST = "127.0.0.1"
 PORT = 5000
-rss_feeds_path = "config/RSSfeeds_with_tags.json.json"
+rss_feeds_path = "config/RSSfeeds_with_tags.json"
 
 ROOT = os.getcwd()
 RSS_FEEDS_PATH = os.path.join(ROOT, rss_feeds_path)
