@@ -13,11 +13,11 @@ for pip installation:
 
 ```bash
 #Start by updating the package list using the following command:
-$ sudo apt update
+sudo apt update
 #Use the following command to install pip for Python 3:
-$ sudo apt install python3-pip
+sudo apt install python3-pip
 #Once the installation is complete, verify the installation by checking the pip version:
-$ pip3 --version
+pip3 --version
 
 ```
 then you can follow the commands bellow to install the service and run it :
@@ -28,7 +28,7 @@ wget https://github.com/AntMouss/Novelties-detection-project/archive/master.zip 
 unzip novelties-detection-master.zip
 
 #changes current directory to novelties-detection-master.
-cd novelties-detection-master
+cd Novelties-detection-project
 
 #create service environnement
 python3 -m venv ./venv
@@ -47,13 +47,14 @@ export OUTPUT_PATH=<output_path>
 python3 server.py
 
 ```
+
 if you don't specify `output_path` the collect service will not be persistent.
 
 ### With Docker
 
 ```bash
 # build image from github repo.
-docker build --tag novelties-detection-image https://github.com/AntMouss/Novelties-detection-project.git
+docker build --tag novelties-detection-image https://github.com/AntMouss/Novelties-detection-project.git#main
 
 # run container from the image that we build previously with creating volume that contain collect data (persistence activate) .
 docker run -d -p 5000:5000 \
