@@ -22,7 +22,7 @@ from config.server_settings import (
 )
 
 #server info
-HOST = "127.0.0.1"
+HOST = "0.0.0.0"
 PORT = 5000
 rss_feeds_path = "config/RSSfeeds_with_tags.json"
 
