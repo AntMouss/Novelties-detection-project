@@ -7,9 +7,9 @@ from novelties_detection.Collection.data_processing import exponentialThresholdi
 
 #collect info
 LOOP_DELAY_COLLECT = 5#minutes
-COLLECT_RSS_IMAGES = False
-COLLECT_ARTICLE_IMAGES = False
-COLLECT_HTML_ARTICLE_PAGE = False
+COLLECT_RSS_IMAGES = True
+COLLECT_ARTICLE_IMAGES = True
+COLLECT_HTML_ARTICLE_PAGE = True
 PRINT_LOG = True
 
 
@@ -19,12 +19,18 @@ MEMORY_LENGTH = 10
 
 
 # text pre-processing info
-PREPROCESSOR = FrenchTextPreProcessor()
 LANG = "fr"
 LEMMATIZE = True
 REMOVE_STOP_WORDS = True
 REMOVE_NUMBERS = True
 REMOVE_SMALL_WORDS = True
+PREPROCESSOR = FrenchTextPreProcessor(
+    lemmatize=LEMMATIZE,
+    remove_stop_words=REMOVE_STOP_WORDS,
+    remove_numbers=REMOVE_NUMBERS,
+    remove_small_words=REMOVE_SMALL_WORDS
+)
+
 
 
 
