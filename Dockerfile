@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y python3.9 pytho
 WORKDIR /app
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
+RUN python -m nltk.downloader punkt
 EXPOSE 5000
 COPY . .
 CMD ["python3" , "-u","server.py"]

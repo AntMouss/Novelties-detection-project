@@ -14,7 +14,7 @@ PRINT_LOG = True
 
 
 # Process info
-LOOP_DELAY_PROCESS = 30#minutes
+LOOP_DELAY_PROCESS = 15#minutes
 MEMORY_LENGTH = 10
 
 
