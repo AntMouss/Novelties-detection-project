@@ -279,7 +279,12 @@ class MetaTextPreProcessor:
 
     def __init__(self, lang  : str = "" , long_lang  : str = "",undesirable_words : list = None,
                  undesirable_characters : list = None, max_word_size : int = 18,
-                 min_word_size : int = 3):
+                 min_word_size : int = 3 , lemmatize : bool = True , remove_stop_words : bool = True ,
+                 remove_small_words : bool = True , remove_numbers : bool = True):
+        self.remove_numbers = remove_numbers
+        self.remove_small_words = remove_small_words
+        self.remove_stop_words = remove_stop_words
+        self.lemmatize = lemmatize
         self.long_lang = long_lang
         self.lang = lang
         self.min_word_size = min_word_size
@@ -326,7 +331,7 @@ class MetaTextPreProcessor:
         return word_tokenize(text, language=self.long_lang)
         # return [word for word in text.lower().split()]
 
-    def lemmatize(self, word):
+    def lemmatize_word(self, word):
         return simplemma.lemmatize(word, self.langData)
 
     @staticmethod
@@ -338,20 +343,20 @@ class MetaTextPreProcessor:
             return False
 
 
-    def processWord(self, word, lemmatize=True, remove_stop_words=True, remove_small_words=True, remove_numbers = True):
+    def processWord(self, word):
 
-        if remove_small_words:
+        if self.remove_small_words:
             if len(word) < self.min_word_size:
                 return None
-        if remove_numbers and word.isdigit():
+        if self.remove_numbers and word.isdigit():
             return None
             # 'aux' is lemmatize as 'à les' but 'à les' isn't a stop words so we did filterstopwords twice before and after lemmatization
-        if remove_stop_words:
+        if self.remove_stop_words:
             if word in self.stop_words:
                 return None
-        if lemmatize:
-            word= self.lemmatize(word)
-        if remove_stop_words:
+        if self.lemmatize:
+            word= self.lemmatize_word(word)
+        if self.remove_stop_words:
             if word in self.stop_words:
                 return None
         if len(word)> self.max_word_size:
@@ -366,13 +371,13 @@ class MetaTextPreProcessor:
 
     @functools.lru_cache(maxsize=100)
     @wrapt_timeout_decorator.timeout(120)
-    def preprocessText(self, text: str, **kwargs):
+    def preprocessText(self, text: str):
 
         textProcessed = []
         if MetaTextPreProcessor.check_lang(text , self.lang):
             text = self.tokenizeText(text)
             for word in text:
-                word = self.processWord(word, **kwargs)
+                word = self.processWord(word)
                 # to remove None type words
                 if isinstance(word, str):
                     textProcessed.append(word)
@@ -381,11 +386,11 @@ class MetaTextPreProcessor:
             return None
 
 
-    def preprocessTexts(self, texts, **kwargs):
+    def preprocessTexts(self, texts):
 
         textsProcessed = []
         for i, text in enumerate(texts):
-            textprocessed = self.preprocessText(text, **kwargs)
+            textprocessed = self.preprocessText(text)
             # to remove None type text
             if isinstance(textprocessed, list):
                 textsProcessed.append(textprocessed)
