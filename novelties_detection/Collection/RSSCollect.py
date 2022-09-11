@@ -227,7 +227,7 @@ class RSSCollector:
                 if "summary" in entry.keys():
                     feed["summary"] = entry["summary"]
                 else:
-                    feed["summary"] = ""
+                    feed["summary"] = None
                 if "content" in entry.keys():
                     if "value" in entry["content"][0].keys():
                         feed["content"] = entry["content"][0]["value"]
@@ -239,7 +239,7 @@ class RSSCollector:
                 # Extract information from the website
                 soup = BeautifulSoup(r.text, "lxml")  # Parse HTML
                 article = soup.find("article")# Get article in HTML
-                text_fields , article_copy = self.treatArticle(article , remove_tags_list)
+                text_fields , article_copy = self.treatArticle(article , remove_tags_list , feed["title"] , feed["summary"])
                 feed.update(text_fields)
 
             except Exception as e:
@@ -296,12 +296,13 @@ class RSSCollector:
         return feedList
 
 
-    def treatArticle(self , article , remove_tags_list):
+    def treatArticle(self , article , remove_tags_list , article_title , article_summary):
         """
         this function treat the text content of the requests we want to fetch the text inside the article tag
         and clean the useless tag and process the final text to have text already processed and stocked
         note that we made copy because during the cleaning we modified the html object and we want to save the original
         html so we make copy to save original html latter in the top level function
+        @param article_title:
         @param article:
         @param remove_tags_list:
         @return: dict with the text field , article copy
@@ -312,11 +313,20 @@ class RSSCollector:
             cleansed_text = extract_text(article, remove_tags_list, clean=True)
             try:
                 if self.preprocessor is not None:
-                    process_text = self.preprocessor.preprocessText(cleansed_text)
+                    if cleansed_text is not None:
+                        process_text = self.preprocessor.preprocessText(cleansed_text)
+                    elif article_summary is not None:
+                        process_text = self.preprocessor.preprocessText(article_summary)
+                    elif article_title is not None:
+                        process_text = self.preprocessor.preprocessText(article_title)
+                    elif text is not None:
+                        process_text = self.preprocessor.preprocessText(text)
+                    else:
+                        process_text = []
                 else:
-                    process_text = None
+                    process_text = []
             except TimeoutError:
-                process_text = None
+                process_text = []
                 pass
             htmlCollected = True
         else:

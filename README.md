@@ -1,7 +1,24 @@
 # Novelties Detection
 
 
-## About this project.
+Novelties Detection project is a **real-time automatic newspaper semantic analyser** that provide you keywords and set of keywords for different thematics
+inside newspaper data . The purpose of the project is to have better understanding of novelties in actuality and detect when actuality change appear.
+
+
+## Explanation about the project.
+
+Firstly the service collect data from various newspaper on the web in real-time
+thanks to rss feeds that contain information about new articles posted every moment by the paper company which handdle this rss feed server.
+If you want know more about rss feed usage ,  see [here](#https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwiSiJ3494z6AhXWw4UKHRguASsQFnoECA0QAQ&url=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FRSS&usg=AOvVaw2IGALSkk0yPU95Ob41DjPK).
+
+Secondly we want to use texts from the articles to apply topic model algorithm that return us keywords and thematics contain in the corpus (in our case the articles collected in the considered time window).
+so we apply data cleaning and text pre-processing before processing.
+
+Finally, the service analyse the articles collected and is able to provide thematics and keywords that appear, disappear or stable during a certain time window ( ex : the words queen , Elisabeth , death appear in the window 19h - 20h Friday 09/09/2022).
+the news analysis is sequential that means that the current window of data that contain the article information of this time window is compared to the last window that contain article information of the last time window.
+We use topic model method to get the words clusters that represent thematic with strong relationship in our window of data and we can calculate the similarity between 2 consecutive windows using jaccard distance.
+
+Architecture system schema:
 
 
 ## Installation and Execution
