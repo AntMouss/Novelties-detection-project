@@ -6,7 +6,7 @@ from novelties_detection.Collection.data_processing import exponentialThresholdi
 
 
 #collect info
-LOOP_DELAY_COLLECT = 10#minutes
+LOOP_DELAY_COLLECT = 5#minutes
 COLLECT_RSS_IMAGES = False
 COLLECT_ARTICLE_IMAGES = False
 COLLECT_HTML_ARTICLE_PAGE = False

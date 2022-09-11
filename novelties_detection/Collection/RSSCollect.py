@@ -177,7 +177,7 @@ class RSSCollector:
             # Get global information from the rss feed
             rss_feed = feedparser.parse(rss_url)
             print(rss_feed.status)
-            print(rss_feed.entries)
+            print(len(rss_feed.entries))
             if "updated" in rss_feed.keys():
                 feed_date = rss_feed["updated"]
             else:
