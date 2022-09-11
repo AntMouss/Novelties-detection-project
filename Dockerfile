@@ -6,7 +6,7 @@ FROM ubuntu:20.04 AS builder-image
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install --no-install-recommends -y python3.9 python3.9-dev python3.9-venv python3-pip python3-wheel build-essential && \
-    apt-get install language-pack-fr && \
+    apt-get install -y language-pack-fr && \
 	apt-get clean && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY requirements.txt requirements.txt
