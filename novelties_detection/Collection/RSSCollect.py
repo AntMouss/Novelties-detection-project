@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from typing import List, Dict
 import feedparser
 from bs4 import BeautifulSoup
@@ -176,8 +177,10 @@ class RSSCollector:
         try:
             # Get global information from the rss feed
             rss_feed = feedparser.parse(rss_url)
-            print(rss_feed.status)
-            print(len(rss_feed.entries))
+
+            # get default timestamp date to use it if the datetodatetime function return None (i.e if the format of the string date is not registered)
+            default_timestamp = time.time()
+
             if "updated" in rss_feed.keys():
                 feed_date = rss_feed["updated"]
             else:
@@ -216,7 +219,11 @@ class RSSCollector:
                     feed["date"] = entry["published"]
                 else:
                     feed["date"] = feed_date
-                feed["timeStamp"] = dateToDateTime(feed["date"], timeStamp=True)
+                timestamp_date = dateToDateTime(feed["date"], timeStamp=True)
+                if timestamp_date is not None:
+                    feed["timeStamp"] = timestamp_date
+                else:
+                    feed["timeStamp"] = default_timestamp
                 if "summary" in entry.keys():
                     feed["summary"] = entry["summary"]
                 else:
