@@ -20,7 +20,7 @@
 
   ],
 
-  "rss_feed_url": [
+  "rss_feed_urls": [
     {
       "url": "https://www.lemonde.fr/police/rss_full.xml",
       "label": [
