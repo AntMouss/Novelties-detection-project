@@ -45,7 +45,7 @@ class RSSNewsSource(Resource):
                                 raise LabelsException
                 else:
                     feed["label"] = ["general"]
-            rss_feed_url["rss_feed_url"] = rss_feed_url["rss_feed_url"] + posted_rss_feeds
+            rss_feed_url["rss_feed_urls"] = rss_feed_url["rss_feed_urls"] + posted_rss_feeds
             with open(self.rss_feed_path, "w") as f:
                 f.write(json.dumps(rss_feed_url))
         except LabelsException as e:

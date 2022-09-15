@@ -134,7 +134,7 @@ class RSSCollector:
 
         with open(self.sourcesList, "r") as f:
             rss_config = json.load(f)
-        url_rss = rss_config["rss_feed_url"]
+        url_rss = rss_config["rss_feed_urls"]
         self.global_remove_tags = rss_config["global_remove_tags"]
         totalListOfReadEntries = []
 
