@@ -34,6 +34,7 @@ LOOP_DELAY_COLLECT = LOOP_DELAY_COLLECT
 PREPROCESSOR = PREPROCESSOR
 LANG = LANG
 
+
 if OUTPUT_PATH is None and (COLLECT_HTML_ARTICLE_PAGE or COLLECT_ARTICLE_IMAGES or COLLECT_RSS_IMAGES):
     raise Exception("if you want collect html page or rss images or articles images you need to specify an output directory")
 else:

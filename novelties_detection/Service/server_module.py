@@ -1,3 +1,4 @@
+import json
 import time
 from threading import Thread , Lock , get_ident
 from typing import List , Dict
@@ -163,6 +164,8 @@ class NoveltiesDetectionThread(Thread):
         if COLLECT_IN_PROGRESS == False:
             PROCESS_IN_PROGRESS = True
             if len(WINDOW_DATA) != 0:
+                with open("/window_data.json" , "w") as f:
+                    f.write(json.dumps(WINDOW_DATA))
                 self.process(WINDOW_DATA)
                 # empty and reinitialization of WINDOW_DATA
                 del WINDOW_DATA
