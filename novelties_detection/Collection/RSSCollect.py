@@ -333,7 +333,7 @@ class RSSCollector:
             article_copy = article
             text = None
             cleansed_text = None
-            process_text = None
+            process_text = []
             htmlCollected = False
         return {
             "text" : text,
