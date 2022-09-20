@@ -25,6 +25,7 @@ from config.server_settings import (
 HOST = "0.0.0.0"
 PORT = 5000
 rss_feeds_path = "config/RSS_feeds.json"
+MAX_LENGTH_CACHE = 30
 
 ROOT = os.getcwd()
 RSS_FEEDS_PATH = os.path.join(ROOT, rss_feeds_path)
@@ -51,6 +52,8 @@ if LOOP_DELAY_COLLECT > LOOP_DELAY_PROCESS:
 if PREPROCESSOR.lang != LANG:
     raise Exception("the LANG in server_settings.py is different that the preprocessor lang in server_settings.py ")
 
+if MEMORY_LENGTH > MAX_LENGTH_CACHE:
+    raise Exception("the Memory length exceed the require max length")
 
 with open("config/seed.json" , "r") as f:
     seed = json.load(f)

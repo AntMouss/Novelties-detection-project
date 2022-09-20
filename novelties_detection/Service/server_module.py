@@ -39,8 +39,8 @@ class CollectThread(Thread):
 
         @param rss_feed_source_path: path to json file that contain rss feed source like url , label and removing tags
         @param output_path: path from Root Directory where we save information about articles (images , html , metadata)
-        @param preprocessor: engine that process (preprocess) text for being ready to use
-        @param loop_delay: delay between two collect
+        @param preprocessor: engine that process (preprocess) text for being ready to use as Bag of Words.
+        @param loop_delay: delay between two collect process
         """
         Thread.__init__(self)
         if collect_kwargs is None:
@@ -103,7 +103,7 @@ class NoveltiesDetectionThread(Thread):
         @param micro_calculator: no supervised calculator to get more detail information about "micro-topic" in the flow
         @param training_args: args use to treat new window
         @param results_args: args use to compute similarity between windows recursively
-        @param micro_training_args:
+        @param micro_training_args: training arguments of mirco calculator
         @param loop_delay: delay between two process
         @param classifier_models: window classifier model to get the rarety level of the window (rarety of the similarity score with the previous one)
         """
