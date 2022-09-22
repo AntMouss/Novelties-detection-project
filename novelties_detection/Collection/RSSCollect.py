@@ -74,7 +74,7 @@ class RSSCollector:
     HTML_TAIL="</body></html>"
     listOfFields = ["title", "url", "text", "label", "rss", "updated", "date", "summary", "content"]
 
-    def __init__(self, sourcesList, preprocessor : MetaTextPreProcessor = None, rootOutputFolder = None):
+    def __init__(self, sourcesList, preprocessor : MetaTextPreProcessor = None, rootOutputFolder = None ):
         '''
         Constructor
         :param sourcesList: File where the sources are stored

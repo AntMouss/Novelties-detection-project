@@ -1,25 +1,24 @@
 import json
 import time
-from threading import Thread , Lock , get_ident
-from typing import List , Dict
-from novelties_detection.Collection.RSSCollect import RSSCollector , initialize_hashs
-from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator , NoSupervisedFixedSequantialLangageSimilarityCalculator
+from threading import Thread, Lock, get_ident
+from typing import List, Dict
+from novelties_detection.Collection.RSSCollect import RSSCollector, initialize_hashs
+from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator, \
+    NoSupervisedFixedSequantialLangageSimilarityCalculator
 from novelties_detection.Experience.WindowClassification import WindowClassifierModel
-from novelties_detection.Collection.data_processing import transformS , MetaTextPreProcessor
+from novelties_detection.Collection.data_processing import transformS, MetaTextPreProcessor
 from novelties_detection.Experience.Exception_utils import CompareWindowsException
 import logging
 from novelties_detection.Experience.utils import timer_func
+from elasticsearch import Elasticsearch
 
 logging.basicConfig(level=logging.INFO)
 
-
-WINDOW_DATA = [] # contain the data of one temporal window
+WINDOW_DATA = []  # contain the data of one temporal window
 COLLECT_IN_PROGRESS = False
 PROCESS_IN_PROGRESS = False
 COLLECT_LOCKER = Lock()
 PROCESS_LOCKER = Lock()
-
-
 
 
 class CollectThread(Thread):
@@ -27,14 +26,15 @@ class CollectThread(Thread):
     Service to periodically collect information from the selected sources
     """
     default_collect_kwargs = {
-        "collectFullHtml" : True,
-        "collectRssImage" : True,
-        "collectArticleImages" : True,
-        "print_log" : True
+        "collectFullHtml": True,
+        "collectRssImage": True,
+        "collectArticleImages": True,
+        "print_log": True
     }
+
     def __init__(
-            self, rss_feed_source_path : str, loop_delay : int ,
-            preprocessor : MetaTextPreProcessor  = None,  output_path : str = None , collect_kwargs : dict = None  ):
+            self, rss_feed_source_path: str, loop_delay: int,
+            preprocessor: MetaTextPreProcessor = None, output_path: str = None, collect_kwargs: dict = None):
         """
 
         @param rss_feed_source_path: path to json file that contain rss feed source like url , label and removing tags
@@ -43,15 +43,16 @@ class CollectThread(Thread):
         @param loop_delay: delay between two collect process
         """
         Thread.__init__(self)
+        self.elastic_client = elastic_client
         if collect_kwargs is None:
             self.collect_kwargs = self.default_collect_kwargs
         else:
             self.collect_kwargs = collect_kwargs
         self.loop_delay = loop_delay
-        self.rss_feed_config_path=rss_feed_source_path
-        self.output_path=output_path
-        self.rssCollector=RSSCollector(self.rss_feed_config_path,
-                                       preprocessor=preprocessor, rootOutputFolder=self.output_path)
+        self.rss_feed_config_path = rss_feed_source_path
+        self.output_path = output_path
+        self.rssCollector = RSSCollector(self.rss_feed_config_path,
+                                         preprocessor=preprocessor, rootOutputFolder=self.output_path)
         hashs = initialize_hashs(self.rss_feed_config_path)
         self.rssCollector.update_hashs(hashs)
         self.lang = self.rssCollector.preprocessor.lang
@@ -67,16 +68,17 @@ class CollectThread(Thread):
         if PROCESS_IN_PROGRESS == False:
             COLLECT_IN_PROGRESS = True
             new_data = self.rssCollector.treatNewsFeedList(**self.collect_kwargs)
-            new_data = self.clean_lang(new_data)
+            new_data = self.clean_lang(new_data, self.lang)
             WINDOW_DATA += new_data
             logging.info(f"the thread with id : {get_ident()} collect {len(new_data)} articles")
             COLLECT_IN_PROGRESS = False
         COLLECT_LOCKER.release()
 
-    def clean_lang(self , articles):
+    @staticmethod
+    def clean_lang(articles, lang):
         articles_idx_to_remove = []
-        for idx ,  article in enumerate(articles):
-            if article["lang"] != self.lang:
+        for idx, article in enumerate(articles):
+            if article["lang"] != lang:
                 articles_idx_to_remove.append(idx)
         for idx in articles_idx_to_remove:
             del articles[idx]
@@ -90,13 +92,47 @@ class CollectThread(Thread):
             time.sleep(self.loop_delay * 60)
 
 
+class ElasticCollectThread(CollectThread):
+
+    def __init__(self, rss_feed_source_path: str, loop_delay: int, preprocessor: MetaTextPreProcessor = None,
+                 output_path: str = None, collect_kwargs: dict = None,
+                 elastic_client: Elasticsearch = None):
+        super().__init__(rss_feed_source_path, loop_delay, preprocessor, output_path, collect_kwargs)
+        self.elastic_client = elastic_client
+
+    @timer_func
+    def update_window_data(self):
+        global WINDOW_DATA
+        global COLLECT_LOCKER
+        global PROCESS_LOCKER
+        global COLLECT_IN_PROGRESS
+        global PROCESS_IN_PROGRESS
+        COLLECT_LOCKER.acquire()
+        if PROCESS_IN_PROGRESS == False:
+            COLLECT_IN_PROGRESS = True
+            new_articles = self.rssCollector.treatNewsFeedList(**self.collect_kwargs)
+            self.elastic_index_articles(new_articles)
+            new_articles = self.clean_lang(new_articles, self.lang)
+            WINDOW_DATA += new_articles
+            logging.info(f"the thread with id : {get_ident()} collect {len(new_articles)} articles")
+            COLLECT_IN_PROGRESS = False
+        COLLECT_LOCKER.release()
+
+
+    def elastic_index_articles(self, articles: List):
+        for article in articles:
+            es.index(index="test-index", id=article["id"], document=article)
+
+
 class NoveltiesDetectionThread(Thread):
     """
     Service to detect and return novelties in the collect information flow
     """
-    def __init__(self, supervised_calculator : SupervisedSequantialLangageSimilarityCalculator
-                 , micro_calculator : NoSupervisedFixedSequantialLangageSimilarityCalculator, training_args : Dict,
-                 results_args : Dict, micro_training_args : Dict, loop_delay : int, classifier_models :List[WindowClassifierModel]):
+
+    def __init__(self, supervised_calculator: SupervisedSequantialLangageSimilarityCalculator
+                 , micro_calculator: NoSupervisedFixedSequantialLangageSimilarityCalculator, training_args: Dict,
+                 results_args: Dict, micro_training_args: Dict, loop_delay: int,
+                 classifier_models: List[WindowClassifierModel]):
         """
 
         @param supervised_calculator: supervised calculator to get novelties on the labels (topics) in the flow
@@ -116,21 +152,17 @@ class NoveltiesDetectionThread(Thread):
         self.classifier_models = classifier_models
         self.loop_delay = loop_delay
 
-
     @staticmethod
     def log_error():
         logging.warning("no articles collected during his windows")
 
-
-    def process(self , window_data):
+    def process(self, window_data):
         supervised_data = transformS(window_data, process_already_done=True)
-        no_supervised_data = supervised_data[0] #just take the text
+        no_supervised_data = supervised_data[0]  # just take the text
         # we train the micro calculator but we don't print the result
-        _,_  = self.micro_calculator.treat_Window(no_supervised_data , **self.micro_training_args)
-        _,_ = self.supervised_reference_calculator.treat_Window(supervised_data, **self.training_args)
+        _, _ = self.micro_calculator.treat_Window(no_supervised_data, **self.micro_training_args)
+        _, _ = self.supervised_reference_calculator.treat_Window(supervised_data, **self.training_args)
         self.print_res()
-
-
 
     def print_res(self):
 
@@ -138,9 +170,11 @@ class NoveltiesDetectionThread(Thread):
             self.supervised_reference_calculator.print_novelties(n_words_to_print=10, **self.results_args)
             # we call the function calcul_similarity_topics_W_W in the function print_novelties above but we keep the
             # result in cache so it's more comprehensive to recall the function another time bellow
-            new_window_idx = len(self.supervised_reference_calculator)  -1
+            new_window_idx = len(self.supervised_reference_calculator) - 1
             previous_window_idx = new_window_idx - 1
-            similarities, _ = self.supervised_reference_calculator.calcule_similarity_topics_W_W(previous_window_idx, new_window_idx, **self.results_args)
+            similarities, _ = self.supervised_reference_calculator.calcule_similarity_topics_W_W(previous_window_idx,
+                                                                                                 new_window_idx,
+                                                                                                 **self.results_args)
             print("@" * 30)
             for topic_id, (similarity_score, classifier) in enumerate(zip(similarities, self.classifier_models)):
                 classifier.print(similarity_score)
@@ -164,7 +198,7 @@ class NoveltiesDetectionThread(Thread):
         if COLLECT_IN_PROGRESS == False:
             PROCESS_IN_PROGRESS = True
             if len(WINDOW_DATA) != 0:
-                with open("/window_data.json" , "w") as f:
+                with open("/window_data.json", "w") as f:
                     f.write(json.dumps(WINDOW_DATA))
                 self.process(WINDOW_DATA)
                 # empty and reinitialization of WINDOW_DATA
@@ -174,7 +208,6 @@ class NoveltiesDetectionThread(Thread):
                 NoveltiesDetectionThread.log_error()
             PROCESS_IN_PROGRESS = False
         PROCESS_LOCKER.release()
-
 
     def run(self):
         logging.info("Process will start")

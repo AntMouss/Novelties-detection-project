@@ -20,6 +20,8 @@ from config.server_settings import (
     bad_words_kwargs,
     MEMORY_LENGTH
 )
+from elasticsearch import Elasticsearch
+
 
 #server info
 HOST = "0.0.0.0"
@@ -27,13 +29,24 @@ PORT = 5000
 rss_feeds_path = "config/RSS_feeds.json"
 MAX_LENGTH_CACHE = 30
 
+ELASTIC_PORT = 9200
+ELASTIC_ADRESS = f"https://localhost:{str(ELASTIC_PORT)}"
+
 ROOT = os.getcwd()
 RSS_FEEDS_PATH = os.path.join(ROOT, rss_feeds_path)
+ELASTIC_PSW = os.getenv("ELASTIC_PSW")
+CERTIF_SHA = os.getenv("CERTIF_SHA")
 OUTPUT_PATH = os.getenv("OUTPUT_PATH")
 LOOP_DELAY_PROCESS = LOOP_DELAY_PROCESS
 LOOP_DELAY_COLLECT = LOOP_DELAY_COLLECT
 PREPROCESSOR = PREPROCESSOR
 LANG = LANG
+
+ELASTIC_CLIENT = Elasticsearch(
+    ELASTIC_ADRESS,
+    ssl_assert_fingerprint=CERT_FINGERPRINT,
+    basic_auth=("elastic", psw)
+)
 
 
 if OUTPUT_PATH is None and (COLLECT_HTML_ARTICLE_PAGE or COLLECT_ARTICLE_IMAGES or COLLECT_RSS_IMAGES):
@@ -98,13 +111,8 @@ def start_Server():
     global COLLECT_KWARGS
     global labels_idx
 
-    extractor = CollectThread(
-        rss_feed_source_path=RSS_FEEDS_PATH,
-        output_path=OUTPUT_PATH ,
-        preprocessor=PREPROCESSOR,
-        loop_delay=LOOP_DELAY_COLLECT,
-        collect_kwargs=COLLECT_KWARGS
-    )
+    extractor = CollectThread(rss_feed_source_path=RSS_FEEDS_PATH, loop_delay=LOOP_DELAY_COLLECT,
+                              preprocessor=PREPROCESSOR, output_path=OUTPUT_PATH, collect_kwargs=COLLECT_KWARGS)
 
     detector = NoveltiesDetectionThread(
         supervised_calculator=MACRO_CALCULATOR ,
