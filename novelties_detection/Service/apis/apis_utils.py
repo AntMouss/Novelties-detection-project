@@ -2,6 +2,8 @@ import json
 from typing import List
 import numpy as np
 from flask_restx import Namespace
+from dateutil import parser
+
 
 class NumpyEncoder(json.JSONEncoder):
 
@@ -61,4 +63,72 @@ class ServiceException(Exception):
 
 class LabelsException(ServiceException):
     pass
+
+
+class ElasticSearchQueryBodyBuilder:
+
+    text_fields = ["title" , "text" , "cleansed_text"]
+    label_field = "label"
+    timestamp_field = "timeStamp"
+
+    def __init__(self , match_string : str = None , label : str = None , end_date : str = None ,
+                 start_date : str = None):
+        if start_date is not None:
+            self.start_date = parser.parse(start_date)
+            self.start_date= int(self.start_date.timestamp())
+        else:
+            self.start_date = None
+        if end_date is not None:
+            self.end_date = parser.parse(end_date)
+            self.end_date= int(self.end_date.timestamp())
+
+        else:
+            self.end_date = None
+        self.match_string = match_string
+        self.label = label
+
+    def build_requests(self):
+        query_body = {
+            "query" : {
+                "filter" : []
+            }
+        }
+        if self.match_string is not None:
+            query_body["query"]["multi_match"] = self.build_match_query(self.match_string)
+        if self.start_date is not None or self.end_date is not None:
+            query_body["query"]["filter"].append(self.build_date_range_filter(self.start_date , self.end_date))
+        if self.label is not None:
+            query_body["query"]["filter"].append(self.build_label_filter(self.label))
+        return query_body
+
+
+
+    def build_match_query(self , match_string):
+        match_query = {
+            "query": match_string,
+            "fields": self.text_fields
+        }
+        return match_query
+
+    def build_date_range_filter(self , start_timestamp : int = None , end_timestamp : int = None):
+        date_filtre = {
+            "range" : {
+                self.timestamp_field : {
+
+                }
+            }
+        }
+
+        if start_timestamp is not None:
+            date_filtre["range"][self.timestamp_field]["gte"] = start_timestamp
+        if end_timestamp is not None:
+            date_filtre["range"][self.timestamp_field]["gte"] = end_timestamp
+        return date_filtre
+
+    def build_label_filter(self , label : str):
+        return {"term": {self.label_field: label}}
+
+
+
+
 

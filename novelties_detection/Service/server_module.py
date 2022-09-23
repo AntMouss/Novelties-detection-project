@@ -94,6 +94,8 @@ class CollectThread(Thread):
 
 class ElasticCollectThread(CollectThread):
 
+    index_name = "articles-index"
+
     def __init__(self, rss_feed_source_path: str, loop_delay: int, preprocessor: MetaTextPreProcessor = None,
                  output_path: str = None, collect_kwargs: dict = None,
                  elastic_client: Elasticsearch = None):
@@ -121,7 +123,7 @@ class ElasticCollectThread(CollectThread):
 
     def elastic_index_articles(self, articles: List):
         for article in articles:
-            es.index(index="test-index", id=article["id"], document=article)
+            self.elastic_client.index(index=self.index_name, id=article["id"], document=article)
 
 
 class NoveltiesDetectionThread(Thread):
