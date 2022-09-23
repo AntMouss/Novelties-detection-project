@@ -3,6 +3,7 @@ from typing import List
 import numpy as np
 from flask_restx import Namespace
 
+
 class NumpyEncoder(json.JSONEncoder):
 
     def default(self, obj):
@@ -53,12 +54,3 @@ def build_series(similarities_score : list , labels_counters : List[dict] , labe
         series.append(serie)
 
     return series
-
-
-
-class ServiceException(Exception):
-    pass
-
-class LabelsException(ServiceException):
-    pass
-

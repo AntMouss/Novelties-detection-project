@@ -2,7 +2,7 @@ from flask import request
 from flask_restx import Resource , Namespace
 import json
 from novelties_detection.Service.apis.Models import rss_requests_model , tags_requests_model , tag_element , url_element
-from novelties_detection.Service.apis.apis_utils import LabelsException
+from novelties_detection.Service.server_utils import LabelsException
 
 namesp = Namespace('RSSNewsDocument',
                    description='Extract news from RSS feeds and store them into JSON file', validate=True)
