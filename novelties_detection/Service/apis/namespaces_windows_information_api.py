@@ -2,7 +2,7 @@ import json
 from flask_restx import Resource , Namespace
 from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator , NoSupervisedFixedSequantialLangageSimilarityCalculator
 from flask import jsonify , make_response
-from novelties_detection.Service.apis.apis_utils import ServiceException
+from novelties_detection.Service.server_utils import ServiceException
 from novelties_detection.Service.apis.config_apis import N_TOP_DEFAULT , MAX_N_TOP_WORDS , MIN_N_TOP_WORDS
 
 

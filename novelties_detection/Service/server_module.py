@@ -9,15 +9,33 @@ from novelties_detection.Collection.data_processing import transformS , MetaText
 from novelties_detection.Experience.Exception_utils import CompareWindowsException
 import logging
 from novelties_detection.Experience.utils import timer_func
+from novelties_detection.Service.server_utils import ServiceException
+
 
 logging.basicConfig(level=logging.INFO)
-
 
 WINDOW_DATA = [] # contain the data of one temporal window
 COLLECT_IN_PROGRESS = False
 PROCESS_IN_PROGRESS = False
 COLLECT_LOCKER = Lock()
 PROCESS_LOCKER = Lock()
+
+
+def check_size_window(func):
+    """
+    check how many documents in the WINDOW_DATA to continue process or not
+    @param func:
+    @return:
+    """
+    # This function shows the execution time of
+    # the function object passed
+    def wrap_func(*args, **kwargs):
+        global WINDOW_DATA
+        if len(WINDOW_DATA) < 1:
+            raise ServiceException
+        else:
+            func(*args, **kwargs)
+    return wrap_func
 
 
 
@@ -94,6 +112,8 @@ class NoveltiesDetectionThread(Thread):
     """
     Service to detect and return novelties in the collect information flow
     """
+    minimum_words_number_corpus = 20
+
     def __init__(self, supervised_calculator : SupervisedSequantialLangageSimilarityCalculator
                  , micro_calculator : NoSupervisedFixedSequantialLangageSimilarityCalculator, training_args : Dict,
                  results_args : Dict, micro_training_args : Dict, loop_delay : int, classifier_models :List[WindowClassifierModel]):
@@ -119,16 +139,37 @@ class NoveltiesDetectionThread(Thread):
 
     @staticmethod
     def log_error():
-        logging.warning("no articles collected during his windows")
+        logging.warning("less than 1 article collected during his windows , following process impossible. Need minimum 2 articles"
+                        "Or windows Corpus not contain enough words.")
+
+    @staticmethod
+    def check_words_number(process_texts , min_words_number):
+        words_number = 0
+        idx = 0
+        try:
+            while words_number < min_words_number:
+                words_number += len(process_texts[idx])
+                idx += 1
+        except IndexError:
+            return False
+        finally:
+            return True
+
+
+
 
 
     def process(self , window_data):
         supervised_data = transformS(window_data, process_already_done=True)
         no_supervised_data = supervised_data[0] #just take the text
-        # we train the micro calculator but we don't print the result
-        _,_  = self.micro_calculator.treat_Window(no_supervised_data , **self.micro_training_args)
-        _,_ = self.supervised_reference_calculator.treat_Window(supervised_data, **self.training_args)
-        self.print_res()
+        # check number of words (need to be superior to 20 else topic modelling is useless)
+        if NoveltiesDetectionThread.check_words_number(no_supervised_data , self.minimum_words_number_corpus):
+            # we train the micro calculator but we don't print the result
+            _,_  = self.micro_calculator.treat_Window(no_supervised_data , **self.micro_training_args)
+            _,_ = self.supervised_reference_calculator.treat_Window(supervised_data, **self.training_args)
+            self.print_res()
+        else:
+            raise ServiceException("No enough words in the window corpus")
 
 
 
@@ -155,25 +196,28 @@ class NoveltiesDetectionThread(Thread):
             pass
 
     @timer_func
+    @check_size_window
     def do_process(self):
         global WINDOW_DATA
         global PROCESS_LOCKER
         global PROCESS_IN_PROGRESS
         global COLLECT_IN_PROGRESS
-        PROCESS_LOCKER.acquire()
-        if COLLECT_IN_PROGRESS == False:
-            PROCESS_IN_PROGRESS = True
-            if len(WINDOW_DATA) != 0:
-                with open("/window_data.json" , "w") as f:
-                    f.write(json.dumps(WINDOW_DATA))
+        try:
+            PROCESS_LOCKER.acquire()
+            if COLLECT_IN_PROGRESS == False:
+                PROCESS_IN_PROGRESS = True
                 self.process(WINDOW_DATA)
-                # empty and reinitialization of WINDOW_DATA
-                del WINDOW_DATA
-                WINDOW_DATA = []
             else:
                 NoveltiesDetectionThread.log_error()
             PROCESS_IN_PROGRESS = False
-        PROCESS_LOCKER.release()
+            PROCESS_LOCKER.release()
+        except ServiceException:
+            self.log_error()
+            pass
+        finally:
+            # re-initialize WINDOW_DATA
+            del WINDOW_DATA
+            WINDOW_DATA = []
 
 
     def run(self):
