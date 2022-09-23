@@ -1,35 +1,42 @@
 # Novelties Detection
 
-Novelties Detection project is a **real-time automatic newspaper semantic analyser** that provide you keywords and set of keywords for different thematics
-inside newspaper data .
-The purpose of the project is to have better understanding of novelties in actuality and detect when actuality change appear.
+Novelties Detection project is a **real-time automatic newspaper semantic analyser** service , The project purpose is to understand information spreading in real-time inside a news flow .
+The news provide from different rss feed source like influent newspaper  , influent news websites ( ie : New-York Times  , Fox news ...). The basic features of the service is to recognize topic contain in news feed using **topic modeling¹** approach
+then we can detect what topics are a novelties or habits  , what topic appear or disappear at each time window ...
 
-## About the project.
+_Note_ : The default service settings are in **French** and the **rss feed** are French Source information . But you can set your own source information as explain in this [section](#1rss-feed-configuration)
 
-Firstly the service collect data from various newspaper on the web in real-time
-thanks to rss feeds that contain information about new articles posted every moment by the paper company which handle this rss feed server.
-If you want to learn more about rss feed usage ,  see [here](https://en.wikipedia.org/wiki/RSS).
 
-Secondly we want to use texts from the articles to apply topic model algorithm that return us keywords and thematics contain in the corpus (in our case the articles collected in the considered time window).
-so we apply data cleaning and text pre-processing before processing.
+## How the service works.
 
-Finally, the service analyse the articles collected and is able to provide thematics and keywords that appear,
-disappear or stable during a certain time window ( ex : the words queen , Elisabeth , death appear in the window 19h - 20h Friday 09/09/2022).
-the news analysis is sequential that means that the current window of data that contain the article information of this time window is compared to the last window that contain article information of the last time window.
-We use topic model method to get the words clusters that represent thematic with strong relationship in our window of data, and we can calculate the similarity between 2 consecutive windows using Jaccard distance.
+The service works as a two-hand service:
 
-Basic architecture schema:
+* First , the service collect data from various newspaper on the web in real-time
+with rss feeds that contain information about new articles posted every moment by the newspaper website.
+If you want to learn more about **rss feed** usage ,  see [here](https://en.wikipedia.org/wiki/RSS).
+_this process is repeat every **N** minutes as referred in the [base schema](#basic-architecture-schema) bellow _.
+
+* Second ,  we apply topic model method on articles corpus that return keywords relationships and main topics contain in the current corpus (in our case the articles collected in the considered time window).
+before we process data cleaning and text pre-processing before topic modeling operation .
+_this process is repeat every **M** minutes as referred in the [base schema](#basic-architecture-schema) bellow_.
+
+The service analyse the articles collected by each time windows and is able to provide thematics and keywords that appear,
+disappear or stable during the considered time window ( ie : the topics containing the  words "queen" , "Elisabeth" , "death" appear in the window 19h - 20h Friday 09/09/2022).
+the news analysis is sequential that means that the current window of data that contain the article information of this time window is compared to the last window.
+
+We use topic modeling methods to get the words clusters that represent thematics (topics) with strong relationship in our window data, and we can compute the similarity between 2 consecutive windows using Jaccard similarity.
+
+### Basic architecture schema:
 
 ![A test image](src/diagram/main_diagram.png)
 
-for each blue point you can refer to the section [explanation](#explanation) , this will help you to understand how configure your service
-differently than the default settings.
+for each blue point you can refer to the section [explanation](#explanation) , this will help you to understand how to configure custom novelties-detection service.
 
 ## Installation and Execution
 
 ### Prerequisite
 
-if you are on Ubuntu 20.04 , you can follow the kit shell installation as referred [here](#with-shell) .
+if you are on Ubuntu 20.04 , you can follow the "[with shell](#with-shell)" installation section.
 else you can use docker , referred to this [section](#with-docker) but first you need to install docker-engine on
 your machine . The installation steps of docker engine for your operating systems might be slightly different,
 please refer to the [docker documentation](https://docs.docker.com/engine/install/) for details.
@@ -81,7 +88,7 @@ see [here](#settings) for more details about the server settings.
 python3 server.py
 ```
 
-If you don't specify `output_path` the collect service will not be persistent.
+If you don't specify `output_path` the collect service will not be **persistent²**.
 
 ### with Docker
 
@@ -108,7 +115,7 @@ cd Novelties-detection-project
 
 ```
 
-Run the container with persistent way.
+Run the container with **persistent** way.
 
 ```bash
 # run container from the image that we build previously with creating volume that contain collect data (persistence activate) .
@@ -119,7 +126,7 @@ docker run -d -p 5000:5000 \
 novelties-detection-image:latest
 ```
 
-or choose the no persistent way with the following command.
+or choose the no **persistent** way with the following command.
 
 ```bash
 docker run -d -p 5000:5000 --name <container_name> novelties-detection-image:latest
@@ -318,8 +325,8 @@ we don't want to make topic modelling with multilingual corpus because it will n
 
 We use different topic model kernel:
 
-* unsupervised kernel : [LDA¹](https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) , [CoreX²](https://github.com/gregversteeg/corex_topic)
-* supervised kernel : [TFIDF³](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) , Guided LDA (or semi-supervised LDA) , Guided CoreX (or semi-supervised CoreX)
+* unsupervised kernel : [LDA³](https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) , [CoreX⁴](https://github.com/gregversteeg/corex_topic)
+* supervised kernel : [TFIDF⁵](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) , Guided LDA (or semi-supervised LDA) , Guided CoreX (or semi-supervised CoreX)
 
 *Note* : **Guided LDA** and **Guided CoreX** kernel are based on the **LDA** and **CoreX** kernel , the difference is that in the guided case
 we use label **seed** words to make the training converge around the label words distribution.
@@ -387,7 +394,7 @@ example of percentile ranges:
 
 ### 6.API
 
-(Not available for the moment)
+(Not available for the moment but you can see query swagger doc https://127.0.0.1:5000/api/v1 )
 
 ## Server Settings
 
@@ -395,18 +402,22 @@ this section will help us to custom you server , most of the settings refer to t
 
 ### collect settings
 
-* `LOOP_DELAY_COLLECT` : delay between 2 collect process (in minutes)
+* `LOOP_DELAY_COLLECT` : delay between 2 collect process corresponding to the N value in the main [schema](#basic-architecture-schema) (in minutes)
 * `COLLECT_RSS_IMAGES` : boolean control the collect of images in the rss feed (if True you need to specify `OUTPUT_PATH`)
 * `COLLECT_ARTICLE_IMAGES` : boolean control the collect of images in the article page.html (if True you need to specify `OUTPUT_PATH`)
 * `COLLECT_HTML_ARTICLE_PAGE` : boolean control the collect of the html article (if True you need to specify `OUTPUT_PATH`)
 * `PRINT_LOG` : boolean control log of the collect process (performance and error)
-  **Note** : the collect process can write data in fileSystem if you used the [persistent](#installation-and-execution) mode (specify `OUTPUT_PATH`)
-  so you can set `COLLECT_RSS_IMAGES` , `COLLECT_ARTICLE_IMAGES` and `COLLECT_HTML_ARTICLE_PAGE` as True else it return an exception.
+
+**Note** : the collect process can write data in fileSystem if you used the [persistent](#installation-and-execution) mode (specify `OUTPUT_PATH`)
+so you can set `COLLECT_RSS_IMAGES` , `COLLECT_ARTICLE_IMAGES` and `COLLECT_HTML_ARTICLE_PAGE` as True else it return an exception.
 
 ### Process window settings
 
-* `LOOP_DELAY_PROCESS` : delay between 2 Windows processing (in minutes)
+* `LOOP_DELAY_PROCESS` : delay between 2 Windows processing corresponding to the M value in the main [schema](#basic-architecture-schema) (in minutes)
 * `MEMORY_LENGTH` : integer --> number of window keep in memory (can't exceed 30)
+
+**Note** : `LOOP_DELAY_PROCESS` must be superior to `LOOP_DELAY_COLLECT` because the processing need data collecting first
+else it return an exception.
 
 ### Text pre-processing settings
 
@@ -416,11 +427,24 @@ this section will help us to custom you server , most of the settings refer to t
 * `REMOVE_NUMBERS` : boolean control the numbers removing
 * `REMOVE_SMALL_WORDS` : boolean control the small words removing
 
+**Note** : you can specify the minimum length of a "small words" or "tall words" and you can add a predefine list of words to remove
+follow the example:
+
+```python
+
+```
+
 ### Macro-calculator settings (**supervised calculator**)
 
-* `MACRO_CALCULATOR_TYPE`
-* `macro_training_args`
+* `MACRO_CALCULATOR_TYPE` : Type of the Macro-Calculator must be instance of class inherited the
+* `macro_training_args` : dictionnary of arguments relatives to the training engine if you use calculator
 * `macro_kwargs_results`
+
+You can set up your Macro Calculator as follows:
+
+```python
+
+```
 
 ### Micro-calculator settings (**unsupervised calculator**)
 
@@ -433,9 +457,13 @@ this section will help us to custom you server , most of the settings refer to t
 * `fct_bellow`
 * `kwargs_above`
 * `kwargs_bellow`
+* 
 
 ## Lexical
 
-1. LDA : Latent Dirichlet Allocation
-2. TFIDF : term frequency–inverse document frequency
-3. CoreX : correlation explanation
+1. Topic modeling : set of machine learning method which main purpose are to found 
+relationship between words in a document corpus in order to return words clusters (topic).
+2. Persistent : the persistent mode save the collect data to the `output_path` directory
+3. LDA : Latent Dirichlet Allocation
+4. TFIDF : term frequency–inverse document frequency
+5. CoreX : correlation explanation
