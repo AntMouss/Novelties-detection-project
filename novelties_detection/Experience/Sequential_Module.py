@@ -562,11 +562,11 @@ class CoreXSequentialSimilarityCalculatorFixed(NoSupervisedFixedSequantialLangag
         self.engine = Engine_module.CoreX
 
 
-class LFIDFSequentialSimilarityCalculator(SupervisedSequantialLangageSimilarityCalculator):
+class TFIDFSequentialSimilarityCalculator(SupervisedSequantialLangageSimilarityCalculator):
 
     def __init__(self, bad_words_args: dict, labels_idx: list, memory_length: int = None):
         super().__init__(bad_words_args, labels_idx, memory_length)
-        self.engine = Engine_module.LFIDF
+        self.engine = Engine_module.TFIDF
 
 
 class DynamicalCoreXSequentialSimilarityCalculator(MetaDynamicalSequencialLangageSimilarityCalculator):

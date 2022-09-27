@@ -1,12 +1,12 @@
 from typing import Callable
-
+# we assume that we import all the Sequential_Module to simplify settings customization
 from novelties_detection.Experience import Sequential_Module
 from novelties_detection.Experience.kwargs_utils import UpdateBadWordsKwargs
-from novelties_detection.Collection.data_processing import exponentialThresholding , linearThresholding , FrenchTextPreProcessor , MetaTextPreProcessor
+from novelties_detection.Collection.data_processing import absoluteThresholding ,  logarithmThresholding , linearThresholding , FrenchTextPreProcessor , MetaTextPreProcessor
 
 
 
-#collect info
+# COLLECT SETTINGS
 LOOP_DELAY_COLLECT : int = 5#minutes
 COLLECT_RSS_IMAGES : bool = True
 COLLECT_ARTICLE_IMAGES : bool = True
@@ -14,12 +14,17 @@ COLLECT_HTML_ARTICLE_PAGE : bool = True
 PRINT_LOG : bool = True
 
 
-# Process info
+#LABEL SETTINGS
+LABELS_IDX = ["general" , "crime" , "politique" , "economy" , "justice"]
+
+
+
+# PROCESS SETTINGS
 LOOP_DELAY_PROCESS : int = 15#minutes
 MEMORY_LENGTH : int = 10
 
 
-# text pre-processing info
+# TEX PRE-PROCESSOR SETTINGS
 LANG : str = "fr"
 LEMMATIZE : bool = True
 REMOVE_STOP_WORDS : bool = True
@@ -33,10 +38,8 @@ PREPROCESSOR : MetaTextPreProcessor = FrenchTextPreProcessor(
 )
 
 
-
-
-#macro-calculator info
-MACRO_CALCULATOR_TYPE : type = Sequential_Module.LFIDFSequentialSimilarityCalculator
+# MACRO-CALCULATOR SETTINGS
+MACRO_CALCULATOR_TYPE : type = Sequential_Module.TFIDFSequentialSimilarityCalculator
 # macro_training_args = {
 #     "passes" : 2 ,
 #     "overrate" : 1000
@@ -49,16 +52,30 @@ macro_kwargs_results : dict = {
 }
 
 
-#micro-calculator info
+
+# MICRO-CALCULATOR SETTINGS
+NB_MI_TOPICS = 7
 MICRO_CALCULATOR_TYPE : type = Sequential_Module.LDASequentialSimilarityCalculatorFixed
-micro_training_args : dict = {"passes" : 2}
-micro_kwargs_results : dict ={"ntop" : 100, "back" : 3}
+micro_training_args : dict = {
+    "passes" : 2
+}
 
 
-#bad words info for remove words that no satisfing some frequency condition
-fct_above : Callable = exponentialThresholding
+
+#BAD WORDS SETTINGS
+# for remove words that no satisfing some frequency condition
+fct_above : Callable = logarithmThresholding
 fct_bellow : Callable = linearThresholding
-kwargs_above : dict = {"limit" : 0.5 , "pente" : 100}
-kwargs_bellow : dict = {"relative_value" : 0.001}
-bad_words_kwargs = UpdateBadWordsKwargs(fct_above , fct_bellow , kwargs_above  , kwargs_bellow)
+kwargs_above : dict = {
+    "limit" : 0.5
+}
+kwargs_bellow : dict = {
+    "slop" : 0.001
+}
+bad_words_kwargs = UpdateBadWordsKwargs(
+    thresholding_fct_above=fct_above ,
+    thresholding_fct_bellow=fct_bellow ,
+    kwargs_above=kwargs_above  ,
+    kwargs_bellow=kwargs_bellow
+)
 

@@ -1,8 +1,9 @@
 import os
 import pickle
 import json
-from novelties_detection.Service.server_utils import createApp
+from novelties_detection.Service.server_utils import createApp , ServiceException
 from novelties_detection.Service.server_module import CollectThread ,NoveltiesDetectionThread
+from novelties_detection.Experience.Sequential_Module import GuidedSequantialLangageSimilarityCalculator
 from config.server_settings import (
     LOOP_DELAY_PROCESS,
     LOOP_DELAY_COLLECT,
@@ -18,7 +19,9 @@ from config.server_settings import (
     MACRO_CALCULATOR_TYPE,
     MICRO_CALCULATOR_TYPE,
     bad_words_kwargs,
-    MEMORY_LENGTH
+    MEMORY_LENGTH,
+    NB_MI_TOPICS,
+    LABELS_IDX
 )
 
 #server info
@@ -47,32 +50,43 @@ else:
     }
 
 if LOOP_DELAY_COLLECT > LOOP_DELAY_PROCESS:
-    raise Exception("collect loop delay can't be superior to process loop delay ")
+    raise ServiceException("collect loop delay can't be superior to process loop delay ")
 
 if PREPROCESSOR.lang != LANG:
-    raise Exception("the LANG in server_settings.py is different that the preprocessor lang in server_settings.py ")
+    raise ServiceException("the LANG in server_settings.py is different that the preprocessor lang in server_settings.py ")
 
 if MEMORY_LENGTH > MAX_LENGTH_CACHE:
-    raise Exception("the Memory length exceed the require max length")
+    raise ServiceException("the Memory length exceed the require max length")
 
 with open("config/seed.json" , "r") as f:
     seed = json.load(f)
 with open("model/model.pck" , "rb") as f:
     MODELS = [pickle.load(f)] * len(seed)
-labels_idx = list(seed.keys())
+labels_seed = list(seed.keys())
 
-
-MACRO_CALCULATOR = MACRO_CALCULATOR_TYPE(
-    bad_words_args=bad_words_kwargs.__dict__,
-    labels_idx=labels_idx ,
-    memory_length= MEMORY_LENGTH
-)
+if issubclass(MACRO_CALCULATOR_TYPE , GuidedSequantialLangageSimilarityCalculator):
+    if check_label(LABELS_IDX , labels_seed):
+        MACRO_CALCULATOR = MACRO_CALCULATOR_TYPE(
+            bad_words_args=bad_words_kwargs.__dict__,
+            labels_idx=LABELS_IDX,
+            memory_length=MEMORY_LENGTH,
+            seed = seed
+        )
+    else:
+        raise ServiceException("LABELS_IDX contain different labels than seed labels , it need to be the sames")
+else:
+    MACRO_CALCULATOR = MACRO_CALCULATOR_TYPE(
+        bad_words_args=bad_words_kwargs.__dict__,
+        labels_idx=LABELS_IDX ,
+        memory_length= MEMORY_LENGTH
+    )
 
 MACRO_TRAININGS_ARGS = macro_training_args
 MACRO_RESULTS_ARGS = macro_kwargs_results
 
+
 MICRO_CALCULATOR = MICRO_CALCULATOR_TYPE(
-    nb_topics=7,
+    nb_topics=NB_MI_TOPICS,
     bad_words_args=bad_words_kwargs.__dict__,
     memory_length= MEMORY_LENGTH
 )
