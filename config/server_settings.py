@@ -65,17 +65,17 @@ micro_training_args : dict = {
 #BAD WORDS SETTINGS
 # for remove words that no satisfing some frequency condition
 fct_above : Callable = logarithmThresholding
-fct_bellow : Callable = linearThresholding
+fct_below : Callable = linearThresholding
 kwargs_above : dict = {
     "limit" : 0.5
 }
-kwargs_bellow : dict = {
+kwargs_below : dict = {
     "slop" : 0.001
 }
 bad_words_kwargs = UpdateBadWordsKwargs(
     thresholding_fct_above=fct_above ,
-    thresholding_fct_bellow=fct_bellow ,
+    thresholding_fct_below=fct_below ,
     kwargs_above=kwargs_above  ,
-    kwargs_bellow=kwargs_bellow
+    kwargs_below=kwargs_below
 )
 

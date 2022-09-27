@@ -123,15 +123,15 @@ class MetaSequencialLangageSimilarityCalculator:
     def updateBadwords(self):
 
         thresholding_fct_above = self.bad_words_args["thresholding_fct_above"]
-        thresholding_fct_bellow = self.bad_words_args["thresholding_fct_bellow"]
+        thresholding_fct_below = self.bad_words_args["thresholding_fct_below"]
         kwargs_above = self.bad_words_args["kwargs_above"]
-        kwargs_bellow = self.bad_words_args["kwargs_bellow"]
+        kwargs_below = self.bad_words_args["kwargs_below"]
         nb_docs = self.semi_filtred_dictionnary.num_docs
         if nb_docs < self.min_nb_docs:
             self.bad_words = []
         else:
             abs_no_above = thresholding_fct_above(nb_docs=nb_docs, **kwargs_above)
-            abs_no_bellow = thresholding_fct_bellow(nb_docs=nb_docs, **kwargs_bellow)
+            abs_no_bellow = thresholding_fct_below(nb_docs=nb_docs, **kwargs_below)
             if abs_no_bellow >= abs_no_above:
                 raise Exception("abs_no_bellow should be inferior to abs_no_above")
             if abs_no_above <= 0:

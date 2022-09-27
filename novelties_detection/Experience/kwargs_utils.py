@@ -19,11 +19,11 @@ class UpdateBadWordsKwargs:
     """
     data class that contain bad_words_args for update bad words with MetaSequentialCalculator instance
     """
-    def __init__(self,thresholding_fct_above: Callable,
-                 thresholding_fct_bellow: Callable, kwargs_above: Dict, kwargs_bellow: Dict):
-        self.kwargs_bellow = kwargs_bellow
+    def __init__(self, thresholding_fct_above: Callable,
+                 thresholding_fct_below: Callable, kwargs_above: Dict, kwargs_below: Dict):
+        self.kwargs_below = kwargs_below
         self.kwargs_above = kwargs_above
-        self.thresholding_fct_bellow = thresholding_fct_bellow
+        self.thresholding_fct_below = thresholding_fct_below
         self.thresholding_fct_above = thresholding_fct_above
 
 class CalculatorKwargs:
