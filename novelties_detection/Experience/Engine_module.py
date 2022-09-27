@@ -89,14 +89,14 @@ class SupervisedCoreX(SupervisedEngine , CoreX ):
 
 
 class GuidedCoreX(GuidedEngine,CoreX):
-    def __init__(self , anchor_strength = 3 , **kwargs ):
+    def __init__(self, seed_strength  = 3, **kwargs):
         super(GuidedCoreX, self).__init__(**kwargs)
         self.anchors = [[word for word in words if word in self.words] for _ , words in self.seed.items()]
-        self.core.fit(self.documents_matrix , words=self.words, anchors=self.anchors , anchor_strength=anchor_strength)
+        self.core.fit(self.documents_matrix, words=self.words, anchors=self.anchors, anchor_strength=seed_strength)
 
 
 
-class LFIDF(SupervisedEngine):
+class TFIDF(SupervisedEngine):
 
     def __init__(self, **kwargs):
 
@@ -174,10 +174,10 @@ class LDA(Engine):
 class GuidedLDA(GuidedEngine , LDA):
 
 
-    def __init__(self, overrate, **kwargs):
+    def __init__(self, seed_strength = 100, **kwargs):
 
         super().__init__(**kwargs)
-        self.ldaargs['eta'] = self.generate_eta(self.seed, self.dictionnary, overratte=overrate)
+        self.ldaargs['eta'] = self.generate_eta(self.seed, self.dictionnary, overratte=seed_strength)
         self.core = LdaModel(**self.ldaargs)
 
     @staticmethod

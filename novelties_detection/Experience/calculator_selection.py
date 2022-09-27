@@ -14,7 +14,7 @@ from sklearn.metrics import normalized_mutual_info_score
 
 from novelties_detection.Collection.data_processing import transformS, transformU
 from novelties_detection.Experience.Sequential_Module import LDASequentialSimilarityCalculatorFixed, \
-    NoSupervisedFixedSequantialLangageSimilarityCalculator, LFIDFSequentialSimilarityCalculator
+    NoSupervisedFixedSequantialLangageSimilarityCalculator, TFIDFSequentialSimilarityCalculator
 from novelties_detection.Experience.kwargs_utils import FullKwargsForExperiences
 from novelties_detection.Experience.ExperienceGen import SupervisedExperiencesProcessor , MetadataGenerationException
 from novelties_detection.Experience.data_utils import ExperiencesResults, Alerte, TimeLineArticlesDataset, \
@@ -230,7 +230,7 @@ class MicroCalculatorSelector(MetaCalculatorSelector):
                 label_counter = {k: v for k, v in sorted(label_counter.items(), key=lambda item: item[1] , reverse=True)}
                 labels_unique = list(label_counter.keys())
                 nb_topics = len(labels_unique)
-                ref_calculator = LFIDFSequentialSimilarityCalculator(labels_idx=labels_unique , **self.ref_calculator_kwargs)
+                ref_calculator = TFIDFSequentialSimilarityCalculator(labels_idx=labels_unique, **self.ref_calculator_kwargs)
                 micro_calculator.treat_Window(unsupervised_window , **training_args)
                 ref_calculator.treat_Window(supervised_window)
                 micro_topics_words = micro_calculator.getTopWordsTopics(len(micro_calculator) - 1 , ntop = 300, exclusive=True)

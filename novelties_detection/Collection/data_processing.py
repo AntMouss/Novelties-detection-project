@@ -281,6 +281,19 @@ class MetaTextPreProcessor:
                  undesirable_characters : list = None, max_word_size : int = 18,
                  min_word_size : int = 3 , lemmatize : bool = True , remove_stop_words : bool = True ,
                  remove_small_words : bool = True , remove_numbers : bool = True):
+        """
+
+        @param lang:
+        @param long_lang:
+        @param undesirable_words:
+        @param undesirable_characters:
+        @param max_word_size:
+        @param min_word_size:
+        @param lemmatize:
+        @param remove_stop_words:
+        @param remove_small_words:
+        @param remove_numbers:
+        """
         self.remove_numbers = remove_numbers
         self.remove_small_words = remove_small_words
         self.remove_stop_words = remove_stop_words
@@ -419,20 +432,17 @@ class EnglishTextPreProcessor(MetaTextPreProcessor):
 
 
 
-def absoluteThresholding(absolute_value , **kwargs):
-    return absolute_value
+def absoluteThresholding(intercept, **kwargs):
+    return intercept
 
-def linearThresholding(relative_value , nb_docs):
-    return relative_value * nb_docs
+def linearThresholding(nb_docs, slop, intercept=0):
+    return slop * nb_docs + intercept
 
-def exponentialThresholding(nb_docs, limit = 0.6, pente = 100):
+def logarithmThresholding(nb_docs, limit = 0.6):
     if limit > 1:
         raise Exception("limit can't be superior to 1")
     limit = 1 - limit
-    # i do this while method to avoid relative_value negative
-    while pente > nb_docs:
-        pente = pente // 2
-    relative_value = 1 - limit * (1 - (1 / (1 + math.log10(nb_docs / pente))))
+    relative_value = 1 - limit * (1 - (1 / (1 + math.log10(nb_docs))))
     return relative_value * nb_docs
 
 
@@ -515,5 +525,3 @@ def transformS(articles, processor : FrenchTextPreProcessor = None, process_alre
     texts , labels = list(zip(*res))
     labels = list(labels)
     return texts , labels
-
-
