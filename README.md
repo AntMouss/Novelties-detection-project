@@ -194,7 +194,7 @@ format describe above.
 
 **Cleaning Steps Schema :**
 
-<img src="./src/diagram/cleaning_diagram.png" alt="drawing" width="200"/>
+<img src="./src/diagram/cleaning_diagram.png" alt="drawing" width="400"/>
 
 1. at the first step , we selected and kept the **<article/>** tag (content of the article) .
 2. HTML page contain garbage informations like advertising , author information , references to
@@ -299,7 +299,7 @@ we just want to treat text in the targeted lang else it will not be efficient.
 
 **Text Pre-Processing Steps Schema :**
 
-![text pre-processing schema](src/diagram/text_preprocessing_diagram.png)
+<img src="./src/diagram/text_preprocessing_diagram.png" alt="drawing" width="400"/>
 
 1. **lang detection** : the first step of text preprocessing is lang detection , we don't want to pre-process wrong lang text, so we are making filtering.
 2. **tokenization** : tokenization in NLP is a set of methods that divide string text in logical elements (called **token**)
@@ -315,7 +315,8 @@ we just want to treat text in the targeted lang else it will not be efficient.
 
 **Topic Modeling Schema :**
 
-![text topic-modelling schema](src/diagram/topic_modelling_diagram.png)
+<img src="./src/diagram/topic_modelling_diagram.png" alt="drawing" width="400"/>
+
 
 1. **update global dictionary** : we use a **global dictionary** as a register of token (words , punctuation , etc...) for all window corpus (set of article texts in the time window collect).
    The purpose of this dictionary is to count every token occurrences, although we can use it to filter rare token or really common token (which are not **Stopwords**). This dictionary is updated at every new window appearances.
@@ -363,11 +364,11 @@ here is a **training** example schema:
 
 **Similarity Computation Steps Schema :**
 
-![similarity computation](src/diagram/Similarity_computation_diagram.png)
+<img src="./src/diagram/Similarity_computation_diagram.png" alt="drawing" width="400"/>
 
 1. we use similarity calculator extracting two consecutive models corresponding to two consecutive windows, and we compute [Jaccard similarity](https://pyshark.com/jaccard-similarity-and-jaccard-distance-in-python/)
    the supervised case we compute **Jaccard similarity** for each topic corresponding to a label, and we stack similarity score in a list:
-   *example* : assume the two bellow cluster words for the label i -> "sport":
+   **example** : assume the two below cluster words for the label i -> "sport":
 
 ```json
 {"Ai" :  ["football" , "Manchester" , "united" , "devils" , "Traford" , "victory" , "goals"],
@@ -395,20 +396,21 @@ $Ji =\dfrac{3}{10}$
 
 $J = \dfrac{\sum_{i=0}^{k}{Ji}}{k}$
 
-3.the process isn't the same for unsupervised case , we append every cluster of words for each topic then we compute the total Jaccard similarity.
+3. The process isn't the same for unsupervised case , we append every cluster of words for each topic then we compute the total Jaccard similarity.
 
-4.finally , we will classifie the change rate between two windows using normal distribution classifier .
-The final result is a range percentiles :
+4. Finally , we will classifie the change rate between two windows using normal distribution classifier .
+   The final result is a range percentiles :
 
 In our case , a percentile is a similarity score below which a given percentage k of scores in its frequency distribution falls (exclusive definition) or a score at or below which a given percentage falls (inclusive definition).
 For example, the 90th percentile is the similarity score below which (exclusive) or at or below which (inclusive) 90% of the scores in the distribution may be found:
 
-you can see a representation of the 90th percentile of a normal distribution below.
+_you can see a representation of the 90th percentile of a normal distribution below :_ 
 
 ![percentile-normal-curve](src/normal_percentile.png)
 
-We classifie similarity between window as percentile ranges which means a window similarity could be for example $1-5%$ or $5-20%$ ... rarely high similarity or low similarity:
-representation of percentile ranges below:
+We classifie similarity between window as percentile ranges which means a window similarity could be for example $1-5%$ or $5-20%$ ... rarely high similarity or low similarity.
+
+_Representation of percentile ranges below:_
 
 ![percentile-ranges](src/normal_percentile2.png)
 
@@ -425,13 +427,13 @@ You need to overwrite the `config/server_settings.py` file else you can keep the
 
 ### collect settings
 
-* `LOOP_DELAY_COLLECT` : delay between 2 collect process corresponding to the N value in the main [schema](#basic-architecture-schema) (**in minutes**)
-* `COLLECT_RSS_IMAGES` : boolean control the collect of images in the rss feed (if True you need to specify `OUTPUT_PATH`)
-* `COLLECT_ARTICLE_IMAGES` : boolean control the collect of images in the article page.html (if True you need to specify `OUTPUT_PATH`)
-* `COLLECT_HTML_ARTICLE_PAGE` : boolean control the collect of the html article (if True you need to specify `OUTPUT_PATH`)
-* `PRINT_LOG` : boolean control log of the collect process (performance and error)
+* `LOOP_DELAY_COLLECT` : integer --> delay between 2 collect process corresponding to the N value in the main [schema](#basic-architecture-schema) (**in minutes**)
+* `COLLECT_RSS_IMAGES` : boolean --> allows the collect of images in the rss feed (if True you need to specify `OUTPUT_PATH`)
+* `COLLECT_ARTICLE_IMAGES` : boolean --> allows the collect of images in the article page.html (if True you need to specify `OUTPUT_PATH`)
+* `COLLECT_HTML_ARTICLE_PAGE` : boolean --> allows the collect of the html article (if True you need to specify `OUTPUT_PATH`)
+* `PRINT_LOG` : boolean --> allows log of the collect process (performance and error)
 
-**_Note_** : the collect process can write data in fileSystem if you used the [persistent](#installation-and-execution) mode (specify `OUTPUT_PATH`)
+**_Note_** : the collect process can write data in **fileSystem** if you used the [persistent](#installation-and-execution) mode (specify `OUTPUT_PATH`)
 so you can set `COLLECT_RSS_IMAGES` , `COLLECT_ARTICLE_IMAGES` and `COLLECT_HTML_ARTICLE_PAGE` as True else it return an exception.
 
 ### labels idx settings.
@@ -441,7 +443,7 @@ so you can set `COLLECT_RSS_IMAGES` , `COLLECT_ARTICLE_IMAGES` and `COLLECT_HTML
 
 ### Process window settings
 
-* `LOOP_DELAY_PROCESS` : delay between 2 Windows processing corresponding to the M value in the main [schema](#basic-architecture-schema) (**in minutes**)
+* `LOOP_DELAY_PROCESS` : integer --> delay between 2 Windows processing corresponding to the M value in the main [schema](#basic-architecture-schema) (**in minutes**)
 * `MEMORY_LENGTH` : integer --> number of window keep in memory (can't exceed 30 because of memory consumption).
 
 **_Note_** : `LOOP_DELAY_PROCESS` must be superior to `LOOP_DELAY_COLLECT` because the processing need data collecting first
@@ -490,14 +492,14 @@ Customise Macro-calculator settings overwriting the **#MACRO-CALCULATOR SETTINGS
 There are 3 types of Macro Calculator :
 
 * `TFIDFSequentialSimilarityCalculator` : using a TFIDF kernel (no specific training arguments available yet).
-* `GuidedCoreXSequentialSimilarityCalculator` :  using a CoreX kernel ( specific training arguments in original [doc](https://github.com/gregversteeg/corex_topic/blob/master/corextopic/corextopic.py) line 18 ).
+* `GuidedCoreXSequentialSimilarityCalculator` :  using a CoreX kernel (specific training arguments in original [doc](https://github.com/gregversteeg/corex_topic/blob/master/corextopic/corextopic.py) line 18).
   _**Warning**_ : you can't use following parameters --> `n_hidden` .
-* `GuidedLDASequentialSimilarityCalculator` :  using LDA kernel ( specific training arguments in original [doc](https://radimrehurek.com/gensim/models/ldamodel.html) ).
+* `GuidedLDASequentialSimilarityCalculator` :  using LDA kernel (specific training arguments in original [doc](https://radimrehurek.com/gensim/models/ldamodel.html)).
   _**Warning**_ : you can't use following parameters -->  `corpus`, `num_topics`, `id2word` , `eta` .
 
 _**Note** 1_ : as explain in [note 2](#4topic-modelling) , you need to specify seed words if you use semi-supervising learning
-( `GuidedLDASequentialSimilarityCalculator` , `GuidedCoreXSequentialSimilarityCalculator` ) else you can keep default seed words in `config/seed.json`
-( just available for default `LANG` and default `LABELS_IDX` )
+(`GuidedLDASequentialSimilarityCalculator` , `GuidedCoreXSequentialSimilarityCalculator`) else you can keep default seed words in `config/seed.json`
+(just available for default `LANG` and default `LABELS_IDX`).
 
 _**Note 2**_ : If you are using the 2 last class , you can specify an `anchor_strength` training parameter (semi-supervising learning)
 to increase the weight of the seed words in the corpus , else you can keep the default `anchor_strength` value.
@@ -552,26 +554,31 @@ micro_training_args = {
 ### bad words removing settings
 
 * `fct_above` : Function which defines the maximum number of document appearances for a word otherwise it is removed from the original vocabulary.
-* `fct_bellow` : Function which defines the minimum number of document appearances for a word otherwise it is removed from the original vocabulary.
+* `fct_below` : Function which defines the minimum number of document appearances for a word otherwise it is removed from the original vocabulary.
 * `kwargs_above` : Dictionary contain `fct_above` specific arguments .
-* `kwargs_bellow` : Dictionary contain `fct_bellow` specific arguments .
+* `kwargs_below` : Dictionary contain `fct_below` specific arguments .
 
 There are 3 types of filtering functions :
 
 * `absoluteThresholding` --> linear function with $slop = 0$
   example : with $intercept = 100$
   ![absolute_thresholding](src/abs_figure.png)
-  **Document appearances** --> number of documents (articles in our case) in which the considerate token (word) is present.
-  **Above-removing area** --> if a word is in this area the fct_above function will remove it from the original vocabulary during [the tokens filtering](#4topic-modelling),
-  so it will be not considerate at the topic-modelling step .
-  **Below-removing area** --> if a word is in this area the fct_below function will remove it from the original vocabulary during [the tokens filtering](#4topic-modelling),
-  so it will be not considerate at the topic-modelling step .
 * `linearThresholding` --> linear function with $ 0 <= slop <= 1$
   example : with $slop = 0.25$ and $intercept = 0$
   ![linear_thresholding](src/rel_figure.png)
 * `logarithmThresholding` --> exponential reverse function with 2 arguments : `limit`
   example : $limit = 0.6$
   ![logarithm_thresholding](src/log_figure.png)
+
+**Document appearances** --> number of documents (articles in our case) in which the considerate token (word) is present.
+
+**Above-removing area** --> if a word is in this area the fct_above function will remove it from 
+the original vocabulary during [the tokens filtering](#4topic-modelling),
+so it will be not considerate at the topic-modelling step .
+
+**Below-removing area** --> if a word is in this area the fct_below function will remove it from 
+the original vocabulary during [the tokens filtering](#4topic-modelling),
+so it will be not considerate at the topic-modelling step .
 
 Example of BAD WORDS SETTINGS overwriting:
 
@@ -595,6 +602,9 @@ bad_words_kwargs = UpdateBadWordsKwargs(
     kwargs_below=kwargs_below
 )
 ```
+
+_**Warning :_** pay attention with the "bad words" settings for example to high intercept for the "below_fct" can generate NoWordsException which mean that
+no words past the filtering step . 
 
 ## Lexical
 
