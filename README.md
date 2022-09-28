@@ -151,7 +151,6 @@ sudo ls /var/lib/docker/volumes/<volume_name>/_data
 
 ## Explanation
 
-
 1. [Rss feed configuration](#1rss-feed-configuration)
 2. [Article HTML cleaning](#2article-html-cleaning)
 3. [Text Pre-processing](#3text-pre-processing)
@@ -159,9 +158,7 @@ sudo ls /var/lib/docker/volumes/<volume_name>/_data
 5. [Window Similarity computation](#5window-similarity-computation)
 6. [API](#6api)
 
-
 ### 1.RSS feed configuration
-
 
 **rss feed** are perfect data source to fetch information about articles in **real-time** (i.e publication date  , title , author name , label).
 the rss plugging is handled by the file `config/RSS_feeds.json` , all the **rss feed** addresses must be referenced in this file.
@@ -193,9 +190,7 @@ format describe above.
 
 *Note*: you can add Rss source during service Runtime using [API](#6api) endpoint :  [GET] `RSSNewsfeedSource/AddRSSFeedSource`
 
-
 ### 2.Article HTML cleaning
-
 
 <ins>**Cleaning Steps Schema :**</ins>
 
@@ -300,9 +295,7 @@ Result after remove **global** and **specific** undesirable tags:
 "the title of the article. some information to keep after cleaning. "
 ```
 
-
 ### 3.Text Pre-processing
-
 
 In the previous section , we see how we extract the main content of an article , now we moove to the Pre-processing text.
 Topic Modelling isn't a **multilingual** process, so we had to specify a  targeted **lang** during the text preprocessing step because
@@ -322,9 +315,7 @@ we just want to treat text in the targeted lang else it will not be efficient.
    they can be analysed as a single item, identified by the **word's lemma**, or dictionary form.
    example : "analysed" , "analyse" , "analysing" are transformed to the lemma "analysis" after lemmatization.
 
-
 ### 4.Topic Modelling
-
 
 <ins>**Topic Modeling Schema :**</ins>
 
@@ -344,8 +335,8 @@ we just want to treat text in the targeted lang else it will not be efficient.
 
 We use different topic model kernels:
 
-* unsupervised kernel : [LDA³](https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) , [CoreX⁴](https://github.com/gregversteeg/corex_topic)
-* supervised kernel : [TFIDF⁵](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) , Guided LDA (or semi-supervised LDA) , Guided CoreX (or semi-supervised CoreX)
+* unsupervised kernel : [LDA⁴](https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) , [CoreX⁵](https://github.com/gregversteeg/corex_topic)
+* supervised kernel : [TFIDF⁶](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) , Guided LDA (or semi-supervised LDA) , Guided CoreX (or semi-supervised CoreX)
 
 **_Note 1_** : **Guided LDA** and **Guided CoreX** kernel are based on the **LDA** and **CoreX** kernel , the difference is that in the guided case
 we use label **seed words** to make the training converge around these words.
@@ -372,9 +363,7 @@ _here is a **training** example schema_:
 
 **_Note_** : we use the [Gensim](https://radimrehurek.com/gensim/models/ldamodel.html) LDA implementation.
 
-
 ### 5.Window Similarity computation
-
 
 **Similarity Computation Steps Schema :**
 
@@ -396,15 +385,17 @@ $Ji = \frac{|Ai \cap Bi|}{|Ai \cup Bi|} = \frac{|Ai\cap Bi|}{|Ai| + |Bi| – |Ai
 
 here:
 
-$Ai\cap Bi = \{"football" , "Manchester" , "goals"\}$
+$Ai\cap Bi=\{"football" , "Manchester" , "goals"\}$
+
 $|Ai\cap Bi| = 3$
 
 and
 
-$Ai\cup Bi = \{"football" , "Manchester" , "united" , "devils" , "Traford" , "victory" , "goals" , "city" , "Arsenal" , "win"\}$
+$Ai\cup Bi=\{"football" , "Manchester" , "united" , "devils" , "Traford" , "victory" , "goals" , "city" , "Arsenal" , "win"\}$
+
 $|Ai\cup Bi| = 10$
 
-finally : 
+finally :
 
 $Ji =\dfrac{3}{10}$
 
@@ -431,19 +422,14 @@ _Representation of percentile ranges below:_
 
 _**Note**_ : we use normal distribution because we previously analyse the distribution of our similarity calculators that fit normal distribution (this distribution is more efficient to detect abnormal change).
 
-
 ### 6.API
 
-
 (Not available yet but you can see query doc at https://127.0.0.1:5000/api/v1  , when the service is running.)
-
-
 
 ## Server Settings
 
 this section will help you to custom the service , most of the settings refer to the [explanation](#explanation) section.
 You need to overwrite the `config/server_settings.py` file else you can keep the default settings.
-
 
 ### collect settings
 
@@ -456,13 +442,10 @@ You need to overwrite the `config/server_settings.py` file else you can keep the
 **_Note_** : The collect process can write data in **fileSystem** if you used the [persistent](#installation-and-execution) mode (specify `output_path` )
 so you can set `COLLECT_RSS_IMAGES` , `COLLECT_ARTICLE_IMAGES` and `COLLECT_HTML_ARTICLE_PAGE` as True else it return an exception.
 
-
 ### labels idx settings.
 
 * `LABELS_IDX` : List of targeting labels .
   **_Warning_** : You can't change `LABELS_IDX` during runtime, you can't add new label because we want to keep label traceability.
-
-
 
 ### Process window settings
 
@@ -471,8 +454,6 @@ so you can set `COLLECT_RSS_IMAGES` , `COLLECT_ARTICLE_IMAGES` and `COLLECT_HTML
 
 **_Note_** : `LOOP_DELAY_PROCESS` must be superior to `LOOP_DELAY_COLLECT` because the processing need data collecting first
 else it returns an exception.
-
-
 
 ### Text pre-processing settings
 
@@ -505,7 +486,6 @@ PREPROCESSOR = MetaTextPreProcessor(
     undesirable_words=my_undesirable_words
 )
 ```
-
 
 ### Macro-calculator settings (**supervised calculator**)
 
@@ -558,7 +538,6 @@ macro_kwargs_results : dict = {
 }
 ```
 
-
 ### Micro-calculator settings (**unsupervised calculator**)
 
 Customise Micro-calculator settings overwriting the **#MICRO-CALCULATOR SETTINGS** section in `config/server_settings.py`.
@@ -585,7 +564,6 @@ micro_training_args = {
     "tree" : False
 }
 ```
-
 
 ### bad words removing settings
 
@@ -641,8 +619,6 @@ bad_words_kwargs = UpdateBadWordsKwargs(
 
 **_Warning :_** Pay attention with the "bad words" settings for example a too high "intercept" for the "below_fct" can generate NoWordsException which mean that
 no words past the filtering step , so the model consider that the texts are empty and return NoWordsException .
-
-
 
 ## Lexical
 
