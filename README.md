@@ -24,7 +24,7 @@ the news analysis is sequential which means that the current window of data that
 
 We use topic modeling methods to get the words clusters that represent topics (thematics) with strong relationship in our window , and we can compute the similarity between 2 consecutive windows using **Jaccard similarity**.
 
-### Basic architecture schema:
+### Base architecture schema:
 
 ![A test image](src/diagram/main_diagram.png)
 
@@ -132,7 +132,7 @@ docker run -d -p 5000:5000 --name <container_name> novelties-detection-image:lat
 
 Then you can check the logs of the sever to check is everything is OK , or navigate in the volume if you activate persistent way.
 The server run locally on all address with port **5000** of your machine ,
-you can see the api swagger documentation at this link on your local host: *http://127.0.0.1:5000/api/v1/*
+you can see the api swagger documentation at this link on your local host: *http://127.0.0.1:5000/api/v1*
 
 ```bash
 
@@ -225,7 +225,7 @@ There are 2 types of "undesirable" tags:
 ```
 
 you can add tags manually overwriting the `config/RSS_feeds.json` file to custom your cleaning process before Runtime,
-or you can add global tags during service Runtime using [API](#6api) endpoint `/RSSNewsfeedSource/AddRSSFeedTags` during Runtime.
+or you can add global tags during service Runtime using [API](#6api) endpoint `RSSNewsfeedSource/AddRSSFeedTags` during Runtime.
 
 <ins>**Example of tags cleaning:**</ins>
 
@@ -357,7 +357,7 @@ _Example of `config/seed.json` file_:
 }
 ```
 
-_here is a **training** example schema_:
+_here is the different types of **training** example schema_:
 
 ![training_schema](src/diagram/training_model_schema.drawio.png)
 
@@ -385,13 +385,13 @@ $Ji = \frac{|Ai \cap Bi|}{|Ai \cup Bi|} = \frac{|Ai\cap Bi|}{|Ai| + |Bi| – |Ai
 
 here:
 
-$Ai\cap Bi=\{"football" , "Manchester" , "goals"\}$
+$Ai\cap Bi= \{"football" , "Manchester" , "goals"\}$
 
 $|Ai\cap Bi| = 3$
 
 and
 
-$Ai\cup Bi=\{"football" , "Manchester" , "united" , "devils" , "Traford" , "victory" , "goals" , "city" , "Arsenal" , "win"\}$
+$Ai\cup Bi= \{"football" , "Manchester" , "united" , "devils" , "Traford" , "victory" , "goals" , "city" , "Arsenal" , "win"\}$
 
 $|Ai\cup Bi| = 10$
 
@@ -401,7 +401,7 @@ $Ji =\dfrac{3}{10}$
 
 2. then ,  we standardize the similarity scores to obtain the final similarity score between the window n and n-1 :
 
-$J = \dfrac{\sum_{i=0}^{k}{Ji}}{k}$
+$J = \dfrac{ \sum_{i=0}^{k}{Ji} }{k}$
 
 3. The process isn't the same for unsupervised case , we append every cluster of words for each topic then we compute the total Jaccard similarity.
 4. Finally , we will classifie the change rate between two windows using normal distribution classifier .
@@ -503,12 +503,6 @@ _There are 3 types of Macro Calculator_ :
 * `GuidedLDASequentialSimilarityCalculator` :  Using LDA kernel (specific training arguments in original [doc](https://radimrehurek.com/gensim/models/ldamodel.html)).
   _**Warning**_ : You can't use following parameters -->  `corpus`, `num_topics`, `id2word` , `eta` .
 
-`macro_kwargs_results` arguments :
-
-* `ntop` : Integer --> number of top words use to compute Jaccar similarity between 2 windows for a specific 'label'.
-* `remove_seed_words` : Boolean : True --> remove seed words of label top words during Jaccar similarity computation.
-* `exclusive` : Boolean : True --> remove top words that belong to many labels during Jaccar similarity computation.
-
 **_Note 1_** : we already made a macro-calculator selection step (not explain here) , so the default macro-calculator is the better one for change detection.
 
 _**Note 2**_ : As explain in [note 2](#4topic-modelling) , you need to specify seed words if you use semi-supervising learning
@@ -520,6 +514,13 @@ to increase the weight of the seed words in the corpus , else you can keep the d
 
 **_Warning_** : Do not confuse seed words parameters with `seed` parameters in `GuidedCoreXSequentialSimilarityCalculator` instance
 that enabled reproducible training.
+
+`macro_kwargs_results` arguments :
+
+* `ntop` : Integer --> number of top words use to compute Jaccar similarity between 2 windows for a specific 'label'.
+* `remove_seed_words` : Boolean : True --> remove seed words of label top words during Jaccar similarity computation.
+* `exclusive` : Boolean : True --> remove top words that belong to many labels during Jaccar similarity computation.
+
 
 _Example of Macro-Calculator settings_:
 
@@ -577,7 +578,7 @@ There are 3 types of filtering functions :
 * `absoluteThresholding` --> linear function with $slop = 0$
   example : with $intercept = 100$
   ![absolute_thresholding](src/abs_figure.png)
-* `linearThresholding` --> linear function with $ 0 <= slop <= 1$
+* `linearThresholding` --> linear function with $0 <= slop <= 1$
   example : with $slop = 0.25$ and $intercept = 0$
   ![linear_thresholding](src/rel_figure.png)
 * `logarithmThresholding` --> exponential reverse function with 2 arguments : `limit`
