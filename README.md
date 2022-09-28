@@ -1,10 +1,10 @@
 # Novelties Detection
 
 Novelties Detection project is a **real-time automatic newspaper semantic analyser** service , The project purpose is to understand information spreading in real-time inside a news flow .
-The news provide from different **rss feed¹** source like influent newspaper  , influent news websites ( ie : New-York Times  , Fox news ...). The basic features of the service is to recognize topic contain in news using **topic modeling²** approach
+The news provide from different **rss feed¹** source like influential newspaper  , influential news websites ( ie : New-York Times  , Fox news ...). The basic features of the service is to recognize topic contain in news using **topic modeling²** approach
 then we can detect what topics are novelties or habits  , what topic appears or disappears at each time window ...
 
-_Note_ : The default service settings are in **French** and the **rss feed** are French Source information . But you can set your own source information as explain in this [section](#1rss-feed-configuration)
+_**Note**_ : The default service settings are in **French** and the **rss feed** are French Source information . But you can set your own source information as explain in this [section](#1rss-feed-configuration)
 
 ## How the service works.
 
@@ -14,13 +14,13 @@ The service works as a two-hand service:
   with **rss feed** that contain information about new articles posted at each moment by the newspaper website.
   If you want to learn more about **rss feed** usage ,  see [here](https://en.wikipedia.org/wiki/RSS).
   _This process is repeat every **N** minutes as referred in the [base schema](#basic-architecture-schema) below_.
-* Second ,  we apply topic model method on articles corpus that return keywords relationships and main topics contain in the current corpus (in our case the articles collected in the considered time window).
+* Second ,  we apply topic model method on article corpus that return keywords relationships and main topics contain in the current corpus (in our case the articles collected in the considered time window).
   before we process data cleaning and text pre-processing before topic modeling operation .
   _This process is repeat every **M** minutes as referred in the [base schema](#basic-architecture-schema) below_.
 
 The service analyse the articles collected at each time windows and is able to provide thematics and keywords that appear,
 disappear or stay during the considered time window ( ie : the topics containing the  words "queen" , "Elisabeth" , "death" appear in the window 19h - 20h Friday 09/09/2022).
-the news analysis is sequential which means that the current window of data that contain the articles informations of this time window is compared to the last window.
+the news analysis is sequential which means that the current window of data that contain the article informations of this time window is compared to the last window.
 
 We use topic modeling methods to get the words clusters that represent topics (thematics) with strong relationship in our window , and we can compute the similarity between 2 consecutive windows using **Jaccard similarity**.
 
@@ -41,7 +41,7 @@ please refer to the [docker documentation](https://docs.docker.com/engine/instal
 
 ### with Shell
 
-make sure that you have pip for python 3.8 install on your machine else you can use the following commands
+make sure that you have pip for python 3.8 installed on your machine else you can use the following commands
 for pip installation:
 
 ```bash
@@ -151,6 +151,7 @@ sudo ls /var/lib/docker/volumes/<volume_name>/_data
 
 ## Explanation
 
+
 1. [Rss feed configuration](#1rss-feed-configuration)
 2. [Article HTML cleaning](#2article-html-cleaning)
 3. [Text Pre-processing](#3text-pre-processing)
@@ -158,7 +159,9 @@ sudo ls /var/lib/docker/volumes/<volume_name>/_data
 5. [Window Similarity computation](#5window-similarity-computation)
 6. [API](#6api)
 
+
 ### 1.RSS feed configuration
+
 
 **rss feed** are perfect data source to fetch information about articles in **real-time** (i.e publication date  , title , author name , label).
 the rss plugging is handled by the file `config/RSS_feeds.json` , all the **rss feed** addresses must be referenced in this file.
@@ -190,11 +193,13 @@ format describe above.
 
 *Note*: you can add Rss source during service Runtime using [API](#6api) endpoint :  [GET] `RSSNewsfeedSource/AddRSSFeedSource`
 
+
 ### 2.Article HTML cleaning
 
-**Cleaning Steps Schema :**
 
-<img src="./src/diagram/cleaning_diagram.png" alt="drawing" width="400"/>
+<ins>**Cleaning Steps Schema :**</ins>
+
+<img src="./src/diagram/cleaning_diagram.png" alt="drawing" height="400"/>
 
 1. at the first step , we selected and kept the **<article/>** tag (content of the article) .
 2. HTML page contain garbage informations like advertising , author information , references to
@@ -217,15 +222,19 @@ There are 2 types of "undesirable" tags:
 <ins> Tags example : </ins>
 
 ```json
-{"tag" :  "div" , "class" : "date_time_div" , "id" : "O7p469M_time_div" }
+{
+  "tag" :  "div" ,
+  "class" : "date_time_div" ,
+  "id" : "O7p469M_time_div"
+}
 ```
 
 you can add tags manually overwriting the `config/RSS_feeds.json` file to custom your cleaning process before Runtime,
 or you can add global tags during service Runtime using [API](#6api) endpoint `/RSSNewsfeedSource/AddRSSFeedTags` during Runtime.
 
-**Example of tags cleaning:**
+<ins>**Example of tags cleaning:**</ins>
 
-article HTML page before cleaning undesirable tags.
+Article HTML page before cleaning undesirable tags.
 
 ```html
 <html>
@@ -291,15 +300,17 @@ Result after remove **global** and **specific** undesirable tags:
 "the title of the article. some information to keep after cleaning. "
 ```
 
+
 ### 3.Text Pre-processing
+
 
 In the previous section , we see how we extract the main content of an article , now we moove to the Pre-processing text.
 Topic Modelling isn't a **multilingual** process, so we had to specify a  targeted **lang** during the text preprocessing step because
 we just want to treat text in the targeted lang else it will not be efficient.
 
-**Text Pre-Processing Steps Schema :**
+<ins>**Text Pre-Processing Steps Schema :**</ins>
 
-<img src="./src/diagram/text_preprocessing_diagram.png" alt="drawing" width="400"/>
+<img src="./src/diagram/text_preprocessing_diagram.png" alt="drawing" height="400"/>
 
 1. **lang detection** : the first step of text preprocessing is lang detection , we don't want to pre-process wrong lang text, so we are making filtering.
 2. **tokenization** : tokenization in NLP is a set of methods that divide string text in logical elements (called **token**)
@@ -311,12 +322,13 @@ we just want to treat text in the targeted lang else it will not be efficient.
    they can be analysed as a single item, identified by the **word's lemma**, or dictionary form.
    example : "analysed" , "analyse" , "analysing" are transformed to the lemma "analysis" after lemmatization.
 
+
 ### 4.Topic Modelling
 
-**Topic Modeling Schema :**
 
-<img src="./src/diagram/topic_modelling_diagram.png" alt="drawing" width="400"/>
+<ins>**Topic Modeling Schema :**</ins>
 
+<img src="./src/diagram/topic_modelling_diagram.png" alt="drawing" height="400"/>
 
 1. **update global dictionary** : we use a **global dictionary** as a register of token (words , punctuation , etc...) for all window corpus (set of article texts in the time window collect).
    The purpose of this dictionary is to count every token occurrences, although we can use it to filter rare token or really common token (which are not **Stopwords**). This dictionary is updated at every new window appearances.
@@ -327,7 +339,7 @@ we just want to treat text in the targeted lang else it will not be efficient.
    This model representation is more efficient for training topic model.
 4. **train model** : this part is the main part of the process , we have 2 type of training : **unsupervised training** using unlabeled texts and **supervised training** using labeled texts.
    The purpose of the supervised modelling is to return change for a predefined label and follow the evolution of the label in time.
-   The unsupervised way is used to detect latent topics in a bunch of articles independently of paper categories (label) , this type of training can return us complementary information about the news composition.
+   The unsupervised way is used to detect latent topics in a bunch of articles independently of paper categories (labels) , this type of training can return us complementary information about the news composition.
    In other words , the unsupervised modelling allows us to follow the **micro topics** evolution (little topics that appears punctually in a window) while the supervised method allows us to follow big **categories** evolution (topic persisting through many windows).
 
 We use different topic model kernels:
@@ -344,7 +356,7 @@ _**Note 2**_ :  use your own seed words relative to your labels overwriting the 
 with labels as keys and list of seed words (relative to the key topics) as values else you can keep the original
 `config/seed.json` file.
 
-Example of `config/seed.json` file:
+_Example of `config/seed.json` file_:
 
 ```json
 {
@@ -354,41 +366,45 @@ Example of `config/seed.json` file:
 }
 ```
 
-here is a **training** example schema:
+_here is a **training** example schema_:
 
 ![training_schema](src/diagram/training_model_schema.drawio.png)
 
 **_Note_** : we use the [Gensim](https://radimrehurek.com/gensim/models/ldamodel.html) LDA implementation.
 
+
 ### 5.Window Similarity computation
+
 
 **Similarity Computation Steps Schema :**
 
-<img src="./src/diagram/Similarity_computation_diagram.png" alt="drawing" width="400"/>
+<img src="./src/diagram/Similarity_computation_diagram.png" alt="drawing" height="400"/>
 
 1. we use similarity calculator extracting two consecutive models corresponding to two consecutive windows, and we compute [Jaccard similarity](https://pyshark.com/jaccard-similarity-and-jaccard-distance-in-python/)
    the supervised case we compute **Jaccard similarity** for each topic corresponding to a label, and we stack similarity score in a list:
    **example** : assume the two below cluster words for the label i -> "sport":
 
 ```json
-{"Ai" :  ["football" , "Manchester" , "united" , "devils" , "Traford" , "victory" , "goals"],
-"Bi" :  ["football" , "Manchester" , "city" , "Arsenal" , "win" , "goals"]}
+{
+  "Ai" :  ["football" , "Manchester" , "united" , "devils" , "Traford" , "victory" , "goals"],
+  "Bi" :  ["football" , "Manchester" , "city" , "Arsenal" , "win" , "goals"]
+}
 ```
 
 **Jaccard similarity** formula is:
-$Ji = \frac{|Ai \cap Bi|}{|Ai \cup Bi|} = \frac{|Ai \cap Bi|}{|Ai| + |Bi| – |Ai \cup Bi|}$
+$Ji = \frac{|Ai \cap Bi|}{|Ai \cup Bi|} = \frac{|Ai\cap Bi|}{|Ai| + |Bi| – |Ai\cup Bi|}$
 
 here:
 
-$Ai \cap Bi = \{"football" , "Manchester" , "goals"\}$
-$|Ai \cap Bi| = 3$
+$Ai\cap Bi = \{"football" , "Manchester" , "goals"\}$
+$|Ai\cap Bi| = 3$
 
 and
 
-$Ai \cup Bi = \{"football" , "Manchester" , "united" , "devils" , "Traford" , "victory" , "goals" , "city" , "Arsenal" , "win"\}$
-$|Ai \cup Bi| = 10$
+$Ai\cup Bi = \{"football" , "Manchester" , "united" , "devils" , "Traford" , "victory" , "goals" , "city" , "Arsenal" , "win"\}$
+$|Ai\cup Bi| = 10$
 
-finally
+finally : 
 
 $Ji =\dfrac{3}{10}$
 
@@ -397,14 +413,13 @@ $Ji =\dfrac{3}{10}$
 $J = \dfrac{\sum_{i=0}^{k}{Ji}}{k}$
 
 3. The process isn't the same for unsupervised case , we append every cluster of words for each topic then we compute the total Jaccard similarity.
-
 4. Finally , we will classifie the change rate between two windows using normal distribution classifier .
    The final result is a range percentiles :
 
 In our case , a percentile is a similarity score below which a given percentage k of scores in its frequency distribution falls (exclusive definition) or a score at or below which a given percentage falls (inclusive definition).
 For example, the 90th percentile is the similarity score below which (exclusive) or at or below which (inclusive) 90% of the scores in the distribution may be found:
 
-_you can see a representation of the 90th percentile of a normal distribution below :_ 
+_you can see a representation of the 90th percentile of a normal distribution below :_
 
 ![percentile-normal-curve](src/normal_percentile.png)
 
@@ -416,48 +431,58 @@ _Representation of percentile ranges below:_
 
 _**Note**_ : we use normal distribution because we previously analyse the distribution of our similarity calculators that fit normal distribution (this distribution is more efficient to detect abnormal change).
 
+
 ### 6.API
 
-(Not available yet but you can see query doc at https://127.0.0.1:5000/api/v1 )
+
+(Not available yet but you can see query doc at https://127.0.0.1:5000/api/v1  , when the service is running.)
+
+
 
 ## Server Settings
 
 this section will help you to custom the service , most of the settings refer to the [explanation](#explanation) section.
 You need to overwrite the `config/server_settings.py` file else you can keep the default settings.
 
+
 ### collect settings
 
-* `LOOP_DELAY_COLLECT` : integer --> delay between 2 collect process corresponding to the N value in the main [schema](#basic-architecture-schema) (**in minutes**)
-* `COLLECT_RSS_IMAGES` : boolean --> allows the collect of images in the rss feed (if True you need to specify `OUTPUT_PATH`)
-* `COLLECT_ARTICLE_IMAGES` : boolean --> allows the collect of images in the article page.html (if True you need to specify `OUTPUT_PATH`)
-* `COLLECT_HTML_ARTICLE_PAGE` : boolean --> allows the collect of the html article (if True you need to specify `OUTPUT_PATH`)
-* `PRINT_LOG` : boolean --> allows log of the collect process (performance and error)
+* `LOOP_DELAY_COLLECT` : Integer --> delay **in minutes** between 2 collect process corresponding to the N value in the main [schema](#basic-architecture-schema) .
+* `COLLECT_RSS_IMAGES` : Boolean : True --> allows the collect of images in the rss feed .
+* `COLLECT_ARTICLE_IMAGES` : Boolean : True --> allows the collect of images in the article page.html.
+* `COLLECT_HTML_ARTICLE_PAGE` : Boolean : True --> allows the collect of the html article.
+* `PRINT_LOG` : Boolean : True --> allows log of the collect process (performance and error).
 
-**_Note_** : the collect process can write data in **fileSystem** if you used the [persistent](#installation-and-execution) mode (specify `OUTPUT_PATH`)
+**_Note_** : The collect process can write data in **fileSystem** if you used the [persistent](#installation-and-execution) mode (specify `output_path` )
 so you can set `COLLECT_RSS_IMAGES` , `COLLECT_ARTICLE_IMAGES` and `COLLECT_HTML_ARTICLE_PAGE` as True else it return an exception.
+
 
 ### labels idx settings.
 
-* `LABELS_IDX` : list of targeting label .
+* `LABELS_IDX` : List of targeting labels .
   **_Warning_** : You can't change `LABELS_IDX` during runtime, you can't add new label because we want to keep label traceability.
+
+
 
 ### Process window settings
 
-* `LOOP_DELAY_PROCESS` : integer --> delay between 2 Windows processing corresponding to the M value in the main [schema](#basic-architecture-schema) (**in minutes**)
-* `MEMORY_LENGTH` : integer --> number of window keep in memory (can't exceed 30 because of memory consumption).
+* `LOOP_DELAY_PROCESS` : Integer --> delay **in minutes** between 2 Windows processing corresponding to the M value in the main [schema](#basic-architecture-schema) .
+* `MEMORY_LENGTH` : Integer --> number of window keep in memory (can't exceed 30 because of memory consumption).
 
 **_Note_** : `LOOP_DELAY_PROCESS` must be superior to `LOOP_DELAY_COLLECT` because the processing need data collecting first
 else it returns an exception.
 
+
+
 ### Text pre-processing settings
 
-* `LANG` : lang code of the pre-processed texts (can't pre-process text in other lang because the service isn't multilingual)
-* `LEMMATIZE` : boolean to lemmatize text.
-* `REMOVE_STOP_WORDS` : boolean to remove stop words.
-* `REMOVE_NUMBERS` : boolean to remove numbers in text
-* `REMOVE_SMALL_WORDS` : boolean control the small words removing
+* `LANG` : Lang code of the pre-processed texts (can't pre-process text in other lang because the service isn't multilingual)
+* `LEMMATIZE` : Boolean : True --> lemmatize text.
+* `REMOVE_STOP_WORDS` : Boolean : True --> remove stop words.
+* `REMOVE_NUMBERS` : Boolean : True --> remove numbers in text.
+* `REMOVE_SMALL_WORDS` : Boolean : True --> remove small words.
 
-**_Note_** : you can specify the minimum length of a "small words" or "tall words" and you can add a predefine list of words to remove
+**_Note_** : You can specify the minimum length of a "small words" or "tall words" and you can add a predefine list of words to remove
 follow the example:
 
 ```python
@@ -481,33 +506,42 @@ PREPROCESSOR = MetaTextPreProcessor(
 )
 ```
 
+
 ### Macro-calculator settings (**supervised calculator**)
 
-Customise Macro-calculator settings overwriting the **#MACRO-CALCULATOR SETTINGS**
+Customise Macro-calculator settings overwriting the **#MACRO-CALCULATOR SETTINGS** section in `config/server_settings.py`.
 
 * `MACRO_CALCULATOR_TYPE` : Type of the Macro-Calculator.
-* `macro_training_args` : dictionary of arguments relatives to the training of the kernel.
-* `macro_kwargs_results` : dictionary of arguments relatives to the similarity computation between windows.
+* `macro_training_args` : Dictionary of arguments relatives to the training of the kernel.
+* `macro_kwargs_results` : Dictionary of arguments relatives to the similarity computation between windows.
 
-There are 3 types of Macro Calculator :
+_There are 3 types of Macro Calculator_ :
 
-* `TFIDFSequentialSimilarityCalculator` : using a TFIDF kernel (no specific training arguments available yet).
-* `GuidedCoreXSequentialSimilarityCalculator` :  using a CoreX kernel (specific training arguments in original [doc](https://github.com/gregversteeg/corex_topic/blob/master/corextopic/corextopic.py) line 18).
-  _**Warning**_ : you can't use following parameters --> `n_hidden` .
-* `GuidedLDASequentialSimilarityCalculator` :  using LDA kernel (specific training arguments in original [doc](https://radimrehurek.com/gensim/models/ldamodel.html)).
-  _**Warning**_ : you can't use following parameters -->  `corpus`, `num_topics`, `id2word` , `eta` .
+* `TFIDFSequentialSimilarityCalculator` : Using a TFIDF kernel (no specific training arguments available yet).
+* `GuidedCoreXSequentialSimilarityCalculator` :  Using a CoreX kernel (specific training arguments in original [doc](https://github.com/gregversteeg/corex_topic/blob/master/corextopic/corextopic.py) line 18).
+  _**Warning**_ : You can't use following parameters --> `n_hidden` .
+* `GuidedLDASequentialSimilarityCalculator` :  Using LDA kernel (specific training arguments in original [doc](https://radimrehurek.com/gensim/models/ldamodel.html)).
+  _**Warning**_ : You can't use following parameters -->  `corpus`, `num_topics`, `id2word` , `eta` .
 
-_**Note** 1_ : as explain in [note 2](#4topic-modelling) , you need to specify seed words if you use semi-supervising learning
+`macro_kwargs_results` arguments :
+
+* `ntop` : Integer --> number of top words use to compute Jaccar similarity between 2 windows for a specific 'label'.
+* `remove_seed_words` : Boolean : True --> remove seed words of label top words during Jaccar similarity computation.
+* `exclusive` : Boolean : True --> remove top words that belong to many labels during Jaccar similarity computation.
+
+**_Note 1_** : we already made a macro-calculator selection step (not explain here) , so the default macro-calculator is the better one for change detection.
+
+_**Note 2**_ : As explain in [note 2](#4topic-modelling) , you need to specify seed words if you use semi-supervising learning
 (`GuidedLDASequentialSimilarityCalculator` , `GuidedCoreXSequentialSimilarityCalculator`) else you can keep default seed words in `config/seed.json`
 (just available for default `LANG` and default `LABELS_IDX`).
 
-_**Note 2**_ : If you are using the 2 last class , you can specify an `anchor_strength` training parameter (semi-supervising learning)
+_**Note 3**_ : If you are using the 2 last class , you can specify an `anchor_strength` training parameter (semi-supervising learning)
 to increase the weight of the seed words in the corpus , else you can keep the default `anchor_strength` value.
 
 **_Warning_** : Do not confuse seed words parameters with `seed` parameters in `GuidedCoreXSequentialSimilarityCalculator` instance
 that enabled reproducible training.
 
-Example of Macro-Calculator settings:
+_Example of Macro-Calculator settings_:
 
 ```python
 # MACRO-CALCULATOR SETTINGS
@@ -524,9 +558,10 @@ macro_kwargs_results : dict = {
 }
 ```
 
+
 ### Micro-calculator settings (**unsupervised calculator**)
 
-Customise Micro-calculator settings overwriting the **#MICRO-CALCULATOR SETTINGS**
+Customise Micro-calculator settings overwriting the **#MICRO-CALCULATOR SETTINGS** section in `config/server_settings.py`.
 
 * `MICRO_CALCULATOR_TYPE` : Type of the Micro-Calculator.
 * `micro_training_args` : dictionary of arguments relatives to the training of the kernel.
@@ -539,7 +574,7 @@ There are 2 types of Micro-Calculator :
 * `LDASequentialSimilarityCalculatorFixed` :  using LDA kernel ( specific training arguments in original doc ).
   _**Warning**_ : you can't use the following parameters -->  `corpus`, `num_topics`, `id2word` .
 
-Example of Micro-Calculator settings:
+_Example of Micro-Calculator settings_:
 
 ```python
 # MICRO-CALCULATOR SETTINGS
@@ -550,6 +585,7 @@ micro_training_args = {
     "tree" : False
 }
 ```
+
 
 ### bad words removing settings
 
@@ -572,19 +608,19 @@ There are 3 types of filtering functions :
 
 **Document appearances** --> number of documents (articles in our case) in which the considerate token (word) is present.
 
-**Above-removing area** --> if a word is in this area the fct_above function will remove it from 
+**Above-removing area** --> if a word is in this area the fct_above function will remove it from
 the original vocabulary during [the tokens filtering](#4topic-modelling),
 so it will be not considerate at the topic-modelling step .
 
-**Below-removing area** --> if a word is in this area the fct_below function will remove it from 
+**Below-removing area** --> if a word is in this area the fct_below function will remove it from
 the original vocabulary during [the tokens filtering](#4topic-modelling),
 so it will be not considerate at the topic-modelling step .
 
-Example of BAD WORDS SETTINGS overwriting:
+_Example of BAD WORDS SETTINGS overwriting_:
 
 ```python
 #BAD WORDS SETTINGS
-# for remove words that no satisfing some frequency condition
+# for remove words that no satisfying some frequency condition
 fct_above : Callable = linearThresholding
 fct_below : Callable = absoluteThresholding
 kwargs_above : dict = {
@@ -603,8 +639,10 @@ bad_words_kwargs = UpdateBadWordsKwargs(
 )
 ```
 
-_**Warning :_** pay attention with the "bad words" settings for example to high intercept for the "below_fct" can generate NoWordsException which mean that
-no words past the filtering step . 
+**_Warning :_** Pay attention with the "bad words" settings for example a too high "intercept" for the "below_fct" can generate NoWordsException which mean that
+no words past the filtering step , so the model consider that the texts are empty and return NoWordsException .
+
+
 
 ## Lexical
 
@@ -614,4 +652,4 @@ no words past the filtering step .
 3. Persistent : The persistent "mode" save the collect data to the `output_path` directory.
 4. LDA : Latent Dirichlet Allocation.
 5. TFIDF : term frequency–inverse document frequency.
-6. CoreX : correlation explanation.
+6. CoreX : Correlation Explanation.
