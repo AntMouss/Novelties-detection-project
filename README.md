@@ -1,8 +1,8 @@
 # Novelties Detection
 
 Novelties Detection project is a **real-time automatic newspaper semantic analyser** service , The project purpose is to understand information spreading in real-time inside a news flow .
-The news provide from different rss feed source like influent newspaper  , influent news websites ( ie : New-York Times  , Fox news ...). The basic features of the service is to recognize topic contain in news feed using **topic modeling¹** approach
-then we can detect what topics are a novelties or habits  , what topic appear or disappear at each time window ...
+The news provide from different **rss feed¹** source like influent newspaper  , influent news websites ( ie : New-York Times  , Fox news ...). The basic features of the service is to recognize topic contain in news using **topic modeling²** approach
+then we can detect what topics are novelties or habits  , what topic appears or disappears at each time window ...
 
 _Note_ : The default service settings are in **French** and the **rss feed** are French Source information . But you can set your own source information as explain in this [section](#1rss-feed-configuration)
 
@@ -11,18 +11,18 @@ _Note_ : The default service settings are in **French** and the **rss feed** are
 The service works as a two-hand service:
 
 * First , the service collect data from various newspaper on the web in real-time
-  with rss feeds that contain information about new articles posted every moment by the newspaper website.
+  with **rss feed** that contain information about new articles posted at each moment by the newspaper website.
   If you want to learn more about **rss feed** usage ,  see [here](https://en.wikipedia.org/wiki/RSS).
-  _this process is repeat every **N** minutes as referred in the [base schema](#basic-architecture-schema) bellow _.
+  _This process is repeat every **N** minutes as referred in the [base schema](#basic-architecture-schema) below_.
 * Second ,  we apply topic model method on articles corpus that return keywords relationships and main topics contain in the current corpus (in our case the articles collected in the considered time window).
   before we process data cleaning and text pre-processing before topic modeling operation .
-  _this process is repeat every **M** minutes as referred in the [base schema](#basic-architecture-schema) bellow_.
+  _This process is repeat every **M** minutes as referred in the [base schema](#basic-architecture-schema) below_.
 
-The service analyse the articles collected by each time windows and is able to provide thematics and keywords that appear,
-disappear or stable during the considered time window ( ie : the topics containing the  words "queen" , "Elisabeth" , "death" appear in the window 19h - 20h Friday 09/09/2022).
-the news analysis is sequential that means that the current window of data that contain the article information of this time window is compared to the last window.
+The service analyse the articles collected at each time windows and is able to provide thematics and keywords that appear,
+disappear or stay during the considered time window ( ie : the topics containing the  words "queen" , "Elisabeth" , "death" appear in the window 19h - 20h Friday 09/09/2022).
+the news analysis is sequential which means that the current window of data that contain the articles informations of this time window is compared to the last window.
 
-We use topic modeling methods to get the words clusters that represent thematics (topics) with strong relationship in our window data, and we can compute the similarity between 2 consecutive windows using Jaccard similarity.
+We use topic modeling methods to get the words clusters that represent topics (thematics) with strong relationship in our window , and we can compute the similarity between 2 consecutive windows using **Jaccard similarity**.
 
 ### Basic architecture schema:
 
@@ -34,8 +34,8 @@ for each blue point you can refer to the section [explanation](#explanation) , t
 
 ### Prerequisite
 
-if you are on Ubuntu 20.04 , you can follow the "[with shell](#with-shell)" installation section.
-else you can use docker , referred to this [section](#with-docker) but first you need to install docker-engine on
+if you are on **Ubuntu 20.04** , you can follow the "[with shell](#with-shell)" installation section, or
+you can use **Docker** , referred to this [section](#with-docker) but first you need to install **docker-engine** on
 your machine . The installation steps of docker engine for your operating systems might be slightly different,
 please refer to the [docker documentation](https://docs.docker.com/engine/install/) for details.
 
@@ -54,17 +54,17 @@ pip3 --version
 
 ```
 
-then you can follow the commands bellow to install the service and run it :
+then you can follow the commands below to install the service and run it :
 
 ```bash
 #first download repo from github and unzip.
 wget https://github.com/AntMouss/Novelties-detection-project/archive/master.zip -O novelties-detection-master.zip
 unzip novelties-detection-master.zip
 
-#changes current directory.
+#changes current work directory.
 cd Novelties-detection-project
 
-#create service environnement
+#create service environment
 python3 -m venv ./venv
 
 #activate environment
@@ -86,22 +86,22 @@ see [here](#settings) for more details about the server settings.
 python3 server.py
 ```
 
-If you don't specify `output_path` the collect service will not be **persistent²**.
+If you don't specify `output_path` the collect service will not be **persistent³**.
 
 ### with Docker
 
 You can build the image directly from this GitHub directory using the following command,
-but you can set your own settings in this way.
+but you can't set custom settings with this way.
 
 ```bash
 # build image from github repo.
 docker build --tag novelties-detection-image https://github.com/AntMouss/Novelties-detection-project.git#main
 ```
 
-to use your own server settings you need to download the repository and overwrite the `config/server_settings.py` file.
-see more [here](#settings).
+to use your own server settings you need to download the repository and overwrite the `config/server_settings.py` file
+(learn more about [settings](#settings)).
 
-Bellow the commands for downloading the repository and change current directory.
+Below the commands for downloading the repository and change current directory if you are on linux or bash install on your machine.
 
 ```bash
 #first download repo from github and unzip.
@@ -132,7 +132,7 @@ docker run -d -p 5000:5000 --name <container_name> novelties-detection-image:lat
 
 Then you can check the logs of the sever to check is everything is OK , or navigate in the volume if you activate persistent way.
 The server run locally on all address with port **5000** of your machine ,
-you can see the api documentation at this link: *http://127.0.0.1:5000/api/v1/*
+you can see the api swagger documentation at this link on your local host: *http://127.0.0.1:5000/api/v1/*
 
 ```bash
 
@@ -144,34 +144,34 @@ docker logs <container_name>
 sudo ls /var/lib/docker/volumes/<volume_name>/_data
 ```
 
-*Note* : * The service run on port **5000** so make sure there isn't other application running on this port before launching.
+**_Note_** : * The service run on port **5000** so make sure there isn't other application running on this port before launching.
 
 * provide about **10-20 GB** disk space for 3 months of collect with images collection (depends on your settings).
-* provide **1.5 GB** disk space for novelties-detection-image.
+* provide about **1.5 GB** disk space for novelties-detection-image.
 
 ## Explanation
 
 1. [Rss feed configuration](#1rss-feed-configuration)
 2. [Article HTML cleaning](#2article-html-cleaning)
 3. [Text Pre-processing](#3text-pre-processing)
-4. [Topic Modelling](#4topic-modelling)
+4. [Topic Modeling](#4topic-modelling)
 5. [Window Similarity computation](#5window-similarity-computation)
 6. [API](#6api)
 
 ### 1.RSS feed configuration
 
-rss feed are perfect data source for fetch information about articles in real-time (i.e publication date  , title , author name , label).
-the rss plugging is handled by the file `config/RSS_feeds.json` , all the rss feed addresses must be referenced in this file.
+**rss feed** are perfect data source to fetch information about articles in **real-time** (i.e publication date  , title , author name , label).
+the rss plugging is handled by the file `config/RSS_feeds.json` , all the **rss feed** addresses must be referenced in this file.
 
-`config/RSS_feeds.json` have two main keys : "global_remove_tags" and "rss_feed_urls" , the "global_remove_tags" keys referred
-to a list of global HTML tags that we want to remove for all the articles html page during the cleaning step  (see more at [cleaning section](#2article-html-cleaning))
-the "rss_feed_urls" key refer to a list of rss feed item that contain "url" , "label" and "remove_tags" fields.
+`config/RSS_feeds.json` have two main keys : **"global_remove_tags"** and **"rss_feed_urls"** , the **"global_remove_tags"** keys referred
+to a list of global **HTML tags** that we want to remove for all the HTML page of articles  during the cleaning step  (see more at [cleaning section](#2article-html-cleaning))
+the **"rss_feed_urls"** key refer to a list of rss feed item that contain **"url"** , "**label"** and **"remove_tags"** fields.
 
-* url --> url of the rss feed souce
-* label --> list of label related to the rss feed item , you can choose your own label , example : sport , economy ...
-* remove_tags --> list of HTML tags that we want to remove particularly to this rss feed (not globally). see more [here](#2article-html-cleaning)...
+* url --> url of the rss feed source
+* label --> list of label related to the rss feed item , you can choose your own label (ie : sport , economy ...)
+* remove_tags --> list of undesirable HTML tags specific to a particular rss feed (not globally). see more [here](#2article-html-cleaning)...
 
-rss feed item example:
+_Rss feed item example_:
 
 ```json
 
@@ -188,30 +188,31 @@ rss feed item example:
 You can use the default `config/RSS_feeds.json` or overwrite it with your own rss feed sources following the
 format describe above.
 
-*Note*: you can add Rss source during service Runtime using [API](#6api) endpoint :  `/RSSNewsfeedSource/AddRSSFeedSource`
+*Note*: you can add Rss source during service Runtime using [API](#6api) endpoint :  [GET] `RSSNewsfeedSource/AddRSSFeedSource`
 
 ### 2.Article HTML cleaning
 
-![Cleaning process diagram](src/diagram/cleaning_diagram.png)
+**Cleaning Steps Schema :**
 
-1. at the first step , we selected and kept the **<article/>** tag
-2. HTML page contain garbage information like date , author information , references to
-   next articles or advertising... that aren't interesting for the topic analysis and could pollute the [Topic modeling process](#4topic-modelling).
-   because we just want to keep relevant words of the subject treated in the article.
-   So we make a another cleaning layer removing bad tags.
+<img src="./src/diagram/cleaning_diagram.png" alt="drawing" width="200"/>
 
-There are 2 types of bad tags:
+1. at the first step , we selected and kept the **<article/>** tag (content of the article) .
+2. HTML page contain garbage informations like advertising , author information , references to
+   next articles... that aren't interesting for the topic analysis and could pollute the [Topic modeling process](#4topic-modelling).
+   because we just want to conserve relevant words of the subject treated in the article.
+   So we made a cleaning layer to remove undesirable tags.
 
-* **global** bad tags that we fill in the "global_remove_tags" key of the `config/RSS_feeds.json` file
-* **specific** bad tags that are specific to one rss feed item because articles web page have different pattern
-  according to the website are they come from ( **www.theguardians.com** hasn't same html pattern than **www.nytimes.com**).
-  The pattern of the article web page are different according to the rss feed they are collected from
+There are 2 types of "undesirable" tags:
 
-*Note*: a tags is a dictionnary containing 3 keys:
+* **global** undesirable tags that we fill in the "global_remove_tags" key of the `config/RSS_feeds.json` file
+* **specific** undesirable tags specific to a rss feed because article web pages have different patterns
+  according to their origin ( **www.theguardians.com** hasn't same html layout than **www.nytimes.com**).
 
-* "tag" key is the name of the html tag ( "div" , "h1" , "p" ... ).
-* "class" key is the class name of the particular tags to remove.
-* "id" key is the id of the partcular tag to remove.
+*Note*: a tag is a dictionary containing 3 keys:
+
+* **"tag"** key is the name of the html tags to remove ( "div" , "h1" , "p" ... ).
+* **"class"** key is the class name of the particular tags to remove.
+* **"id"** key is the id of the particular tag to remove.
 
 <ins> Tags example : </ins>
 
@@ -219,10 +220,12 @@ There are 2 types of bad tags:
 {"tag" :  "div" , "class" : "date_time_div" , "id" : "O7p469M_time_div" }
 ```
 
-you can add tags manually overwriting the `config/RSS_feeds.json` file to custom your cleaning process
-or you can add global tags during service Runtime using [API](#6api) endpoint `/RSSNewsfeedSource/AddRSSFeedTags`
+you can add tags manually overwriting the `config/RSS_feeds.json` file to custom your cleaning process before Runtime,
+or you can add global tags during service Runtime using [API](#6api) endpoint `/RSSNewsfeedSource/AddRSSFeedTags` during Runtime.
 
-Cleaning Example:
+**Example of tags cleaning:**
+
+article HTML page before cleaning undesirable tags.
 
 ```html
 <html>
@@ -265,7 +268,7 @@ Cleaning Example:
 </html>
 ```
 
-Result after remove **global** and **specific** tags:
+Result after remove **global** and **specific** undesirable tags:
 
 ```html
 <html>
@@ -284,58 +287,73 @@ Result after remove **global** and **specific** tags:
 
 3. finally, we extract real article text removing all html syntax of the string:
 
-```
+```text
 "the title of the article. some information to keep after cleaning. "
 ```
 
 ### 3.Text Pre-processing
 
-Our topic Modelling process isn't **multilingual**, so we had to specify a lang during the text preprocessing because
-we don't want to make topic modelling with multilingual corpus because it will not be efficient.
+In the previous section , we see how we extract the main content of an article , now we moove to the Pre-processing text.
+Topic Modelling isn't a **multilingual** process, so we had to specify a  targeted **lang** during the text preprocessing step because
+we just want to treat text in the targeted lang else it will not be efficient.
+
+**Text Pre-Processing Steps Schema :**
 
 ![text pre-processing schema](src/diagram/text_preprocessing_diagram.png)
 
-1. **lang detection** : the first step of text preprocessing is lang detection , we don't want to pre-process wrong lang text
-2. **tokenization** : tokenization in NLP is a set of method that divide string text in logical element (called **token**)
+1. **lang detection** : the first step of text preprocessing is lang detection , we don't want to pre-process wrong lang text, so we are making filtering.
+2. **tokenization** : tokenization in NLP is a set of methods that divide string text in logical elements (called **token**)
    in general token are words, but it could be punctuation marker or one word could be composed of 2 tokens , example:
    ("geography" --> token1 : "geo" , token2 : "graph"). If you want to learn more about [tokenization](https://neptune.ai/blog/tokenization-in-nlp)
-3. **remove specific words** : in the diagram we talk about stop words and digits , stopwords are commun words in lang vocabulary
-   which bring us no special information like : "the" , "are" , "us" etc...
+3. **remove specific words** : in the schema , we talk about stop words and digits. **Stopwords** are commun words in lang vocabulary
+   which bring us no special informations like : "the" , "are" , "us" etc...
 4. **Lemmatization** : in linguistics is the process of grouping together the inflected forms of a word so
    they can be analysed as a single item, identified by the **word's lemma**, or dictionary form.
-   example : "analysed" , "analyse" , "analysing" transformed to the lemma "analysis".
+   example : "analysed" , "analyse" , "analysing" are transformed to the lemma "analysis" after lemmatization.
 
 ### 4.Topic Modelling
+
+**Topic Modeling Schema :**
 
 ![text topic-modelling schema](src/diagram/topic_modelling_diagram.png)
 
 1. **update global dictionary** : we use a **global dictionary** as a register of token (words , punctuation , etc...) for all window corpus (set of article texts in the time window collect).
-   The purpose of this dictionary is to count every token occurrences, although we can use it to filter rare token or really common token. This dictionary is updated every new window.
-2. **filter words** or **filter tokens** : as explain above we remove rare words or common tokens using the global dictionary ,
-   this tokens are not topics relevant . Example : misspelled words "length" or common **irrelevant** words "Monday" .
+   The purpose of this dictionary is to count every token occurrences, although we can use it to filter rare token or really common token (which are not **Stopwords**). This dictionary is updated at every new window appearances.
+2. **filter words** (or **filter tokens**) : as explain above we remove rare tokens or common tokens using the global dictionary ,
+   these tokens are not topic relevant . ( ie : misspelled words "length" or common **irrelevant** words "Monday" ) .
 3. **BOW** (bag of words) is a simplifying model text representation using in documents classification .
    each text in the corpus is represented as a vector where each component is the number occurrences of the token in the vocabulary index.
    This model representation is more efficient for training topic model.
 4. **train model** : this part is the main part of the process , we have 2 type of training : **unsupervised training** using unlabeled texts and **supervised training** using labeled texts.
    The purpose of the supervised modelling is to return change for a predefined label and follow the evolution of the label in time.
-   The unsupervised way is used to detect latent topics in a bunch of articles independently of a paper categories (label) , this type of training can return us complementary information about the news composition.
-   In other words , the unsupervised modelling allows us to follow the **micro topics** evolution (little topics that appears punctually in a window) while the supervised method allows us to follow big **categories** evolution (topic persisting on many windows).
+   The unsupervised way is used to detect latent topics in a bunch of articles independently of paper categories (label) , this type of training can return us complementary information about the news composition.
+   In other words , the unsupervised modelling allows us to follow the **micro topics** evolution (little topics that appears punctually in a window) while the supervised method allows us to follow big **categories** evolution (topic persisting through many windows).
 
-We use different topic model kernel:
+We use different topic model kernels:
 
 * unsupervised kernel : [LDA³](https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) , [CoreX⁴](https://github.com/gregversteeg/corex_topic)
 * supervised kernel : [TFIDF⁵](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) , Guided LDA (or semi-supervised LDA) , Guided CoreX (or semi-supervised CoreX)
 
 **_Note 1_** : **Guided LDA** and **Guided CoreX** kernel are based on the **LDA** and **CoreX** kernel , the difference is that in the guided case
-we use label **seed** words to make the training converge around the label words distribution.
-In other words , we use set of words **relevant** to a certain label, and we increase the weight of this particular words
-in the corpus during training to hook other strongly related words. This **seed** words work as an **anchors** .
+we use label **seed words** to make the training converge around these words.
+In other words , we use set of **relevant** words specific to a label, and we increase the weight of this particular words
+in the corpus during training to hook other strongly related words. This **seed words** work as **anchors** .
 
 _**Note 2**_ :  use your own seed words relative to your labels overwriting the `config/seed.json` file
 with labels as keys and list of seed words (relative to the key topics) as values else you can keep the original
 `config/seed.json` file.
 
-here is a training example schema:
+Example of `config/seed.json` file:
+
+```json
+{
+  "sport" : ["ball" , "trophy" , "win" , "medal"],
+  "economy" : ["dollars" , "tax" , "increase" , "inflation" , "gas"],
+  "crime" : ["knife" , "witness" , "murder" , "blackmail"]
+}
+```
+
+here is a **training** example schema:
 
 ![training_schema](src/diagram/training_model_schema.drawio.png)
 
@@ -343,12 +361,12 @@ here is a training example schema:
 
 ### 5.Window Similarity computation
 
-explicative diagram :
+**Similarity Computation Steps Schema :**
 
 ![similarity computation](src/diagram/Similarity_computation_diagram.png)
 
 1. we use similarity calculator extracting two consecutive models corresponding to two consecutive windows, and we compute [Jaccard similarity](https://pyshark.com/jaccard-similarity-and-jaccard-distance-in-python/)
-   the supervised case we compute Jaccard similarity for each topic corresponding to a label and we stack similarity score in a list:
+   the supervised case we compute **Jaccard similarity** for each topic corresponding to a label, and we stack similarity score in a list:
    *example* : assume the two bellow cluster words for the label i -> "sport":
 
 ```json
@@ -356,7 +374,7 @@ explicative diagram :
 "Bi" :  ["football" , "Manchester" , "city" , "Arsenal" , "win" , "goals"]}
 ```
 
-jaccard similarity formula is:
+**Jaccard similarity** formula is:
 $Ji = \frac{|Ai \cap Bi|}{|Ai \cup Bi|} = \frac{|Ai \cap Bi|}{|Ai| + |Bi| – |Ai \cup Bi|}$
 
 here:
@@ -377,7 +395,7 @@ $Ji =\dfrac{3}{10}$
 
 $J = \dfrac{\sum_{i=0}^{k}{Ji}}{k}$
 
-3.the process isn't the same for unsupervised case , we append every words cluster for each topics then we compute the total jaccard similarity.
+3.the process isn't the same for unsupervised case , we append every cluster of words for each topic then we compute the total Jaccard similarity.
 
 4.finally , we will classifie the change rate between two windows using normal distribution classifier .
 The final result is a range percentiles :
@@ -385,18 +403,20 @@ The final result is a range percentiles :
 In our case , a percentile is a similarity score below which a given percentage k of scores in its frequency distribution falls (exclusive definition) or a score at or below which a given percentage falls (inclusive definition).
 For example, the 90th percentile is the similarity score below which (exclusive) or at or below which (inclusive) 90% of the scores in the distribution may be found:
 
+you can see a representation of the 90th percentile of a normal distribution below.
+
 ![percentile-normal-curve](src/normal_percentile.png)
 
-We classifie similarity between window as percentile ranges which means a window similarity could be for example 1-5% or 5-20% ... rarely high or low:
-example of percentile ranges:
+We classifie similarity between window as percentile ranges which means a window similarity could be for example $1-5%$ or $5-20%$ ... rarely high similarity or low similarity:
+representation of percentile ranges below:
 
 ![percentile-ranges](src/normal_percentile2.png)
 
-_**Note**_ : we use normal distribution because we previously analyse the distribution of our similarity calculator that fit normal distribution
+_**Note**_ : we use normal distribution because we previously analyse the distribution of our similarity calculators that fit normal distribution (this distribution is more efficient to detect abnormal change).
 
 ### 6.API
 
-(Not available yet but you can see query swagger doc at https://127.0.0.1:5000/api/v1 )
+(Not available yet but you can see query doc at https://127.0.0.1:5000/api/v1 )
 
 ## Server Settings
 
@@ -405,7 +425,7 @@ You need to overwrite the `config/server_settings.py` file else you can keep the
 
 ### collect settings
 
-* `LOOP_DELAY_COLLECT` : delay between 2 collect process corresponding to the N value in the main [schema](#basic-architecture-schema) (in minutes)
+* `LOOP_DELAY_COLLECT` : delay between 2 collect process corresponding to the N value in the main [schema](#basic-architecture-schema) (**in minutes**)
 * `COLLECT_RSS_IMAGES` : boolean control the collect of images in the rss feed (if True you need to specify `OUTPUT_PATH`)
 * `COLLECT_ARTICLE_IMAGES` : boolean control the collect of images in the article page.html (if True you need to specify `OUTPUT_PATH`)
 * `COLLECT_HTML_ARTICLE_PAGE` : boolean control the collect of the html article (if True you need to specify `OUTPUT_PATH`)
@@ -421,8 +441,8 @@ so you can set `COLLECT_RSS_IMAGES` , `COLLECT_ARTICLE_IMAGES` and `COLLECT_HTML
 
 ### Process window settings
 
-* `LOOP_DELAY_PROCESS` : delay between 2 Windows processing corresponding to the M value in the main [schema](#basic-architecture-schema) (in minutes)
-* `MEMORY_LENGTH` : integer --> number of window keep in memory (can't exceed 30)
+* `LOOP_DELAY_PROCESS` : delay between 2 Windows processing corresponding to the M value in the main [schema](#basic-architecture-schema) (**in minutes**)
+* `MEMORY_LENGTH` : integer --> number of window keep in memory (can't exceed 30 because of memory consumption).
 
 **_Note_** : `LOOP_DELAY_PROCESS` must be superior to `LOOP_DELAY_COLLECT` because the processing need data collecting first
 else it returns an exception.
@@ -430,9 +450,9 @@ else it returns an exception.
 ### Text pre-processing settings
 
 * `LANG` : lang code of the pre-processed texts (can't pre-process text in other lang because the service isn't multilingual)
-* `LEMMATIZE` : boolean control the lemmatization
-* `REMOVE_STOP_WORDS` : boolean control the stop words removing
-* `REMOVE_NUMBERS` : boolean control the numbers removing
+* `LEMMATIZE` : boolean to lemmatize text.
+* `REMOVE_STOP_WORDS` : boolean to remove stop words.
+* `REMOVE_NUMBERS` : boolean to remove numbers in text
 * `REMOVE_SMALL_WORDS` : boolean control the small words removing
 
 **_Note_** : you can specify the minimum length of a "small words" or "tall words" and you can add a predefine list of words to remove
@@ -541,11 +561,11 @@ There are 3 types of filtering functions :
 * `absoluteThresholding` --> linear function with $slop = 0$
   example : with $intercept = 100$
   ![absolute_thresholding](src/abs_figure.png)
-**Document appearances** --> number of documents (articles in our case) in which the considerate token (word) is present. 
-**Above-removing area** --> if a word is in this area the fct_above function will remove it from the original vocabulary during [the tokens filtering](#4topic-modelling),
-so it will be not considerate at the topic-modelling step .
-**Below-removing area** --> if a word is in this area the fct_below function will remove it from the original vocabulary during [the tokens filtering](#4topic-modelling),
-so it will be not considerate at the topic-modelling step .
+  **Document appearances** --> number of documents (articles in our case) in which the considerate token (word) is present.
+  **Above-removing area** --> if a word is in this area the fct_above function will remove it from the original vocabulary during [the tokens filtering](#4topic-modelling),
+  so it will be not considerate at the topic-modelling step .
+  **Below-removing area** --> if a word is in this area the fct_below function will remove it from the original vocabulary during [the tokens filtering](#4topic-modelling),
+  so it will be not considerate at the topic-modelling step .
 * `linearThresholding` --> linear function with $ 0 <= slop <= 1$
   example : with $slop = 0.25$ and $intercept = 0$
   ![linear_thresholding](src/rel_figure.png)
@@ -553,12 +573,35 @@ so it will be not considerate at the topic-modelling step .
   example : $limit = 0.6$
   ![logarithm_thresholding](src/log_figure.png)
 
+Example of BAD WORDS SETTINGS overwriting:
+
+```python
+#BAD WORDS SETTINGS
+# for remove words that no satisfing some frequency condition
+fct_above : Callable = linearThresholding
+fct_below : Callable = absoluteThresholding
+kwargs_above : dict = {
+    "limit" : 0.8,
+    "intercept" : 20
+  
+}
+kwargs_below : dict = {
+    "intercept" : 4
+}
+bad_words_kwargs = UpdateBadWordsKwargs(
+    thresholding_fct_above=fct_above ,
+    thresholding_fct_below=fct_below ,
+    kwargs_above=kwargs_above  ,
+    kwargs_below=kwargs_below
+)
+```
 
 ## Lexical
 
-1. Topic modeling : Set of machine learning method which main purpose are to found
+1. RSS feed : (Really Simple Syndication) is a web feed that allows users and applications to access updates to websites in a standardized, computer-readable format.
+2. Topic modeling : Set of machine learning method which main purpose are to found
    relationship between words in a document corpus in order to return words clusters (topic).
-2. Persistent : The persistent "mode" save the collect data to the `output_path` directory.
-3. LDA : Latent Dirichlet Allocation.
-4. TFIDF : term frequency–inverse document frequency.
-5. CoreX : correlation explanation.
+3. Persistent : The persistent "mode" save the collect data to the `output_path` directory.
+4. LDA : Latent Dirichlet Allocation.
+5. TFIDF : term frequency–inverse document frequency.
+6. CoreX : correlation explanation.

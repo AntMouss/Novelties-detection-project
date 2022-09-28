@@ -278,18 +278,18 @@ class MetaTextPreProcessor:
     default_undesirable_words = []
 
     def __init__(self, lang  : str = "" , long_lang  : str = "",undesirable_words : list = None,
-                 undesirable_characters : list = None, max_word_size : int = 18,
+                 undesirable_characters : list = None, max_word_size : int = 20,
                  min_word_size : int = 3 , lemmatize : bool = True , remove_stop_words : bool = True ,
                  remove_small_words : bool = True , remove_numbers : bool = True):
         """
 
-        @param lang:
-        @param long_lang:
-        @param undesirable_words:
-        @param undesirable_characters:
-        @param max_word_size:
-        @param min_word_size:
-        @param lemmatize:
+        @param lang: targeted lang code (ie : 'fr') --> it will process only 'lang' text
+        @param long_lang:targeted lang entire name (in english) (ie : 'french')
+        @param undesirable_words: list of words that will be removed during process
+        @param undesirable_characters: list of undesirable character --> word that contain one of this will be removed
+        @param max_word_size: maximum size of a word (token) --> greater word will be removed
+        @param min_word_size: minimum size of a word (token) --> shorter word will be removed if remove_small_words == True
+        @param lemmatize: bool --> active lemmatization during process
         @param remove_stop_words:
         @param remove_small_words:
         @param remove_numbers:
