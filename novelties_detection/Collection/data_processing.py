@@ -394,9 +394,7 @@ class MetaTextPreProcessor:
                 # to remove None type words
                 if isinstance(word, str):
                     textProcessed.append(word)
-            return textProcessed
-        else:
-            return None
+        return textProcessed
 
 
     def preprocessTexts(self, texts):

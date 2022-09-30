@@ -227,7 +227,7 @@ class RSSCollector:
                 if "summary" in entry.keys():
                     feed["summary"] = entry["summary"]
                 else:
-                    feed["summary"] = None
+                    feed["summary"] = ""
                 if "content" in entry.keys():
                     if "value" in entry["content"][0].keys():
                         feed["content"] = entry["content"][0]["value"]
@@ -313,9 +313,9 @@ class RSSCollector:
             cleansed_text = extract_text(article, remove_tags_list, clean=True)
             try:
                 if self.preprocessor is not None:
-                    if cleansed_text is not None:
+                    if cleansed_text is not None and (len(cleansed_text) > len(article_summary) and len(cleansed_text) > len(article_title)) :
                         process_text = self.preprocessor.preprocessText(cleansed_text)
-                    elif article_summary is not None:
+                    elif article_summary is not None and (len(article_summary) > len(article_title)):
                         process_text = self.preprocessor.preprocessText(article_summary)
                     elif article_title is not None:
                         process_text = self.preprocessor.preprocessText(article_title)
