@@ -1,30 +1,32 @@
 # Novelties Detection
 
 Novelties Detection project is a **real-time automatic newspaper semantic analyser** service , The project purpose is to understand information spreading in real-time inside a news flow .
-The news provide from different **rss feed¹** source like influential newspaper  , influential news websites ( ie : New-York Times  , Fox news ...). The basic features of the service is to recognize topic contain in news using **topic modeling²** approach
-then we can detect what topics are novelties or habits  , what topic appears or disappears at each time window ...
 
-_**Note**_ : The default service settings are in **French** and the **rss feed** are French Source information . But you can set your own source information as explain in this [section](#1rss-feed-configuration)
+The news come from  different **rss feed¹** sources like influential newspapers  , influential news websites ( ie : New-York Times  , Fox News ...). The basic features of the service is to recognize a specific topic contained in a given news outlet using a **topic modeling²** approach.
+
+From that method,  one can detect what topics fall into either  novelties or  habits  , what topics appear or disappears at each new time window ...
+
+_**Note**_ : The default service settings are in **French** and the **rss feed** are French information sources  . But you can set your own information source as explained in this [section](#1rss-feed-configuration)
 
 ## How the service works.
 
 The service works as a two-hand service:
 
-* First , the service collect data from various newspaper on the web in real-time
+* First , the service collects data from various newspapers on the web in real-time
   with **rss feed** that contain information about new articles posted at each moment by the newspaper website.
-  If you want to learn more about **rss feed** usage ,  see [here](https://en.wikipedia.org/wiki/RSS).
-  _This process is repeat every **N** minutes as referred in the [base schema](#basic-architecture-schema) below_.
-* Second ,  we apply topic model method on article corpus that return keywords relationships and main topics contain in the current corpus (in our case the articles collected in the considered time window).
-  before we process data cleaning and text pre-processing before topic modeling operation .
-  _This process is repeat every **M** minutes as referred in the [base schema](#basic-architecture-schema) below_.
+  If you wish to learn more about **rss feed** usage ,  see [this link](https://en.wikipedia.org/wiki/RSS).
+  _This process is repeated every **N** minutes as referred to in the [base diagram](#basic-architecture-diagram) below_.
+* Second ,  we apply the topic model method on the article’s corpus which returns keywords relationships and main topics contained in the current corpus (in our case the articles collected in the considered time window).
+  Note that we process to data cleaning and text pre-processing before topic modeling operation .
+  _This process is repeated every **M** minutes as referred to in the [base diagram](#basic-architecture-diagram) below_.
 
-The service analyse the articles collected at each time windows and is able to provide thematics and keywords that appear,
+The service analyzes the articles collected at each time window and is able to provide thematics and keywords which appear,
 disappear or stay during the considered time window ( ie : the topics containing the  words "queen" , "Elisabeth" , "death" appear in the window 19h - 20h Friday 09/09/2022).
-the news analysis is sequential which means that the current window of data that contain the article informations of this time window is compared to the last window.
+The news analysis is sequential which means that the current window of data that contains the article information of this time window is compared to the previous window.
 
-We use topic modeling methods to get the words clusters that represent topics (thematics) with strong relationship in our window , and we can compute the similarity between 2 consecutive windows using **Jaccard similarity**.
+We use topic modeling methods to get the word clusters that represent topics (thematics) with strong relationship in our window , so we can compute the similarity between 2 consecutive windows using **Jaccard similarity**.
 
-### Base architecture schema:
+### Base architecture diagram:
 
 ![A test image](src/diagram/main_diagram.png)
 
@@ -35,13 +37,13 @@ for each blue point you can refer to the section [explanation](#explanation) , t
 ### Prerequisite
 
 if you are on **Ubuntu 20.04** , you can follow the "[with shell](#with-shell)" installation section, or
-you can use **Docker** , referred to this [section](#with-docker) but first you need to install **docker-engine** on
+you can use **Docker** , referred to in this [section](#with-docker) but first you need to install **docker-engine** on
 your machine . The installation steps of docker engine for your operating systems might be slightly different,
-please refer to the [docker documentation](https://docs.docker.com/engine/install/) for details.
+please refer to the [docker documentation](https://docs.docker.com/engine/install/) for more details.
 
 ### with Shell
 
-make sure that you have pip for python 3.8 installed on your machine else you can use the following commands
+make sure that you have pip for python 3.8 installed on your machine, else you can use the following commands
 for pip installation:
 
 ```bash
@@ -91,7 +93,7 @@ If you don't specify `output_path` the collect service will not be **persistent�
 ### with Docker
 
 You can build the image directly from this GitHub directory using the following command,
-but you can't set custom settings with this way.
+but you can't set custom settings this way.
 
 ```bash
 # build image from github repo.
@@ -130,8 +132,8 @@ or choose the no **persistent** way with the following command.
 docker run -d -p 5000:5000 --name <container_name> novelties-detection-image:latest
 ```
 
-Then you can check the logs of the sever to check is everything is OK , or navigate in the volume if you activate persistent way.
-The server run locally on all address with port **5000** of your machine ,
+Then you can check the logs of the sever to check if everything is OK , or navigate in the volume if you activate persistent way.
+The server runs locally on all address with port **5000** of your machine ,
 you can see the api swagger documentation at this link on your local host: *http://127.0.0.1:5000/api/v1*
 
 ```bash
@@ -144,7 +146,7 @@ docker logs <container_name>
 sudo ls /var/lib/docker/volumes/<volume_name>/_data
 ```
 
-**_Note_** : * The service run on port **5000** so make sure there isn't other application running on this port before launching.
+**_Note_** : * The service runs on port **5000** so make sure there isn't any other applications running on this port before launching.
 
 * provide about **10-20 GB** disk space for 3 months of collect with images collection (depends on your settings).
 * provide about **1.5 GB** disk space for novelties-detection-image.
@@ -192,15 +194,15 @@ format describe above.
 
 ### 2.Article HTML cleaning
 
-<ins>**Cleaning Steps Schema :**</ins>
+<ins>**Cleaning Steps diagram :**</ins>
 
 <img src="./src/diagram/cleaning_diagram.png" alt="drawing" height="400"/>
 
 1. at the first step , we selected and kept the **<article/>** tag (content of the article) .
-2. HTML page contain garbage informations like advertising , author information , references to
+2. HTML page contains garbage informations like advertising , author information , references to
    next articles... that aren't interesting for the topic analysis and could pollute the [Topic modeling process](#4topic-modelling).
-   because we just want to conserve relevant words of the subject treated in the article.
-   So we made a cleaning layer to remove undesirable tags.
+   since  we just wish to conserve relevant words to the topic treated in the article.
+   We thus made a cleaning layer to remove undesirable tags.
 
 There are 2 types of "undesirable" tags:
 
@@ -297,41 +299,41 @@ Result after remove **global** and **specific** undesirable tags:
 
 ### 3.Text Pre-processing
 
-In the previous section , we see how we extract the main content of an article , now we moove to the Pre-processing text.
-Topic Modelling isn't a **multilingual** process, so we had to specify a  targeted **lang** during the text preprocessing step because
-we just want to treat text in the targeted lang else it will not be efficient.
+In the previous section , we saw how we extract the main content of an article , now we move to the text Pre-processing step .
+Topic Modelling isn't a **multilingual** process, so we had to specify a  targeted **lang** during the text preprocessing step since 
+we just wish to treat text in the targeted lang.
 
-<ins>**Text Pre-Processing Steps Schema :**</ins>
+<ins>**Text Pre-Processing Steps diagram :**</ins>
 
 <img src="./src/diagram/text_preprocessing_diagram.png" alt="drawing" height="400"/>
 
-1. **lang detection** : the first step of text preprocessing is lang detection , we don't want to pre-process wrong lang text, so we are making filtering.
+1. **lang detection** : The first step of text preprocessing is lang detection, we don't want to pre-process wrong lang text, so we are filtering.
 2. **tokenization** : tokenization in NLP is a set of methods that divide string text in logical elements (called **token**)
-   in general token are words, but it could be punctuation marker or one word could be composed of 2 tokens , example:
+   generally,  token are words, but it could be punctuation marker or one word could be composed of 2 tokens, as an example:
    ("geography" --> token1 : "geo" , token2 : "graph"). If you want to learn more about [tokenization](https://neptune.ai/blog/tokenization-in-nlp)
-3. **remove specific words** : in the schema , we talk about stop words and digits. **Stopwords** are commun words in lang vocabulary
-   which bring us no special informations like : "the" , "are" , "us" etc...
-4. **Lemmatization** : in linguistics is the process of grouping together the inflected forms of a word so
+3. **remove specific words** : in the diagram , we talk about stop words and digits. **Stopwords** are common words in lang vocabulary
+   which bring us no special information such as: "the" , "are" , "us" etc...
+4. **Lemmatization** : in linguistics, it is the process of grouping together the inflected forms of a word so
    they can be analysed as a single item, identified by the **word's lemma**, or dictionary form.
    example : "analysed" , "analyse" , "analysing" are transformed to the lemma "analysis" after lemmatization.
 
 ### 4.Topic Modelling
 
-<ins>**Topic Modeling Schema :**</ins>
+<ins>**Topic Modeling diagram :**</ins>
 
 <img src="./src/diagram/topic_modelling_diagram.png" alt="drawing" height="400"/>
 
 1. **update global dictionary** : we use a **global dictionary** as a register of token (words , punctuation , etc...) for all window corpus (set of article texts in the time window collect).
-   The purpose of this dictionary is to count every token occurrences, although we can use it to filter rare token or really common token (which are not **Stopwords**). This dictionary is updated at every new window appearances.
-2. **filter words** (or **filter tokens**) : as explain above we remove rare tokens or common tokens using the global dictionary ,
+   The purpose of this dictionary is to count every token occurrences, although we can use it to filter rare token or really common token (which are not **Stopwords**). This dictionary is updated at every new window appearance.
+2. **filter words** (or **filter tokens**) : as explained above we remove rare tokens or common tokens using the global dictionary ,
    these tokens are not topic relevant . ( ie : misspelled words "length" or common **irrelevant** words "Monday" ) .
-3. **BOW** (bag of words) is a simplifying model text representation using in documents classification .
-   each text in the corpus is represented as a vector where each component is the number occurrences of the token in the vocabulary index.
-   This model representation is more efficient for training topic model.
+3. **BOW** (bag of words) is a simplifying model text representation used in document classification .
+   Each text in the corpus is represented as a vector where each component is the number occurrences of the token in the vocabulary index.
+   This model representation is more efficient for training topic models.
 4. **train model** : this part is the main part of the process , we have 2 type of training : **unsupervised training** using unlabeled texts and **supervised training** using labeled texts.
-   The purpose of the supervised modelling is to return change for a predefined label and follow the evolution of the label in time.
-   The unsupervised way is used to detect latent topics in a bunch of articles independently of paper categories (labels) , this type of training can return us complementary information about the news composition.
-   In other words , the unsupervised modelling allows us to follow the **micro topics** evolution (little topics that appears punctually in a window) while the supervised method allows us to follow big **categories** evolution (topic persisting through many windows).
+   The purpose of the supervised modeling is to return change for a predefined label and follow the evolution of the label in time.
+   The unsupervised way is used to detect latent topics in a bunch of articles independently of paper categories (labels) , this type of training can provide us complementary information about the news composition.
+   In other words , the unsupervised modeling allows us to follow the **micro topics** evolution (little topics that appears punctually in a window) while the supervised method allows us to follow big **categories** evolution (topic persisting through many windows).
 
 We use different topic model kernels:
 
@@ -357,15 +359,15 @@ _Example of `config/seed.json` file_:
 }
 ```
 
-_here is the different types of **training** example schema_:
+_here is the different types of **training** example diagram_:
 
-![training_schema](src/diagram/training_model_schema.drawio.png)
+![training_diagram](src/diagram/training_model_diagram.drawio.png)
 
 **_Note_** : we use the [Gensim](https://radimrehurek.com/gensim/models/ldamodel.html) LDA implementation.
 
 ### 5.Window Similarity computation
 
-**Similarity Computation Steps Schema :**
+**Similarity Computation Steps diagram :**
 
 <img src="./src/diagram/Similarity_computation_diagram.png" alt="drawing" height="400"/>
 
@@ -403,8 +405,8 @@ $Ji =\dfrac{3}{10}$
 
 $J = \dfrac{ \sum_{i=0}^{k}{Ji} }{k}$
 
-3. The process isn't the same for unsupervised case , we append every cluster of words for each topic then we compute the total Jaccard similarity.
-4. Finally , we will classifie the change rate between two windows using normal distribution classifier .
+3. The process isn't the same for the unsupervised case , we append every cluster of words for each topic then we compute the total Jaccard similarity.
+4. Finally , we will classify the change rate between two windows using a normal distribution classifier .
    The final result is a range percentiles :
 
 In our case , a percentile is a similarity score below which a given percentage k of scores in its frequency distribution falls (exclusive definition) or a score at or below which a given percentage falls (inclusive definition).
@@ -433,7 +435,7 @@ You need to overwrite the `config/server_settings.py` file else you can keep the
 
 ### collect settings
 
-* `LOOP_DELAY_COLLECT` : Integer --> delay **in minutes** between 2 collect process corresponding to the N value in the main [schema](#basic-architecture-schema) .
+* `LOOP_DELAY_COLLECT` : Integer --> delay **in minutes** between 2 collect process corresponding to the N value in the main [diagram](#basic-architecture-diagram) .
 * `COLLECT_RSS_IMAGES` : Boolean : True --> allows the collect of images in the rss feed .
 * `COLLECT_ARTICLE_IMAGES` : Boolean : True --> allows the collect of images in the article page.html.
 * `COLLECT_HTML_ARTICLE_PAGE` : Boolean : True --> allows the collect of the html article.
@@ -442,14 +444,14 @@ You need to overwrite the `config/server_settings.py` file else you can keep the
 **_Note_** : The collect process can write data in **fileSystem** if you used the [persistent](#installation-and-execution) mode (specify `output_path` )
 so you can set `COLLECT_RSS_IMAGES` , `COLLECT_ARTICLE_IMAGES` and `COLLECT_HTML_ARTICLE_PAGE` as True else it return an exception.
 
-### labels idx settings.
+### Labels settings.
 
 * `LABELS_IDX` : List of targeting labels .
   **_Warning_** : You can't change `LABELS_IDX` during runtime, you can't add new label because we want to keep label traceability.
 
 ### Process window settings
 
-* `LOOP_DELAY_PROCESS` : Integer --> delay **in minutes** between 2 Windows processing corresponding to the M value in the main [schema](#basic-architecture-schema) .
+* `LOOP_DELAY_PROCESS` : Integer --> delay **in minutes** between 2 Windows processing corresponding to the M value in the main [diagram](#basic-architecture-diagram) .
 * `MEMORY_LENGTH` : Integer --> number of window keep in memory (can't exceed 30 because of memory consumption).
 
 **_Note_** : `LOOP_DELAY_PROCESS` must be superior to `LOOP_DELAY_COLLECT` because the processing need data collecting first
@@ -521,7 +523,6 @@ that enabled reproducible training.
 * `remove_seed_words` : Boolean : True --> remove seed words of label top words during Jaccar similarity computation.
 * `exclusive` : Boolean : True --> remove top words that belong to many labels during Jaccar similarity computation.
 
-
 _Example of Macro-Calculator settings_:
 
 ```python
@@ -581,7 +582,7 @@ There are 3 types of filtering functions :
 * `linearThresholding` --> linear function with $0 <= slop <= 1$
   example : with $slop = 0.25$ and $intercept = 0$
   ![linear_thresholding](src/rel_figure.png)
-* `logarithmThresholding` --> exponential reverse function with 2 arguments : `limit`
+* `logarithmThresholding` --> logarithm reverse function with 1 argument : `limit`
   example : $limit = 0.6$
   ![logarithm_thresholding](src/log_figure.png)
 

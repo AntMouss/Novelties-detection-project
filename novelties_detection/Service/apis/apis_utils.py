@@ -54,3 +54,11 @@ def build_series(similarities_score : list , labels_counters : List[dict] , labe
         series.append(serie)
 
     return series
+
+
+class ServiceException(Exception):
+    pass
+
+
+class LabelsException(ServiceException):
+    pass
