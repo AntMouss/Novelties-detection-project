@@ -9,8 +9,7 @@ from novelties_detection.Collection.data_processing import transformS , MetaText
 from novelties_detection.Experience.Exception_utils import CompareWindowsException
 import logging
 from novelties_detection.Experience.utils import timer_func
-from novelties_detection.Service.server_utils import ServiceException
-
+from novelties_detection.Service.apis.apis_utils import ServiceException
 
 logging.basicConfig(level=logging.INFO)
 
@@ -108,6 +107,7 @@ class CollectThread(Thread):
             time.sleep(self.loop_delay * 60)
 
 
+
 class NoveltiesDetectionThread(Thread):
     """
     Service to detect and return novelties in the collect information flow
@@ -125,7 +125,7 @@ class NoveltiesDetectionThread(Thread):
         @param results_args: args use to compute similarity between windows recursively
         @param micro_training_args: training arguments of mirco calculator
         @param loop_delay: delay between two process
-        @param classifier_models: window classifier model to get the rarety level of the window (rarety of the similarity score with the previous one)
+        @param classifier_models: window classifier model to get the rarity level of the window (rarity of the similarity score with the previous one)
         """
         Thread.__init__(self)
         self.micro_training_args = micro_training_args
@@ -214,6 +214,8 @@ class NoveltiesDetectionThread(Thread):
         except ServiceException:
             self.log_error()
             pass
+        except TypeError as e:
+            print("ohoh")
         finally:
             # re-initialize WINDOW_DATA
             del WINDOW_DATA

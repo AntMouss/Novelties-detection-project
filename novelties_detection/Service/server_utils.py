@@ -28,11 +28,3 @@ def createApp(injected_object_apis : list):
     app.json_encoder = NumpyEncoder
     app.register_blueprint(blueprint)
     return app
-
-
-class ServiceException(Exception):
-    pass
-
-
-class LabelsException(ServiceException):
-    pass

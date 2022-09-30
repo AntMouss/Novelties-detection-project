@@ -1,7 +1,8 @@
 import os
 import pickle
 import json
-from novelties_detection.Service.server_utils import createApp , ServiceException
+from novelties_detection.Service.server_utils import createApp
+from novelties_detection.Service.apis.apis_utils import ServiceException
 from novelties_detection.Service.server_module import CollectThread ,NoveltiesDetectionThread
 from novelties_detection.Experience.Sequential_Module import GuidedSequantialLangageSimilarityCalculator
 from config.server_settings import (
@@ -110,7 +111,7 @@ def start_Server():
     global MACRO_RESULTS_ARGS
     global MODELS
     global COLLECT_KWARGS
-    global labels_idx
+    global LABELS_IDX
 
     extractor = CollectThread(
         rss_feed_source_path=RSS_FEEDS_PATH,
@@ -133,7 +134,7 @@ def start_Server():
     extractor.start()
     detector.start()
     injected_object_apis = [
-        {"rss_feed_path": RSS_FEEDS_PATH , "labels" : labels_idx},
+        {"rss_feed_path": RSS_FEEDS_PATH , "labels" : LABELS_IDX},
         {"calculator": MACRO_CALCULATOR},
         {"calculator": MACRO_CALCULATOR, "topics_finder": MICRO_CALCULATOR}
     ]
@@ -146,4 +147,3 @@ def start_Server():
 if __name__ == '__main__':
 
     start_Server()
-    pass

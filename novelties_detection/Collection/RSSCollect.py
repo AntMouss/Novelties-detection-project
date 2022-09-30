@@ -36,7 +36,7 @@ def initialize_hashs(sourcesList : str) -> list:
     hashs = []
 
     with open(sourcesList, "r") as f:
-        rss_config_urls = json.load(f)["rss_feed_url"]
+        rss_config_urls = json.load(f)["rss_feed_urls"]
     rss_urls = [feed["url"] for feed in rss_config_urls]
 
     for rss_url in rss_urls:
@@ -566,14 +566,14 @@ class RSSCollector:
 
 
 
-rootOutputFolder="/home/mouss/tmpTest18"
-
-if __name__ == '__main__':
-
-    preprocessor = FrenchTextPreProcessor()
-    RSS_URL_file= "../../config/RSSfeeds_test.json"
-    rssc = RSSCollector(RSS_URL_file, preprocessor = preprocessor , rootOutputFolder=None)
-    test = rssc.treatNewsFeedList(collectFullHtml=False, collectRssImage=False,collectArticleImages=False , print_log=True)
+# rootOutputFolder="/home/mouss/tmpTest18"
+#
+# if __name__ == '__main__':
+#
+#     preprocessor = FrenchTextPreProcessor()
+#     RSS_URL_file= "../../config/RSSfeeds_test.json"
+#     rssc = RSSCollector(RSS_URL_file, preprocessor = preprocessor , rootOutputFolder=None)
+#     test = rssc.treatNewsFeedList(collectFullHtml=False, collectRssImage=False,collectArticleImages=False , print_log=True)
 
 
 
