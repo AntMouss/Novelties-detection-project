@@ -38,40 +38,48 @@ class Engine:
     def get_topic_terms(self,topic_id : int, topn=100):
         pass
 
+    def _train_core(self):
+        pass
+
 class SupervisedEngine(Engine):
-    def __init__(self , labels: List , labels_idx: List  , **kwargs):
+    def __init__(self ,texts: List[List],labels: List , labels_idx: List, nb_topics : int = 5, dictionnary: corpora.Dictionary = None,  random_state : int = 42  , **kwargs):
         """
 
         @param labels: labels of text data
         @param labels_idx: list of labels (the idx is the list idx of the label)
         @param kwargs:
         """
-        super(SupervisedEngine, self).__init__(**kwargs)
+        super(SupervisedEngine, self).__init__(texts , nb_topics , dictionnary , random_state)
         self.labels_idx = labels_idx
         self.labels = labels
 
 
 class GuidedEngine(Engine):
-    def __init__(self , seed : dict  , **kwargs):
-        """
 
-        @param seed: dictionnary of list seed words with label as key (this words are specific of the kay label)
-        @param kwargs:
-        """
-        super(GuidedEngine, self).__init__(**kwargs)
-        self.seed = seed
+    def __init__(self , seed : dict ,texts: List[List], nb_topics : int = 5, dictionnary: corpora.Dictionary = None,  random_state : int = 42  , **kwargs):
+            """
+
+            @param seed: dictionnary of list seed words with label as key (this words are specific of the kay label)
+            @param kwargs:
+            """
+            super(GuidedEngine, self).__init__(texts , nb_topics , dictionnary , random_state)
+            self.seed = seed
 
 
 class CoreX(Engine):
 
-    def __init__(self , **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self , texts: List[List] ,  nb_topics : int = 5, dictionnary: corpora.Dictionary = None,  random_state : int = 42  ,  **kwargs):
+        super().__init__(texts , nb_topics , dictionnary , random_state)
         self.document_words_counter = DocumentsWordsCounter(self.texts)
         self.words = [ word for word in self.document_words_counter.columns]
         self.documents_matrix = self.document_words_counter.to_numpy(dtype = bool)
         self.documents_matrix = ss.csc_matrix(self.documents_matrix)
-        self.core = ct.Corex(n_hidden=self.nb_topics, max_iter=200, verbose=False, seed=1)
+        self.core = ct.Corex(n_hidden=self.nb_topics , **kwargs)
+        self.core = self._train_core()
+
+    def _train_core(self):
         self.core.fit(self.documents_matrix, words=self.words)
+        return self.core
 
     @property
     def coherence(self):
@@ -85,15 +93,21 @@ class CoreX(Engine):
 class SupervisedCoreX(SupervisedEngine , CoreX ):
     def __init__(self , **kwargs):
         super().__init__(**kwargs)
+    def _train_core(self):
         self.core.fit(self.documents_matrix , y=self.labels)
+        return self.core
 
 
 class GuidedCoreX(GuidedEngine,CoreX):
-    def __init__(self, seed_strength  = 3, **kwargs):
-        super(GuidedCoreX, self).__init__(**kwargs)
-        self.anchors = [[word for word in words if word in self.words] for _ , words in self.seed.items()]
-        self.core.fit(self.documents_matrix, words=self.words, anchors=self.anchors, anchor_strength=seed_strength)
+    def __init__(self, seed : dict ,texts: List[List], nb_topics : int = 5, dictionnary: corpora.Dictionary = None,  random_state : int = 42 ,  seed_strength  = 3, **kwargs):
+        self.seed_strength = seed_strength
+        base_words = [word for word in DocumentsWordsCounter(texts).columns]
+        self.anchors = [[word for word in topic_words if word in base_words] for _, topic_words in seed.items()]
+        super(GuidedCoreX, self).__init__(seed , texts , nb_topics , dictionnary , random_state , **kwargs)
 
+    def _train_core(self):
+        self.core.fit(self.documents_matrix, words=self.words, anchors=self.anchors, anchor_strength=self.seed_strength)
+        return self.core
 
 
 class TFIDF(SupervisedEngine):
@@ -105,11 +119,10 @@ class TFIDF(SupervisedEngine):
         self.labels_words_counter = LabelsWordsCounter(self.texts , self.labels)
         self.labels_words_counter = (self.labels_words_counter.reindex(self.labels_idx)).fillna(0)
         self.idx_words = {i : word for i , word in enumerate(self.labels_words_counter.columns)}
-        self.lfidf_matrix = self.process_lfidf_matrix()
+        self.core = self._train_core()
 
 
-    def process_lfidf_matrix(self):
-
+    def _train_core(self):
         lfidf_matrix = self.labels_words_counter.to_numpy()
         shadow = np.zeros_like(lfidf_matrix)
         for i in range(lfidf_matrix.shape[0]):
@@ -127,7 +140,7 @@ class TFIDF(SupervisedEngine):
     def get_topic_terms(self, topic_id : int, topn=100):
 
         topic = self.labels_idx[topic_id]
-        label_serie = self.lfidf_matrix[topic_id]
+        label_serie = self.core[topic_id]
         words_idx = np.flipud((np.argsort(label_serie)[-topn:]))
         #[(word , score) , ...]
         return {self.idx_words[word_id] : label_serie[word_id] for word_id in words_idx}
@@ -136,7 +149,7 @@ class TFIDF(SupervisedEngine):
 
 class LDA(Engine):
 
-    def __init__(self, random_state=42, passes : int = 1 , **kwargs):
+    def __init__(self,texts: List[List], nb_topics : int = 5, dictionnary: corpora.Dictionary = None,  random_state=42 , **kwargs):
         """
 
         @param dictionnary: specific gensim dictionnary linked to the data corpus
@@ -144,18 +157,21 @@ class LDA(Engine):
         @param passes: number of time that we passe the corpus during training (like epoch)
         @param kwargs:
         """
-        super().__init__(**kwargs)
-        self.passes = passes
-        self.random_state = random_state
+        super().__init__(texts , nb_topics , dictionnary , random_state)
         self.corpus_bow = [self.dictionnary.doc2bow(text) for text in self.texts]
-        self.ldaargs = {
+        self.lda_args = {
             "corpus" : self.corpus_bow,
             "num_topics" : self.nb_topics,
             "id2word" : self.dictionnary ,
             "random_state" : self.random_state,
-            "passes" : self.passes
         }
-        self.core  = LdaModel(**self.ldaargs)
+        self.core  = self._train_core(**kwargs)
+
+    def _train_core(self , **kwargs):
+        return LdaModel(
+            **self.lda_args,
+            **kwargs
+        )
 
     @property
     def coherence(self):
@@ -174,14 +190,15 @@ class LDA(Engine):
 class GuidedLDA(GuidedEngine , LDA):
 
 
-    def __init__(self, seed_strength = 100, **kwargs):
+    def __init__(self, seed : dict ,texts: List[List], nb_topics : int = 5, dictionnary: corpora.Dictionary = None,  random_state : int = 42  , seed_strength = 100, **kwargs):
 
-        super().__init__(**kwargs)
-        self.ldaargs['eta'] = self.generate_eta(self.seed, self.dictionnary, overratte=seed_strength)
-        self.core = LdaModel(**self.ldaargs)
+        kwargs["eta"] = self.generate_eta(seed, dictionnary, overratte=seed_strength)
+        super().__init__(seed , texts , nb_topics , dictionnary , random_state)
+        self.core = LdaModel(**self.lda_args, **kwargs)
+
 
     @staticmethod
-    def generate_eta(seed , dictionnary, normalize_eta=False, overratte=1e7):
+    def generate_eta(seed , dictionnary, normalize_eta=False, overratte=1e4):
         """
         for LDA , eta is the matrix of weigth parameters with labels as row and words as column
         @param seed:
