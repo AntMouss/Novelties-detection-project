@@ -193,6 +193,7 @@ class NoveltiesDetectionThread(Thread):
             logging.warning("no comparaison possible yet because there are less than 2 windows treated")
             pass
         except Exception as e:
+            logging.error(f"error during data processing : {e}")
             pass
 
     @timer_func
@@ -214,8 +215,9 @@ class NoveltiesDetectionThread(Thread):
         except ServiceException:
             self.log_error()
             pass
-        except TypeError as e:
-            print("ohoh")
+        except Exception as e:
+            logging.error(f"error during print novelties  : {e}")
+            pass
         finally:
             # re-initialize WINDOW_DATA
             del WINDOW_DATA
