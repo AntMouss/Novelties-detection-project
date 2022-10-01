@@ -2,6 +2,7 @@ import requests
 from urllib.parse import urljoin
 import pytest
 from .requests_examples import REQUESTS_EXAMPLES
+from testServer import run_static_Server
 import json
 
 requests_examples = {
@@ -13,6 +14,7 @@ requests_examples = {
 
 BASE_URL = "http://127.0.0.1:5000/api/v1/"
 ENDPOINTS = ["RSSNewsDocument/AddRSSFeedSource" , "RSSNewsDocument/AddRSSFeedTags" , "ResultInterface" , "WindowInformation/"]
+
 
 
 @pytest.mark.parametrize( "request_params,expected",requests_examples["AddRSSFeedSource"])
@@ -38,8 +40,6 @@ def test_ResultInterface_endpoint(request_params, expected):
     url = urljoin(BASE_URL , ENDPOINTS[2])
     r = requests.get(url, data=request_params)
     assert r.status_code == expected["code"]
-    #data = r.json()
-    #next step in work
 
 
 @pytest.mark.parametrize( "request_params,expected",requests_examples["WindowInformation"])
@@ -54,9 +54,7 @@ def test_WindowInformation_endpoint(request_params, expected):
         #del request_params["other_kwargs"]
     r = requests.get(url, data=request_params)
     assert r.status_code == expected["code"]
-    # if r.status_code == 200:
-    #     data = r.json()
-        #next step in work
+
 
 
 
