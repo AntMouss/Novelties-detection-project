@@ -118,7 +118,7 @@ cd Novelties-detection-project
 Run the container with **persistent** way.
 
 ```bash
-# run container from the image that we build previously with creating volume that contain collect data (persistence activate) .
+# run container from the image that we build previously with creating volume that contain collect testing_data (persistence activate) .
 docker run -d -p 5000:5000 \
 --name <container_name> \
 --mount source=<volume_name>,target=/collect_data \
@@ -142,7 +142,7 @@ you can see the api swagger documentation at this link on your local host: *http
 # use this command with the same container_name of the command above.
 docker logs <container_name>
 
-# you can access the volume data with this command if you are on Ubuntu with sudo privilege.
+# you can access the volume testing_data with this command if you are on Ubuntu with sudo privilege.
 sudo ls /var/lib/docker/volumes/<volume_name>/_data
 ```
 
@@ -361,7 +361,7 @@ _Example of `config/seed.json` file_:
 
 _here is the different types of **training** example diagram_:
 
-![training_diagram](src/diagram/training_model_diagram.drawio.png)
+<img alt="training_diagram" src="src/diagram/training_model_diagram.png"/>
 
 **_Note_** : we use the [Gensim](https://radimrehurek.com/gensim/models/ldamodel.html) LDA implementation.
 
@@ -369,7 +369,7 @@ _here is the different types of **training** example diagram_:
 
 **Similarity Computation Steps diagram :**
 
-<img src="./src/diagram/Similarity_computation_diagram.png" alt="drawing" height="400"/>
+<img src="src/diagram/Similarity_computation_diagram.png" alt="drawing" height="400"/>
 
 1. we use similarity calculator extracting two consecutive models corresponding to two consecutive windows, and we compute [Jaccard similarity](https://pyshark.com/jaccard-similarity-and-jaccard-distance-in-python/)
    the supervised case we compute **Jaccard similarity** for each topic corresponding to a label, and we stack similarity score in a list:
@@ -560,7 +560,7 @@ _Example of Micro-Calculator settings_:
 ```python
 # MICRO-CALCULATOR SETTINGS
 NB_MI_TOPICS = 7
-MICRO_CALCULATOR_TYPE : type = Sequential_Module.GuidedCoreXSequentialSimilarityCalculator
+MICRO_CALCULATOR_TYPE : type = Sequential_Module.CoreXSequentialSimilarityCalculator
 micro_training_args = {
     "anchor_strength" : 4,
     "tree" : False
