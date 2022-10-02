@@ -16,7 +16,6 @@ from config.server_settings import (
     micro_training_args,
     macro_training_args
 )
-import pytest
 
 #server info
 HOST = "0.0.0.0"
@@ -81,8 +80,7 @@ training_unsupervised_dataset = TimeLineArticlesDataset(
     transform_fct=transformU
 )
 
-@pytest.mark.skip(reason = "not testing function")
-def run_static_Server():
+def run_static_server():
     '''
     Starts server
     :return:
@@ -113,4 +111,4 @@ def run_static_Server():
     print("Server stops")
 
 if __name__ == '__main__':
-    run_static_Server()
+    run_static_server()
