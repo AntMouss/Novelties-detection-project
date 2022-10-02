@@ -352,7 +352,7 @@ REQUESTS_EXAMPLES = {
 {
             "requests_params": {
                 "topic": "crime",
-                "window_id": 5,
+                "window_id": 4,
                 "ntop" : 311,
                 "other_kwargs" : {"exclusive" : True}
             },

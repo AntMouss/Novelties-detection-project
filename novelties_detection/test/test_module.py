@@ -155,6 +155,3 @@ def test_Unsupervised_Sequential_module(
     res = calculator.compare_Windows_Sequentialy(**supervised_kwargs_results)
     assert isinstance(res , np.ndarray)
     assert res.shape == (1 , len(calculator) - 1)
-
-if __name__ == '__main__':
-    test_Unsupervised_Sequential_module(testing_unsupervised_items[0][0] , testing_unsupervised_items[0][1])

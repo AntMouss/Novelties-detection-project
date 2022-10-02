@@ -109,7 +109,7 @@ def run_static_Server():
         {"calculator": MACRO_CALCULATOR, "topics_finder": MICRO_CALCULATOR}
     ]
     app = createApp(injected_object_apis)
-    app.run(HOST, port=PORT, debug=False)
+    app.run(HOST, port=PORT, debug=True)
     print("Server stops")
 
 if __name__ == '__main__':
