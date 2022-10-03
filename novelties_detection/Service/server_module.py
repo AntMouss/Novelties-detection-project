@@ -9,7 +9,7 @@ from novelties_detection.Collection.data_processing import transformS , MetaText
 from novelties_detection.Experience.Exception_utils import CompareWindowsException
 import logging
 from novelties_detection.Experience.utils import timer_func
-from novelties_detection.Service.apis.apis_utils import ServiceException
+from novelties_detection.Service.endpoints.apis_utils import ServiceException
 
 logging.basicConfig(level=logging.INFO)
 

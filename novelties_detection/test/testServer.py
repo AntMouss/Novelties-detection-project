@@ -4,6 +4,7 @@ use this server only for presentation and testing with dashboard
 import os
 import json
 import pickle
+from multiprocessing import Process
 from novelties_detection.Service.server_utils import createApp
 from novelties_detection.Experience.data_utils import TimeLineArticlesDataset
 from novelties_detection.Collection.data_processing import transformU , transformS
@@ -16,6 +17,7 @@ from config.server_settings import (
     micro_training_args,
     macro_training_args
 )
+from flask import Flask
 
 #server info
 HOST = "0.0.0.0"
@@ -80,35 +82,56 @@ training_unsupervised_dataset = TimeLineArticlesDataset(
     transform_fct=transformU
 )
 
-def run_static_server():
-    '''
-    Starts server
-    :return:
-    '''
-    global RSS_FEEDS_PATH
-    global OUTPUT_PATH
-    global LOOP_DELAY_COLLECT
-    global RSS_FEEDS_PATH
-    global MACRO_CALCULATOR
-    global MICRO_CALCULATOR
-    global MACRO_TRAININGS_ARGS
-    global MICRO_TRAININGS_ARGS
+labels = labels_idx
+MACRO_CALCULATOR.add_windows(training_supervised_dataset , **MACRO_TRAININGS_ARGS)
+MICRO_CALCULATOR.add_windows(training_unsupervised_dataset , **MICRO_TRAININGS_ARGS)
+injected_object_apis = [
+    {"rss_feed_path": RSS_FEEDS_PATH , "labels" : labels },
+    {"calculator": MACRO_CALCULATOR},
+    {"calculator": MACRO_CALCULATOR, "topics_finder": MICRO_CALCULATOR}
+]
+
+APP = createApp(injected_object_apis)
+
+
+class TestServerContextManager:
+    """
+    we will use this context manager to contain the test server in order to test the server in
+    background mode and shut down the server after testing
+
+    """
     global HOST
     global PORT
-    global training_supervised_dataset
-    global training_unsupervised_dataset
-    global labels_idx
-    labels = labels_idx
-    MACRO_CALCULATOR.add_windows(training_supervised_dataset , **MACRO_TRAININGS_ARGS)
-    MICRO_CALCULATOR.add_windows(training_unsupervised_dataset , **MICRO_TRAININGS_ARGS)
-    injected_object_apis = [
-        {"rss_feed_path": RSS_FEEDS_PATH , "labels" : labels },
-        {"calculator": MACRO_CALCULATOR},
-        {"calculator": MACRO_CALCULATOR, "topics_finder": MICRO_CALCULATOR}
-    ]
-    app = createApp(injected_object_apis)
-    app.run(HOST, port=PORT, debug=True)
-    print("Server stops")
+    host = HOST
+    port  = PORT
+
+    def __init__(self, app : Flask):
+        self.server = Process(target=app.run)
+
+    def __enter__(self):
+        print("Test Server is running ...")
+        self.server.start()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.server.terminate()
+        self.server.join()
+        print("Test Server Stop ...")
+
+
+
+def run_test_server(func):
+    # This function shows the execution time of
+    # the function object passed
+    def wrapper(*args, **kwargs):
+        global APP
+        server_context_manager = TestServerContextManager(APP)
+        with server_context_manager:
+            func(*args, **kwargs)
+
+    return wrapper
+
+
 
 if __name__ == '__main__':
-    run_static_server()
+    APP.run(HOST, port=PORT, debug=False)
+    print("Server stops")

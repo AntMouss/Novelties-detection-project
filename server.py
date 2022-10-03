@@ -2,7 +2,7 @@ import os
 import pickle
 import json
 from novelties_detection.Service.server_utils import createApp
-from novelties_detection.Service.apis.apis_utils import ServiceException
+from novelties_detection.Service.endpoints.apis_utils import ServiceException
 from novelties_detection.Service.server_module import CollectThread ,NoveltiesDetectionThread
 from novelties_detection.Experience.Sequential_Module import GuidedSequantialLangageSimilarityCalculator
 from config.server_settings import (

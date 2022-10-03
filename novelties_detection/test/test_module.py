@@ -15,7 +15,7 @@ from novelties_detection.Experience.Sequential_Module import\
 from novelties_detection.Experience.kwargs_utils import UpdateBadWordsKwargs
 from novelties_detection.Collection.data_processing import logarithmThresholding , linearThresholding
 import pytest
-from testServer import training_unsupervised_dataset , training_supervised_dataset
+from novelties_detection.test.testServer import training_unsupervised_dataset , training_supervised_dataset
 
 
 with open("novelties_detection/test/testing_data/test_seed.json" , "r") as f:

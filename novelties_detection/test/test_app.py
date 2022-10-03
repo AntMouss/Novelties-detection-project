@@ -1,9 +1,9 @@
 import requests
 from urllib.parse import urljoin
 import pytest
-from .requests_examples import REQUESTS_EXAMPLES
-from testServer import run_static_Server
+from novelties_detection.test.requests_examples import REQUESTS_EXAMPLES
 import json
+from novelties_detection.test.testServer import run_test_server
 
 requests_examples = {
     endpoint : [
@@ -16,14 +16,12 @@ BASE_URL = "http://127.0.0.1:5000/api/v1/"
 ENDPOINTS = ["RSSNewsDocument/AddRSSFeedSource" , "RSSNewsDocument/AddRSSFeedTags" , "ResultInterface" , "WindowInformation/"]
 
 
-
 @pytest.mark.parametrize( "request_params,expected",requests_examples["AddRSSFeedSource"])
 def test_AddRSSFeedSource_endpoint(request_params, expected):
     url = urljoin(BASE_URL , ENDPOINTS[0])
     payload = request_params["payload"]
     r = requests.post(url , json=payload )
     assert r.status_code == expected["code"]
-
 
 
 @pytest.mark.parametrize( "request_params,expected",requests_examples["AddRSSFeedTags"])
@@ -34,13 +32,11 @@ def test_AddRSSFeedTags_endpoint(request_params, expected):
     assert r.status_code == expected["code"]
 
 
-
 @pytest.mark.parametrize( "request_params,expected",requests_examples["ResultInterface"])
 def test_ResultInterface_endpoint(request_params, expected):
     url = urljoin(BASE_URL , ENDPOINTS[2])
     r = requests.get(url, data=request_params)
     assert r.status_code == expected["code"]
-
 
 @pytest.mark.parametrize( "request_params,expected",requests_examples["WindowInformation"])
 def test_WindowInformation_endpoint(request_params, expected):
@@ -54,7 +50,4 @@ def test_WindowInformation_endpoint(request_params, expected):
         #del request_params["other_kwargs"]
     r = requests.get(url, data=request_params)
     assert r.status_code == expected["code"]
-
-
-
 
