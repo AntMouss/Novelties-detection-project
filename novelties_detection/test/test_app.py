@@ -1,8 +1,9 @@
 import requests
 from urllib.parse import urljoin
 import pytest
-from .requests_examples import REQUESTS_EXAMPLES
+from novelties_detection.test.requests_examples import REQUESTS_EXAMPLES
 import json
+from novelties_detection.test.testServer import run_test_server
 
 requests_examples = {
     endpoint : [
@@ -23,7 +24,6 @@ def test_AddRSSFeedSource_endpoint(request_params, expected):
     assert r.status_code == expected["code"]
 
 
-
 @pytest.mark.parametrize( "request_params,expected",requests_examples["AddRSSFeedTags"])
 def test_AddRSSFeedTags_endpoint(request_params, expected):
     url = urljoin(BASE_URL , ENDPOINTS[1])
@@ -32,15 +32,11 @@ def test_AddRSSFeedTags_endpoint(request_params, expected):
     assert r.status_code == expected["code"]
 
 
-
 @pytest.mark.parametrize( "request_params,expected",requests_examples["ResultInterface"])
 def test_ResultInterface_endpoint(request_params, expected):
     url = urljoin(BASE_URL , ENDPOINTS[2])
     r = requests.get(url, data=request_params)
     assert r.status_code == expected["code"]
-    #data = r.json()
-    #next step in work
-
 
 @pytest.mark.parametrize( "request_params,expected",requests_examples["WindowInformation"])
 def test_WindowInformation_endpoint(request_params, expected):
@@ -54,9 +50,4 @@ def test_WindowInformation_endpoint(request_params, expected):
         #del request_params["other_kwargs"]
     r = requests.get(url, data=request_params)
     assert r.status_code == expected["code"]
-    # if r.status_code == 200:
-    #     data = r.json()
-        #next step in work
-
-
 

@@ -9,7 +9,7 @@ from novelties_detection.Collection.data_processing import transformS , MetaText
 from novelties_detection.Experience.Exception_utils import CompareWindowsException
 import logging
 from novelties_detection.Experience.utils import timer_func
-from novelties_detection.Service.apis.apis_utils import ServiceException
+from novelties_detection.Service.endpoints.apis_utils import ServiceException
 
 logging.basicConfig(level=logging.INFO)
 
@@ -193,6 +193,7 @@ class NoveltiesDetectionThread(Thread):
             logging.warning("no comparaison possible yet because there are less than 2 windows treated")
             pass
         except Exception as e:
+            logging.error(f"error during data processing : {e}")
             pass
 
     @timer_func
@@ -214,8 +215,9 @@ class NoveltiesDetectionThread(Thread):
         except ServiceException:
             self.log_error()
             pass
-        except TypeError as e:
-            print("ohoh")
+        except Exception as e:
+            logging.error(f"error during print novelties  : {e}")
+            pass
         finally:
             # re-initialize WINDOW_DATA
             del WINDOW_DATA

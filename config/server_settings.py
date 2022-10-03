@@ -42,7 +42,7 @@ PREPROCESSOR : MetaTextPreProcessor = FrenchTextPreProcessor(
 MACRO_CALCULATOR_TYPE : type = Sequential_Module.TFIDFSequentialSimilarityCalculator
 # macro_training_args = {
 #     "passes" : 2 ,
-#     "overrate" : 1000
+#     "seed_strength" : 1000
 # }
 macro_training_args : dict = {}
 macro_kwargs_results : dict = {

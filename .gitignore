@@ -8,9 +8,7 @@ log/
 /note.md
 venv/
 results/
-static_server.py
 data/
-novelties_detection/test/requests_examples.py
 novelties_detection/Experience/ThematicsGen.py
 novelties_detection/Experience/visualisation_resultats.py
 novelties_detection/Experience/randomKwargsGen.py
