@@ -216,9 +216,9 @@ class MetaDynamicalSequencialLangageSimilarityCalculator(MetaSequencialLangageSi
                  minimum_ratio_selection: float = 0.10, memory_length: int = None):
         """
 
-        @param nb_min_topics:
+        @param nb_min_topics: minimum possible number of topics
         @param bad_words_args:
-        @param nb_max_topics: maximum number of topics that we can choose
+        @param nb_max_topics: maximum possible number of topics
         @param minimum_ratio_selection: minimum ratio between 2 derivate coherence scores from which the number of topics is chosen
         """
         super().__init__(bad_words_args, memory_length)
@@ -371,7 +371,12 @@ class NoSupervisedDynamicalSequantialLangageSimilarityCalculator(MetaDynamicalSe
 class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimilarityCalculator):
 
     def __init__(self, bad_words_args: dict, labels_idx: list, memory_length: int = None):
+        """
 
+        @param bad_words_args:
+        @param labels_idx: list of labels --> [label1 , label2 , ...]
+        @param memory_length:
+        """
         super().__init__(bad_words_args, memory_length)
         self.engine = Engine_module.SupervisedEngine
         self.labels_idx = labels_idx
@@ -489,19 +494,40 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
 
 class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSimilarityCalculator):
 
-    def __init__(self, bad_words_args: dict, labels_idx: list, seed: dict, memory_length: int = None):
+    static_seed_part = None
+    dynamic_seed_part = None
+
+    def __init__(self, bad_words_args: dict, labels_idx: list, seed: dict, dynamic_seed_mode : bool = False,
+                 dynamic_updating_seed_args : dict = None, memory_length: int = None):
+        """
+        @param dynamic_seed_mode : if True --> activate the dynamical seed which means that the seed is not
+        static and there is update after each window .
+        @param dynamic_updating_seed_args : dict of arguments used during update_seed function call .
+        @param bad_words_args:
+        @param labels_idx:
+        @param seed: dictionary of words relevant to a label --> { "label1" : [word1 , Word2 , ...] , ...}
+        @param memory_length:
+        """
         super().__init__(bad_words_args, labels_idx, memory_length)
         self.engine = Engine_module.GuidedEngine
+
         self.seed = seed
-        if len(seed) != self.nb_topics:
-            raise Exception("the number of topics in the seed need to be same as the number of topics that we"
-                            "declared in the init function ")
+        self.check_seed()
+
+        self.dynamic_updating_seed_args = dynamic_updating_seed_args
+        self.dynamic_seed_mode = dynamic_seed_mode
+        if self.dynamic_seed_mode:
+            if self.dynamic_updating_seed_args is not None:
+                self.initialize_dynamic_seed(self.dynamic_updating_seed_args["static_seed_relative_size"])
+            else:
+                self.initialize_dynamic_seed()
+
 
     @check_size
     def treat_Window(self, data_windows: tuple, **kwargs):
         # i use labels for Guided calculator because of labels_counter that let us to
         # understand the relation between number of articles and similarity score
-        # but we don't need label for revelant words computing (just the seed words).
+        # but we don't need label for relevant words computing (just the seed words).
         texts, labels = data_windows
         print(f"size documents: {len(texts)} ")
         print("-" * 30)
@@ -512,14 +538,20 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
         # we filtre bad words from window_dictionnary
         self.updateBadwords()
         window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
+        if self.dynamic_seed_mode == True:
+            if self.dynamic_updating_seed_args is not None:
+                self.update_seed(texts , labels , self.dynamic_updating_seed_args["turnover_rate"])
+            else:
+                self.update_seed(texts , labels)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts, dictionnary=window_dictionnary_f, nb_topics=self.nb_topics, seed=self.seed, **kwargs)
         self.models.append(model)
         return model, window_dictionnary_f
 
+
     def getTopWordsTopic(self, topic_id : int, model_idx: int, ntop: int = 100 , remove_seed_words = True):
 
-        # implement new technic to remove seed words before generate list of ntop words to have a output list with the exact number of words asking by the users
+        # implement new technic to remove seed words before generate list of ntop words to have a output list with the right  size
         model = self.models[model_idx]
         topWordsTopic = []
         mult = 0
@@ -534,6 +566,64 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
         return {word: score for word, score in list(topWordsTopic.items())[:ntop]}
 
 
+    def update_seed(self ,texts , labels ,  turnover_rate : int = 0.5):
+        """
+        @param labels:
+        @param texts:
+        @param turnover_rate: rate of words in the dynamic seed that we replace during the update.
+        """
+        texts_labels_hashmap = self.get_texts_labels_hashmap(texts , labels)
+        for label_i , words_i in texts_labels_hashmap.items():
+            words_injected_size = int(self.dynamic_seed_part[label_i].maxlen * turnover_rate)
+            all_words = set()
+
+            # get all words belongs to the labels which aren't the targeted label (label_i)
+            for label_j , words_j in texts_labels_hashmap.items():
+                if label_j != label_i:
+                    all_words.update(words_j)
+
+            # add the words from the static seed part for each label
+            all_words.update(self.static_seed_part[label_i])
+
+            # get all the words exclusive for each label
+            label_exclusive_words = words_i.difference(all_words)
+
+            # take the first words from exclusive words for eachlabel
+            injected_words = list(label_exclusive_words)[:words_injected_size]
+
+            # inject the words in the dynamic seed part for each label
+            self.dynamic_seed_part[label_i] += injected_words
+
+            # finally update the seed for each label
+            self.seed[label_i] = self.static_seed_part[label_i] + list(self.dynamic_seed_part[label_i])
+
+
+    def get_texts_labels_hashmap(self , texts , labels):
+        texts_labels_hashmap = {label: set() for label in self.seed.keys()}
+        for text, label in zip(texts, labels):
+            texts_labels_hashmap[label].update(text)
+        return texts_labels_hashmap
+
+
+    def initialize_dynamic_seed(self , static_seed_relative_size : float = 0.4):
+        """
+
+        @param static_seed_relative_size: relative size of the static seed (relative to each seed label size)
+        """
+        self.static_seed_part = {}
+        self.dynamic_seed_part = {}
+        for label , words in self.seed.items():
+            static_label_seed_absolute_size = int(len(words) * static_seed_relative_size)
+            dynamic_label_seed_absolute_size = len(words) - static_label_seed_absolute_size
+            self.static_seed_part[label] = words[:static_label_seed_absolute_size]
+            self.dynamic_seed_part[label] = deque(maxlen=dynamic_label_seed_absolute_size)
+
+    def check_seed(self):
+        for label in self.seed.keys():
+            if label not in self.labels_idx:
+                raise Exception(f"label : {label} not in declared label_idx")
+
+
 class LDASequentialSimilarityCalculatorFixed(NoSupervisedFixedSequantialLangageSimilarityCalculator):
 
     def __init__(self, nb_topics: int, bad_words_args: dict, memory_length: int = None):
@@ -543,15 +633,17 @@ class LDASequentialSimilarityCalculatorFixed(NoSupervisedFixedSequantialLangageS
 
 class GuidedLDASequentialSimilarityCalculator(GuidedSequantialLangageSimilarityCalculator):
 
-    def __init__(self, bad_words_args: dict, labels_idx: list, seed: dict, memory_length: int = None):
-        super().__init__(bad_words_args, labels_idx, seed, memory_length)
+    def __init__(self, bad_words_args: dict, labels_idx: list, seed: dict,dynamic_seed_mode = False,
+                 dynamic_updating_seed_args = None, memory_length: int = None):
+        super().__init__(bad_words_args, labels_idx, seed, dynamic_seed_mode , dynamic_updating_seed_args, memory_length)
         self.engine = Engine_module.GuidedLDA
 
 
 class GuidedCoreXSequentialSimilarityCalculator(GuidedSequantialLangageSimilarityCalculator):
 
-    def __init__(self, bad_words_args: dict, labels_idx: list, seed: dict, memory_length: int = None):
-        super().__init__(bad_words_args, labels_idx, seed, memory_length)
+    def __init__(self, bad_words_args: dict, labels_idx: list, seed: dict,dynamic_seed_mode = False,
+                 dynamic_updating_seed_args = None, memory_length: int = None):
+        super().__init__(bad_words_args, labels_idx, seed,dynamic_seed_mode , dynamic_updating_seed_args, memory_length)
         self.engine = Engine_module.GuidedCoreX
 
 
