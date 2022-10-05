@@ -196,7 +196,7 @@ format describe above.
 
 <ins>**Cleaning Steps diagram :**</ins>
 
-<img src="./src/diagram/cleaning_diagram.png" alt="drawing" height="400"/>
+<img src="./src/diagram/cleaning_diagram.png" alt="drawing" height="400" style="float : rigth;"/>
 
 1. at the first step , we selected and kept the **<article/>** tag (content of the article) .
 2. HTML page contains garbage informations like advertising , author information , references to
@@ -300,7 +300,7 @@ Result after remove **global** and **specific** undesirable tags:
 ### 3.Text Pre-processing
 
 In the previous section , we saw how we extract the main content of an article , now we move to the text Pre-processing step .
-Topic Modelling isn't a **multilingual** process, so we had to specify a  targeted **lang** during the text preprocessing step since 
+Topic Modelling isn't a **multilingual** process, so we had to specify a  targeted **lang** during the text preprocessing step since
 we just wish to treat text in the targeted lang.
 
 <ins>**Text Pre-Processing Steps diagram :**</ins>
