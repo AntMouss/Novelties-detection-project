@@ -1,5 +1,4 @@
-class Sequential_Module:
-pass# Novelties Detection
+# Novelties Detection
 
 Novelties Detection project is a **real-time automatic newspaper semantic analyser** service , The project purpose is to understand information spreading in real-time inside a news flow .
 
@@ -583,18 +582,15 @@ There are 3 types of filtering functions :
 * `absoluteThresholding` --> linear function with $slop = 0$
   example : with $intercept = 100$
 
-
 <img src="src/abs_figure.png" alt="drawing" height="300"/>
 
 * `linearThresholding` --> linear function with $0 <= slop <= 1$
   example : with $slop = 0.25$ and $intercept = 0$
 
-
 <img src="src/rel_figure.png" alt="drawing" height="300"/>
 
 * `logarithmThresholding` --> logarithm reverse function with 1 argument : `limit`
   example : $limit = 0.6$
-
 
 <img src="src/log_figure.png" alt="drawing" height="300"/>
 
