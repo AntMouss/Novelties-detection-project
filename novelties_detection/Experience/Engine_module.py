@@ -116,24 +116,36 @@ class TFIDF(SupervisedEngine):
 
         super().__init__(**kwargs)
         self.n_docs = len(self.texts)
+        self.documents_words_binar_counter = DocumentsWordsCounter(self.texts , binary=True)
+        self.words_columns_idx = self.documents_words_binar_counter.columns.tolist()
+        self.corpus_words_counter = self.documents_words_binar_counter.to_numpy()
+        self.corpus_words_counter = np.sum(self.corpus_words_counter , axis=0)
+
         self.labels_words_counter = LabelsWordsCounter(self.texts , self.labels)
-        self.labels_words_counter = (self.labels_words_counter.reindex(self.labels_idx)).fillna(0)
-        self.idx_words = {i : word for i , word in enumerate(self.labels_words_counter.columns)}
+
+        # reindex columns to keep same words order between self.documents_words_binar_counter and self.labels_words_counter
+        # and add label row for label that not existent in the self.labels (list of label)
+        self.labels_words_counter = (self.labels_words_counter.reindex(self.labels_idx , columns = self.words_columns_idx))
+
+        # replace 'nan' value by zero
+        self.labels_words_counter.fillna(0)
+
         self.core = self._train_core()
 
 
     def _train_core(self):
-        lfidf_matrix = self.labels_words_counter.to_numpy()
-        shadow = np.zeros_like(lfidf_matrix)
-        for i in range(lfidf_matrix.shape[0]):
-            if np.sum(lfidf_matrix[i]) == 0:
+
+        tfidf_matrix = self.labels_words_counter.to_numpy()
+        shadow = np.zeros_like(tfidf_matrix)
+        for i in range(tfidf_matrix.shape[0]):
+            if np.sum(tfidf_matrix[i]) == 0:
                 #return random value when the topic is inexistant in the texts input
-                shadow[i] = np.random.random(lfidf_matrix.shape[1])/1000
-                continue
-            for j in range(lfidf_matrix.shape[1]):
-                lf = (lfidf_matrix[i][j]/np.sum(lfidf_matrix[i]))
-                idf = np.log(self.n_docs/np.sum(lfidf_matrix[:,j]))
-                shadow[i][j] = lf*idf
+                shadow[i] = np.random.random(tfidf_matrix.shape[1])/1000
+            else:
+                for j in range(tfidf_matrix.shape[1]):
+                    tf = (tfidf_matrix[i][j]/np.sum(tfidf_matrix[i]))
+                    idf = np.log(self.n_docs/np.sum(self.corpus_words_counter[j]))
+                    shadow[i][j] = tf*idf
         return shadow
 
 
@@ -141,9 +153,16 @@ class TFIDF(SupervisedEngine):
 
         topic = self.labels_idx[topic_id]
         label_serie = self.core[topic_id]
-        words_idx = np.flipud((np.argsort(label_serie)[-topn:]))
-        #[(word , score) , ...]
-        return {self.idx_words[word_id] : label_serie[word_id] for word_id in words_idx}
+        word_idxs = np.flipud((np.argsort(label_serie)[-topn:]))
+
+        # output format --> [
+        #                       {
+        #                           'word1' : score1
+        #                        }
+        #                        ,
+        #                        ...
+        #                        ]
+        return {self.words_columns_idx[word_idx] : label_serie[word_idx] for word_idx in word_idxs}
 
 
 
