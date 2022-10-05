@@ -66,15 +66,12 @@ with open("model/model.pck" , "rb") as f:
 labels_seed = list(seed.keys())
 
 if issubclass(MACRO_CALCULATOR_TYPE , GuidedSequantialLangageSimilarityCalculator):
-    if check_label(LABELS_IDX , labels_seed):
-        MACRO_CALCULATOR = MACRO_CALCULATOR_TYPE(
-            bad_words_args=bad_words_kwargs.__dict__,
-            labels_idx=LABELS_IDX,
-            memory_length=MEMORY_LENGTH,
-            seed = seed
-        )
-    else:
-        raise ServiceException("LABELS_IDX contain different labels than seed labels , it need to be the sames")
+    MACRO_CALCULATOR = MACRO_CALCULATOR_TYPE(
+        bad_words_args=bad_words_kwargs.__dict__,
+        labels_idx=LABELS_IDX,
+        memory_length=MEMORY_LENGTH,
+        seed = seed
+    )
 else:
     MACRO_CALCULATOR = MACRO_CALCULATOR_TYPE(
         bad_words_args=bad_words_kwargs.__dict__,
