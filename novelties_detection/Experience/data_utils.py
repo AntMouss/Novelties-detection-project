@@ -6,6 +6,7 @@ import ijson
 import numpy as np
 from novelties_detection.Collection.data_processing import FrenchTextPreProcessor
 import pandas as pd
+from collections import Counter
 
 
 class Data:
@@ -360,17 +361,20 @@ class EditedTimeLineArticlesDataset(TimeLineArticlesDataset):
                 # list because we will not met this article anymore
                 self.thematics_ids_to_remove[ranges_thematic_idx].remove(article["id"])
 
+
 class WordsCounter:
 
-    def __new__(cls, words , binary = False):
+    def __new__(cls, words : list , binary = False):
+        """
+
+        @param words: list of words
+        @param binary: if True --> set 1 for each word is words else set number of word occurence in words
+        """
         counter = {}
         if binary:
             return {word : 1 for word in set(words)}
         else:
-            for word in words:
-                if word not in counter.keys():
-                    counter[word] = 0
-                counter[word] += 1
+            counter = dict(Counter(words))
             return counter
 
 
@@ -432,4 +436,6 @@ class LabelisedSample(Data):
                 for value in samples:
                     dataframe.append({"label" : label , "type" : window_type , "similarity_value" : value})
         return pd.DataFrame(dataframe)
+
+
 
