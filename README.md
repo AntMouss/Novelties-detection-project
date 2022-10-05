@@ -1,4 +1,5 @@
-# Novelties Detection
+class Sequential_Module:
+pass# Novelties Detection
 
 Novelties Detection project is a **real-time automatic newspaper semantic analyser** service , The project purpose is to understand information spreading in real-time inside a news flow .
 
@@ -196,7 +197,7 @@ format describe above.
 
 <ins>**Cleaning Steps diagram :**</ins>
 
-<img src="./src/diagram/cleaning_diagram.png" alt="drawing" height="400" style="float : rigth;"/>
+<img src="./src/diagram/cleaning_diagram.png" alt="drawing" width="250" style="float : left;margin-right: 3em;"/>
 
 1. at the first step , we selected and kept the **<article/>** tag (content of the article) .
 2. HTML page contains garbage informations like advertising , author information , references to
@@ -305,7 +306,7 @@ we just wish to treat text in the targeted lang.
 
 <ins>**Text Pre-Processing Steps diagram :**</ins>
 
-<img src="./src/diagram/text_preprocessing_diagram.png" alt="drawing" height="400"/>
+<img src="./src/diagram/text_preprocessing_diagram.png" alt="drawing" width="120" style="float : left;margin-right: 3em;"/>
 
 1. **lang detection** : The first step of text preprocessing is lang detection, we don't want to pre-process wrong lang text, so we are filtering.
 2. **tokenization** : tokenization in NLP is a set of methods that divide string text in logical elements (called **token**)
@@ -317,11 +318,13 @@ we just wish to treat text in the targeted lang.
    they can be analysed as a single item, identified by the **word's lemma**, or dictionary form.
    example : "analysed" , "analyse" , "analysing" are transformed to the lemma "analysis" after lemmatization.
 
+<br/>
+
 ### 4.Topic Modelling
 
 <ins>**Topic Modeling diagram :**</ins>
 
-<img src="./src/diagram/topic_modelling_diagram.png" alt="drawing" height="400"/>
+<img src="./src/diagram/topic_modelling_diagram.png" alt="drawing" height="400" style="float : left;margin-right: 3em;"/>
 
 1. **update global dictionary** : we use a **global dictionary** as a register of token (words , punctuation , etc...) for all window corpus (set of article texts in the time window collect).
    The purpose of this dictionary is to count every token occurrences, although we can use it to filter rare token or really common token (which are not **Stopwords**). This dictionary is updated at every new window appearance.
@@ -331,6 +334,7 @@ we just wish to treat text in the targeted lang.
    Each text in the corpus is represented as a vector where each component is the number occurrences of the token in the vocabulary index.
    This model representation is more efficient for training topic models.
 4. **train model** : this part is the main part of the process , we have 2 type of training : **unsupervised training** using unlabeled texts and **supervised training** using labeled texts.
+   <br/>
    The purpose of the supervised modeling is to return change for a predefined label and follow the evolution of the label in time.
    The unsupervised way is used to detect latent topics in a bunch of articles independently of paper categories (labels) , this type of training can provide us complementary information about the news composition.
    In other words , the unsupervised modeling allows us to follow the **micro topics** evolution (little topics that appears punctually in a window) while the supervised method allows us to follow big **categories** evolution (topic persisting through many windows).
@@ -367,9 +371,9 @@ _here is the different types of **training** example diagram_:
 
 ### 5.Window Similarity computation
 
-**Similarity Computation Steps diagram :**
+<ins>**Similarity Computation Steps diagram :**<ins/>
 
-<img src="src/diagram/Similarity_computation_diagram.png" alt="drawing" height="400"/>
+<img src="src/diagram/Similarity_computation_diagram.png" alt="drawing" width="500"/>
 
 1. we use similarity calculator extracting two consecutive models corresponding to two consecutive windows, and we compute [Jaccard similarity](https://pyshark.com/jaccard-similarity-and-jaccard-distance-in-python/)
    the supervised case we compute **Jaccard similarity** for each topic corresponding to a label, and we stack similarity score in a list:
@@ -469,7 +473,7 @@ else it returns an exception.
 follow the example:
 
 ```python
-# TEX PRE-PROCESSOR SETTINGS
+# TEXT PRE-PROCESSOR SETTINGS
 LANG: str = "en"
 LEMMATIZE: bool = False
 REMOVE_STOP_WORDS: bool = True
@@ -578,13 +582,21 @@ There are 3 types of filtering functions :
 
 * `absoluteThresholding` --> linear function with $slop = 0$
   example : with $intercept = 100$
-  ![absolute_thresholding](src/abs_figure.png)
+
+
+<img src="src/abs_figure.png" alt="drawing" height="300"/>
+
 * `linearThresholding` --> linear function with $0 <= slop <= 1$
   example : with $slop = 0.25$ and $intercept = 0$
-  ![linear_thresholding](src/rel_figure.png)
+
+
+<img src="src/rel_figure.png" alt="drawing" height="300"/>
+
 * `logarithmThresholding` --> logarithm reverse function with 1 argument : `limit`
   example : $limit = 0.6$
-  ![logarithm_thresholding](src/log_figure.png)
+
+
+<img src="src/log_figure.png" alt="drawing" height="300"/>
 
 **Document appearances** --> number of documents (articles in our case) in which the considerate token (word) is present.
 
