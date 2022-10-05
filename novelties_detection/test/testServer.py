@@ -82,17 +82,6 @@ training_unsupervised_dataset = TimeLineArticlesDataset(
     transform_fct=transformU
 )
 
-labels = labels_idx
-MACRO_CALCULATOR.add_windows(training_supervised_dataset , **MACRO_TRAININGS_ARGS)
-MICRO_CALCULATOR.add_windows(training_unsupervised_dataset , **MICRO_TRAININGS_ARGS)
-injected_object_apis = [
-    {"rss_feed_path": RSS_FEEDS_PATH , "labels" : labels },
-    {"calculator": MACRO_CALCULATOR},
-    {"calculator": MACRO_CALCULATOR, "topics_finder": MICRO_CALCULATOR}
-]
-
-APP = createApp(injected_object_apis)
-
 
 class TestServerContextManager:
     """
@@ -102,11 +91,25 @@ class TestServerContextManager:
     """
     global HOST
     global PORT
+    global MACRO_CALCULATOR
+    global MICRO_CALCULATOR
+    global MACRO_TRAININGS_ARGS
+    global MICRO_TRAININGS_ARGS
     host = HOST
     port  = PORT
+    labels = labels_idx
+    MACRO_CALCULATOR.add_windows(training_supervised_dataset, **MACRO_TRAININGS_ARGS)
+    MICRO_CALCULATOR.add_windows(training_unsupervised_dataset, **MICRO_TRAININGS_ARGS)
+    injected_object_apis = [
+        {"rss_feed_path": RSS_FEEDS_PATH, "labels": labels},
+        {"calculator": MACRO_CALCULATOR},
+        {"calculator": MACRO_CALCULATOR, "topics_finder": MICRO_CALCULATOR}
+    ]
 
-    def __init__(self, app : Flask):
-        self.server = Process(target=app.run)
+    app = createApp(injected_object_apis)
+
+    def __init__(self):
+        self.server = Process(target=self.app.run)
 
     def __enter__(self):
         print("Test Server is running ...")
@@ -123,8 +126,7 @@ def run_test_server(func):
     # This function shows the execution time of
     # the function object passed
     def wrapper(*args, **kwargs):
-        global APP
-        server_context_manager = TestServerContextManager(APP)
+        server_context_manager = TestServerContextManager()
         with server_context_manager:
             func(*args, **kwargs)
 
