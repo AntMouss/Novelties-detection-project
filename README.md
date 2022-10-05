@@ -1,4 +1,4 @@
-class Sequential_Module:
+class wesh:
 pass# Novelties Detection
 
 Novelties Detection project is a **real-time automatic newspaper semantic analyser** service , The project purpose is to understand information spreading in real-time inside a news flow .
@@ -469,6 +469,30 @@ else it returns an exception.
 * `REMOVE_NUMBERS` : Boolean : True --> remove numbers in text.
 * `REMOVE_SMALL_WORDS` : Boolean : True --> remove small words.
 
+Lang Supported by the service:
+
+```
+'czech'
+'danish'
+'dutch'
+'english'
+'estonian'
+'finnish'
+'french'
+'german'
+'greek'
+'italian'
+'norwegian'
+'polish'
+'portuguese'
+'russian'
+'slovene',
+'spanish'
+'swedish'
+'turkish'
+  
+```
+
 **_Note_** : You can specify the minimum length of a "small words" or "tall words" and you can add a predefine list of words to remove
 follow the example:
 
@@ -583,18 +607,15 @@ There are 3 types of filtering functions :
 * `absoluteThresholding` --> linear function with $slop = 0$
   example : with $intercept = 100$
 
-
 <img src="src/abs_figure.png" alt="drawing" height="300"/>
 
 * `linearThresholding` --> linear function with $0 <= slop <= 1$
   example : with $slop = 0.25$ and $intercept = 0$
 
-
 <img src="src/rel_figure.png" alt="drawing" height="300"/>
 
 * `logarithmThresholding` --> logarithm reverse function with 1 argument : `limit`
   example : $limit = 0.6$
-
 
 <img src="src/log_figure.png" alt="drawing" height="300"/>
 
