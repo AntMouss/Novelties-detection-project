@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-class wesh:
-pass# Novelties Detection
-=======
+
 # Novelties Detection
->>>>>>> dynamic-seed-feature
 
 Novelties Detection project is a **real-time automatic newspaper semantic analyser** service , The project purpose is to understand information spreading in real-time inside a news flow .
 
