@@ -614,7 +614,7 @@ There are 3 types of filtering functions :
 
 <img src="src/rel_figure.png" alt="drawing" height="300"/>
 
-* `logarithmThresholding` --> logarithm reverse function with 1 argument : `limit`
+* `convLogarithmThresholding` --> logarithm reverse function with 1 argument : `limit`
   example : $limit = 0.6$
 
 <img src="src/log_figure.png" alt="drawing" height="300"/>

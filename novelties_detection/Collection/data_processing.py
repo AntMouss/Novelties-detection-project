@@ -430,18 +430,21 @@ class EnglishTextPreProcessor(MetaTextPreProcessor):
 
 
 
-def absoluteThresholding(intercept, **kwargs):
+def absoluteThresholding(nb_docs : int , intercept : float, **kwargs):
     return intercept
 
-def linearThresholding(nb_docs, slop, intercept=0):
+def linearThresholding(nb_docs : int, slop, intercept : float=0):
     return slop * nb_docs + intercept
 
-def logarithmThresholding(nb_docs, limit = 0.6):
+def convLogarithmThresholding(nb_docs : int, limit : float = 0.6):
     if limit > 1:
         raise Exception("limit can't be superior to 1")
     limit = 1 - limit
     relative_value = 1 - limit * (1 - (1 / (1 + math.log10(nb_docs))))
     return relative_value * nb_docs
+
+def log_fct(nb_docs : int, base : int = 10):
+    return math.log(nb_docs , base)
 
 
 
