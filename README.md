@@ -1,4 +1,3 @@
-
 # Novelties Detection
 
 Novelties Detection project is a **real-time automatic newspaper semantic analyser** service , The project purpose is to understand information spreading in real-time inside a news flow .
@@ -147,7 +146,7 @@ docker logs <container_name>
 sudo ls /var/lib/docker/volumes/<volume_name>/_data
 ```
 
-**_Note_** : * The service runs on port **5000** so make sure there isn't any other applications running on this port before launching.
+**_Note_** : The service runs on port **5000** so make sure there isn't any other applications running on this port before launching.
 
 * provide about **10-20 GB** disk space for 3 months of collect with images collection (depends on your settings).
 * provide about **1.5 GB** disk space for novelties-detection-image.
@@ -497,6 +496,7 @@ Lang Supported by the service:
 follow the example:
 
 ```python
+from novelties_detection.Collection.data_processing import MetaTextPreProcessor
 # TEXT PRE-PROCESSOR SETTINGS
 LANG: str = "en"
 LEMMATIZE: bool = False
@@ -554,8 +554,10 @@ that enabled reproducible training.
 _Example of Macro-Calculator settings_:
 
 ```python
+from novelties_detection.Experience.Sequential_Module import GuidedLDASequentialSimilarityCalculator
+
 # MACRO-CALCULATOR SETTINGS
-MACRO_CALCULATOR_TYPE : type = Sequential_Module.GuidedLDASequentialSimilarityCalculator
+MACRO_CALCULATOR_TYPE : type = GuidedLDASequentialSimilarityCalculator
 macro_training_args = {
     "anchor_strength" : 100,
     "passes" : 3 ,
@@ -586,9 +588,10 @@ There are 2 types of Micro-Calculator :
 _Example of Micro-Calculator settings_:
 
 ```python
+from novelties_detection.Experience.Sequential_Module import CoreXSequentialSimilarityCalculatorFixed
 # MICRO-CALCULATOR SETTINGS
 NB_MI_TOPICS = 7
-MICRO_CALCULATOR_TYPE : type = Sequential_Module.CoreXSequentialSimilarityCalculator
+MICRO_CALCULATOR_TYPE : type = CoreXSequentialSimilarityCalculatorFixed
 micro_training_args = {
     "anchor_strength" : 4,
     "tree" : False
@@ -632,10 +635,12 @@ so it will be not considerate at the topic-modelling step .
 _Example of BAD WORDS SETTINGS overwriting_:
 
 ```python
+from novelties_detection.Collection.data_processing import linearThresholding , absoluteThresholding
+from novelties_detection.Experience.kwargs_utils import UpdateBadWordsKwargs
 #BAD WORDS SETTINGS
 # for remove words that no satisfying some frequency condition
-fct_above : Callable = linearThresholding
-fct_below : Callable = absoluteThresholding
+fct_above = linearThresholding
+fct_below = absoluteThresholding
 kwargs_above : dict = {
     "limit" : 0.8,
     "intercept" : 20
