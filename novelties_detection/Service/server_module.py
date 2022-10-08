@@ -104,6 +104,7 @@ class CollectThread(Thread):
         #time.sleep(self.loop_delay * 60)
         while True:
             self.update_window_data()
+            logging.info(f"Next Collect in {self.loop_delay} minutes.")
             time.sleep(self.loop_delay * 60)
 
 

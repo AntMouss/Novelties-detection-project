@@ -81,7 +81,7 @@ export OUTPUT_PATH=<output_path>
 ```
 
 Now you can run the server with the default settings, or you can set your own settings overwriting the `config/server_settings.py` file.
-see [here](#settings) for more details about the server settings.
+see [here](#server-settings) for more details about the server settings.
 
 ```bash
 #launch the server
@@ -101,7 +101,7 @@ docker build --tag novelties-detection-image https://github.com/AntMouss/Novelti
 ```
 
 to use your own server settings you need to download the repository and overwrite the `config/server_settings.py` file
-(learn more about [settings](#settings)).
+(learn more about [settings](#server-settings)).
 
 Below the commands for downloading the repository and change current directory if you are on linux or bash install on your machine.
 
@@ -618,7 +618,7 @@ There are 3 types of filtering functions :
 <img src="src/rel_figure.png" alt="drawing" height="300"/>
 
 * `convLogarithmThresholding` --> logarithm reverse function with 1 argument : `limit`
-  example : $limit = 0.6$
+  example : $limit = 0.4$
 
 <img src="src/log_figure.png" alt="drawing" height="300"/>
 

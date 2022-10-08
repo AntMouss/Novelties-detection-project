@@ -18,7 +18,6 @@ PRINT_LOG : bool = True
 LABELS_IDX = ["general" , "crime" , "politique" , "economy" , "justice"]
 
 
-
 # PROCESS SETTINGS
 LOOP_DELAY_PROCESS : int = 15#minutes
 MEMORY_LENGTH : int = 10
@@ -52,14 +51,12 @@ macro_kwargs_results : dict = {
 }
 
 
-
 # MICRO-CALCULATOR SETTINGS
 NB_MI_TOPICS = 7
 MICRO_CALCULATOR_TYPE : type = Sequential_Module.LDASequentialSimilarityCalculatorFixed
 micro_training_args : dict = {
     "passes" : 2
 }
-
 
 
 #BAD WORDS SETTINGS
