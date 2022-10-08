@@ -3,6 +3,8 @@ from flask import Blueprint, Flask
 from flask_restx import Api
 from novelties_detection.Service.endpoints import NAMESPACE_ENDPOINTS
 
+NAMESPACE_ENDPOINTS = NAMESPACE_ENDPOINTS
+
 def createApp(injected_object_apis : list):
     """
     initialize all the api routes

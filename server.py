@@ -41,7 +41,7 @@ LANG = LANG
 
 
 if OUTPUT_PATH is None and (COLLECT_HTML_ARTICLE_PAGE or COLLECT_ARTICLE_IMAGES or COLLECT_RSS_IMAGES):
-    raise Exception("if you want collect html page or rss images or articles images you need to specify an output directory")
+    raise ServiceException("if you want collect (write) html page or rss images or articles images you need to specify an output directory")
 else:
     COLLECT_KWARGS = {
         "collectFullHtml": COLLECT_HTML_ARTICLE_PAGE,
@@ -137,7 +137,7 @@ def start_Server():
     ]
     app = createApp(injected_object_apis)
     app.run(HOST, port=PORT, debug=False)
-    print("Running Server")
+    print("Server Running")
 
 
 

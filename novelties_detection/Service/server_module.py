@@ -8,7 +8,7 @@ from novelties_detection.Experience.WindowClassification import WindowClassifier
 from novelties_detection.Collection.data_processing import transformS , MetaTextPreProcessor
 from novelties_detection.Experience.Exception_utils import CompareWindowsException
 import logging
-from novelties_detection.Experience.utils import timer_func
+from novelties_detection.Experience.utils import collect_decorator , process_decorator
 from novelties_detection.Service.endpoints.apis_utils import ServiceException
 
 logging.basicConfig(level=logging.INFO)
@@ -73,7 +73,7 @@ class CollectThread(Thread):
         self.rssCollector.update_hashs(hashs)
         self.lang = self.rssCollector.preprocessor.lang
 
-    @timer_func
+    @collect_decorator
     def update_window_data(self):
         global WINDOW_DATA
         global COLLECT_LOCKER
@@ -86,7 +86,7 @@ class CollectThread(Thread):
             new_data = self.rssCollector.treatNewsFeedList(**self.collect_kwargs)
             new_data = self.clean_lang(new_data)
             WINDOW_DATA += new_data
-            logging.info(f"the thread with id : {get_ident()} collect {len(new_data)} articles")
+            logging.info(f"the Collector thread with id : {get_ident()} fetch {len(new_data)} articles")
             COLLECT_IN_PROGRESS = False
         COLLECT_LOCKER.release()
 
@@ -100,8 +100,8 @@ class CollectThread(Thread):
         return articles
 
     def run(self):
-        logging.info("Collect will start")
-        time.sleep(self.loop_delay * 60)
+        logging.info("Collect start")
+        #time.sleep(self.loop_delay * 60)
         while True:
             self.update_window_data()
             time.sleep(self.loop_delay * 60)
@@ -138,11 +138,6 @@ class NoveltiesDetectionThread(Thread):
 
 
     @staticmethod
-    def log_error():
-        logging.warning("less than 1 article collected during his windows , following process impossible. Need minimum 2 articles"
-                        "Or windows Corpus not contain enough words.")
-
-    @staticmethod
     def check_words_number(process_texts , min_words_number):
         words_number = 0
         idx = 0
@@ -154,9 +149,6 @@ class NoveltiesDetectionThread(Thread):
             return False
         finally:
             return True
-
-
-
 
 
     def process(self , window_data):
@@ -196,7 +188,7 @@ class NoveltiesDetectionThread(Thread):
             logging.error(f"error during data processing : {e}")
             pass
 
-    @timer_func
+    @process_decorator
     @check_size_window
     def do_process(self):
         global WINDOW_DATA
@@ -209,14 +201,16 @@ class NoveltiesDetectionThread(Thread):
                 PROCESS_IN_PROGRESS = True
                 self.process(WINDOW_DATA)
             else:
-                NoveltiesDetectionThread.log_error()
+                logging.info("Collector thread keep running also Processor thread are waiting")
             PROCESS_IN_PROGRESS = False
             PROCESS_LOCKER.release()
         except ServiceException:
-            self.log_error()
+            logging.warning(
+                "less than 1 article collected during his windows , following process impossible. Need minimum 2 articles"
+                f"Or windows Corpus not contain enough words. minimum words in the entire corpus is  : {self.minimum_words_number_corpus}")
             pass
         except Exception as e:
-            logging.error(f"error during print novelties  : {e}")
+            logging.error(f"Error during print novelties  : {e}")
             pass
         finally:
             # re-initialize WINDOW_DATA
@@ -225,7 +219,7 @@ class NoveltiesDetectionThread(Thread):
 
 
     def run(self):
-        logging.info("Process will start")
+        logging.info(f"Process will start in {self.loop_delay} minutes")
         time.sleep(self.loop_delay * 60)
         while True:
             self.do_process()

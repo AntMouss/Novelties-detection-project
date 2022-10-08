@@ -63,7 +63,7 @@ micro_training_args : dict = {
 
 
 #BAD WORDS SETTINGS
-# for remove words that no satisfing some frequency condition
+# for remove words that no satisfying some frequency condition
 fct_above : Callable = convLogarithmThresholding
 fct_below : Callable = linearThresholding
 kwargs_above : dict = {
