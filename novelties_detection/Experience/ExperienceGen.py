@@ -11,7 +11,7 @@ from novelties_detection.Experience.data_utils import (TimeLineArticlesDataset,
                         ExperiencesMetadata,
                         ExperiencesResults,
                         ExperiencesResult)
-from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator
+from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator , GuidedSequantialLangageSimilarityCalculator
 from novelties_detection.Experience.data_analysis import Analyser , SupervisedSampler
 from novelties_detection.Experience.Exception_utils import *
 import pandas as pd
@@ -128,9 +128,7 @@ class ExperiencesMetadataGenerator:
 
 class SupervisedExperiencesProcessor:
     """
-    use this class to generate 2 differents timeline ,one with thematics injection and another one without
-    then we compute similarity score for each time line and we analyse the similarity score to see if thematics injection
-    have been detected by the calculator
+
     """
 
     def __init__(self , experience_metadata_generator : Union[List[Tuple[ExperiencesMetadata , List[MacroThematic]]] , MetadataGenerationException] , dataset : TimeLineArticlesDataset = None):
@@ -157,7 +155,7 @@ class SupervisedExperiencesProcessor:
             raise TimelinesGenerationException("Exception occurred in Timeline Generation" , e)
 
 
-    def generate_calculator(self, calculator_type : Type[SupervisedSequantialLangageSimilarityCalculator],
+    def generate_calculator(self, calculator_type : Union[Type[SupervisedSequantialLangageSimilarityCalculator] , Type[GuidedSequantialLangageSimilarityCalculator] ],
                              labels_idx: list, training_args : dict, dataset_args : dict, **kwargs):
 
         try:

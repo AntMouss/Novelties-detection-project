@@ -2,7 +2,7 @@ from typing import Callable
 # we assume that we import all the Sequential_Module to simplify settings customization
 from novelties_detection.Experience import Sequential_Module
 from novelties_detection.Experience.kwargs_utils import UpdateBadWordsKwargs
-from novelties_detection.Collection.data_processing import absoluteThresholding ,  logarithmThresholding , linearThresholding , FrenchTextPreProcessor , MetaTextPreProcessor
+from novelties_detection.Collection.data_processing import absoluteThresholding ,  convLogarithmThresholding , linearThresholding , FrenchTextPreProcessor , MetaTextPreProcessor
 
 
 
@@ -64,7 +64,7 @@ micro_training_args : dict = {
 
 #BAD WORDS SETTINGS
 # for remove words that no satisfing some frequency condition
-fct_above : Callable = logarithmThresholding
+fct_above : Callable = convLogarithmThresholding
 fct_below : Callable = linearThresholding
 kwargs_above : dict = {
     "limit" : 0.5

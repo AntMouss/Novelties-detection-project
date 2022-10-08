@@ -8,10 +8,8 @@ from itertools import repeat
 from multiprocessing import Pool
 import bisect
 from typing import List , Union , Tuple
-
 import numpy as np
 from sklearn.metrics import normalized_mutual_info_score
-
 from novelties_detection.Collection.data_processing import transformS, transformU
 from novelties_detection.Experience.Sequential_Module import LDASequentialSimilarityCalculatorFixed, \
     NoSupervisedFixedSequantialLangageSimilarityCalculator, TFIDFSequentialSimilarityCalculator
@@ -78,13 +76,12 @@ class CalculatorInfo:
     def __gt__(self, other):
         return self.score > other.score
 
+
 class MicroCalculatorInfo(CalculatorInfo):
     def __init__(self, calculator_id, score : float , nb_clusters : int , kernel_type : str):
         super().__init__(calculator_id, score)
         self.kernel_type = kernel_type
         self.nb_clusters = nb_clusters
-
-
 
 
 class MetaCalculatorSelector:
@@ -190,9 +187,7 @@ class RandomMacroCalculatorSelector(MacroCalculatorSelector):
 
 
 
-
 class MicroCalculatorSelector(MetaCalculatorSelector):
-
 
     def __init__(self, micro_calculator_kwargs_generator: MicroCalculatorKwargsGenerator, micro_thematics: List[MicroThematic],
                  dataset: ArticlesDataset, ref_calculator_kwargs : dict ):
@@ -205,10 +200,8 @@ class MicroCalculatorSelector(MetaCalculatorSelector):
         self.microth_window_idx = [ micro_thematic.window_idx_begin for micro_thematic in self.micro_thematics]
         self.res = {}
 
-
     def select_micro(self, micro_calculator : NoSupervisedFixedSequantialLangageSimilarityCalculator,
                      training_args : dict, kernel_type : str, max_to_save : int):
-
 
         calculator_id = id(micro_calculator)
         purity_scores_with_none = []
@@ -291,8 +284,8 @@ class MicroCalculatorSelector(MetaCalculatorSelector):
             labelized_clusters.append(labelized_cluster)
         return labelized_clusters
 
-
     def run(self, max_to_save : int, nb_workers : int = 1, path = None):
+
         if nb_workers == 1:
             for micro_calculator , training_args , kernel_type in self.kwargs_calculator_generator:
                 self.select_micro(micro_calculator , training_args , kernel_type , max_to_save=max_to_save )

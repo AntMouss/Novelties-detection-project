@@ -24,6 +24,7 @@ def check_size(func):
 
 class MetaSequencialLangageSimilarityCalculator:
 
+    look_back = 0
     min_nb_docs = 10
     semi_filtred_dictionnary = corpora.Dictionary()
     seedFileName = '_seed.json'
@@ -34,7 +35,7 @@ class MetaSequencialLangageSimilarityCalculator:
     semi_dictionnaryFileName = '_semiDict'
     dateFile = 'date.json'
     date_window_idx = {}
-    predefinedBadWords = ['...', 'commenter', 'réagir', 'envoyer', 'mail', 'partager', 'publier', 'lire',
+    predefined_bad_words = ['...', 'commenter', 'réagir', 'envoyer', 'mail', 'partager', 'publier', 'lire',
                           'journal', "abonnez-vous", "d'une", "d'un", "mars", "avril", "mai",
                           "juin", "juillet", "an", "soir", "mois", "lundi", "mardi", "mercredi"
         , "jeudi", "vendredi", "samedi", "dimanche"]
@@ -120,26 +121,37 @@ class MetaSequencialLangageSimilarityCalculator:
     def print_novelties(self, n_words_to_print=10, **kwargs):
         pass
 
-    def updateBadwords(self):
+
+    def update_threshold(self):
+        nb_docs = self.semi_filtred_dictionnary.num_docs
+        if nb_docs < self.min_nb_docs:
+            return nb_docs , 0
 
         thresholding_fct_above = self.bad_words_args["thresholding_fct_above"]
         thresholding_fct_below = self.bad_words_args["thresholding_fct_below"]
         kwargs_above = self.bad_words_args["kwargs_above"]
         kwargs_below = self.bad_words_args["kwargs_below"]
-        nb_docs = self.semi_filtred_dictionnary.num_docs
-        if nb_docs < self.min_nb_docs:
-            self.bad_words = []
-        else:
-            abs_no_above = thresholding_fct_above(nb_docs=nb_docs, **kwargs_above)
-            abs_no_bellow = thresholding_fct_below(nb_docs=nb_docs, **kwargs_below)
-            if abs_no_bellow >= abs_no_above:
-                raise Exception("abs_no_bellow should be inferior to abs_no_above")
-            if abs_no_above <= 0:
-                raise Exception("abs_no_above should be superior to zero")
-            self.bad_words = [word for id, word in self.semi_filtred_dictionnary.items() if
-                              self.semi_filtred_dictionnary.dfs[id] < abs_no_bellow or self.semi_filtred_dictionnary.dfs[
-                                  id] > abs_no_above]
-        self.bad_words += self.predefinedBadWords
+
+        abs_no_above = thresholding_fct_above(nb_docs, **kwargs_above)
+        abs_no_below = thresholding_fct_below(nb_docs, **kwargs_below)
+        if abs_no_below >= abs_no_above:
+            raise Exception("abs_no_bellow should be inferior to abs_no_above")
+        if abs_no_above <= 0:
+            raise Exception("abs_no_above should be superior to zero")
+
+        return abs_no_above , abs_no_below
+
+
+    def update_badwords(self, window_dictionary : corpora.Dictionary):
+
+        abs_no_above , abs_no_below = self.update_threshold()
+        self.bad_words = []
+        for _ , word in window_dictionary.items():
+            word_id = self.semi_filtred_dictionnary.token2id[word]
+            if self.semi_filtred_dictionnary.dfs[word_id] < abs_no_below or self.semi_filtred_dictionnary.dfs[word_id] > abs_no_above :
+                self.bad_words.append(word)
+        self.bad_words += self.predefined_bad_words
+
 
     def updateResults(self, end_date, dictionnary_window: corpora.Dictionary, window_idx: int,
                       ntop: int = 100):
@@ -231,11 +243,11 @@ class MetaDynamicalSequencialLangageSimilarityCalculator(MetaSequencialLangageSi
 
         print(f"size documents: {len(texts)} ")
         print("-" * 30)
-        window_dictionnary = corpora.Dictionary(texts)
+        window_dictionnary = corpora.Dictionary(texts[self.look_back:])
         # update semi-filtred dictionnary
         self.semi_filtred_dictionnary.merge_with(window_dictionnary)
         # we filtre bad words from window_dictionnary
-        self.updateBadwords()
+        self.update_badwords(window_dictionnary)
         window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         models = []
@@ -351,11 +363,11 @@ class NoSupervisedFixedSequantialLangageSimilarityCalculator(MetaFixedSequencial
     def treat_Window(self, texts: List[List], **kwargs):
         print(f"size documents: {len(texts)} ")
         print("-" * 30)
-        window_dictionnary = corpora.Dictionary(texts)
+        window_dictionnary = corpora.Dictionary(texts[self.look_back:])
         # update semi-filtred dictionnary
         self.semi_filtred_dictionnary.merge_with(window_dictionnary)
         # we filtre bad words from window_dictionnary
-        self.updateBadwords()
+        self.update_badwords(window_dictionnary)
         window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts, nb_topics=self.nb_topics, dictionnary=window_dictionnary_f, **kwargs)
@@ -401,11 +413,11 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
         print(f"size documents: {len(texts)} ")
         print("-" * 30)
         self.updateLabelCounter(labels)
-        window_dictionnary = corpora.Dictionary(texts)
+        window_dictionnary = corpora.Dictionary(texts[self.look_back:])
         # update semi-filtred dictionnary
         self.semi_filtred_dictionnary.merge_with(window_dictionnary)
         # we filtre bad words from window_dictionnary
-        self.updateBadwords()
+        self.update_badwords(window_dictionnary)
         window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
         # train specific Engine model correlated to the window
         model = self.engine(
@@ -498,29 +510,27 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
     dynamic_seed_part = None
 
     def __init__(self, bad_words_args: dict, labels_idx: list, seed: dict, dynamic_seed_mode : bool = False,
-                 dynamic_updating_seed_args : dict = None, memory_length: int = None):
+                 turnover_rate : float = 0.5 , static_seed_relative_size : float = 0.4, memory_length: int = None):
         """
         @param dynamic_seed_mode : if True --> activate the dynamical seed which means that the seed is not
         static and there is update after each window .
-        @param dynamic_updating_seed_args : dict of arguments used during update_seed function call .
         @param bad_words_args:
         @param labels_idx:
         @param seed: dictionary of words relevant to a label --> { "label1" : [word1 , Word2 , ...] , ...}
         @param memory_length:
         """
         super().__init__(bad_words_args, labels_idx, memory_length)
+
         self.engine = Engine_module.GuidedEngine
 
         self.seed = seed
         self.check_seed()
 
-        self.dynamic_updating_seed_args = dynamic_updating_seed_args
+        self.static_seed_relative_size = static_seed_relative_size
+        self.turnover_rate = turnover_rate
         self.dynamic_seed_mode = dynamic_seed_mode
         if self.dynamic_seed_mode:
-            if self.dynamic_updating_seed_args is not None:
-                self.initialize_dynamic_seed(self.dynamic_updating_seed_args["static_seed_relative_size"])
-            else:
-                self.initialize_dynamic_seed()
+            self.initialize_dynamic_seed(self.static_seed_relative_size)
 
 
     @check_size
@@ -532,17 +542,15 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
         print(f"size documents: {len(texts)} ")
         print("-" * 30)
         self.updateLabelCounter(labels)
-        window_dictionnary = corpora.Dictionary(texts)
+        window_dictionnary = corpora.Dictionary(texts[self.look_back:])
         # update semi-filtred dictionnary
         self.semi_filtred_dictionnary.merge_with(window_dictionnary)
         # we filtre bad words from window_dictionnary
-        self.updateBadwords()
+        self.update_badwords(window_dictionnary)
         window_dictionnary_f = cleanDictionnary(window_dictionnary, bad_words=self.bad_words)
         if self.dynamic_seed_mode == True:
-            if self.dynamic_updating_seed_args is not None:
-                self.update_seed(texts , labels , self.dynamic_updating_seed_args["turnover_rate"])
-            else:
-                self.update_seed(texts , labels)
+            self.update_seed(texts , labels , self.turnover_rate)
+
         # train specific Engine model correlated to the window
         model = self.engine(texts=texts, dictionnary=window_dictionnary_f, nb_topics=self.nb_topics, seed=self.seed, **kwargs)
         self.models.append(model)
@@ -566,7 +574,7 @@ class GuidedSequantialLangageSimilarityCalculator(SupervisedSequantialLangageSim
         return {word: score for word, score in list(topWordsTopic.items())[:ntop]}
 
 
-    def update_seed(self ,texts , labels ,  turnover_rate : int = 0.5):
+    def update_seed(self ,texts , labels ,  turnover_rate : float = 0.5):
         """
         @param labels:
         @param texts:
@@ -634,16 +642,18 @@ class LDASequentialSimilarityCalculatorFixed(NoSupervisedFixedSequantialLangageS
 class GuidedLDASequentialSimilarityCalculator(GuidedSequantialLangageSimilarityCalculator):
 
     def __init__(self, bad_words_args: dict, labels_idx: list, seed: dict,dynamic_seed_mode = False,
-                 dynamic_updating_seed_args = None, memory_length: int = None):
-        super().__init__(bad_words_args, labels_idx, seed, dynamic_seed_mode , dynamic_updating_seed_args, memory_length)
+                 turnover_rate : float = 0.5 , static_seed_relative_size : float = 0.4, memory_length: int = None):
+        super().__init__(bad_words_args, labels_idx, seed, dynamic_seed_mode ,
+                         turnover_rate , static_seed_relative_size, memory_length)
         self.engine = Engine_module.GuidedLDA
 
 
 class GuidedCoreXSequentialSimilarityCalculator(GuidedSequantialLangageSimilarityCalculator):
 
     def __init__(self, bad_words_args: dict, labels_idx: list, seed: dict,dynamic_seed_mode = False,
-                 dynamic_updating_seed_args = None, memory_length: int = None):
-        super().__init__(bad_words_args, labels_idx, seed,dynamic_seed_mode , dynamic_updating_seed_args, memory_length)
+                 turnover_rate : float = 0.5 , static_seed_relative_size : float = 0.4, memory_length: int = None):
+        super().__init__(bad_words_args, labels_idx, seed,dynamic_seed_mode ,
+                         turnover_rate , static_seed_relative_size, memory_length)
         self.engine = Engine_module.GuidedCoreX
 
 
@@ -666,7 +676,7 @@ class DynamicalCoreXSequentialSimilarityCalculator(MetaDynamicalSequencialLangag
     def __init__(self, bad_words_args: dict, nb_max_topics: int, nb_min_topics: int,
                  minimum_ratio_selection: float = 0.10, memory_length: int = None):
         super().__init__(bad_words_args, nb_max_topics, nb_min_topics,
-                                                                     minimum_ratio_selection, memory_length)
+                            minimum_ratio_selection, memory_length)
         self.engine = Engine_module.CoreX
 
 
@@ -675,5 +685,5 @@ class DynamicalLDASequentialSimilarityCalculator(MetaDynamicalSequencialLangageS
     def __init__(self, bad_words_args: dict, nb_max_topics: int, nb_min_topics: int,
                  minimum_ratio_selection: float = 0.10, memory_length: int = None):
         super().__init__(bad_words_args, nb_max_topics, nb_min_topics,
-                                                                   minimum_ratio_selection, memory_length)
+                            minimum_ratio_selection, memory_length)
         self.engine = Engine_module.LDA

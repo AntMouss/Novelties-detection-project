@@ -77,10 +77,16 @@ class SupervisedCalculatorKwargs(CalculatorKwargs):
 
 class GuidedCalculatorKwargs(SupervisedCalculatorKwargs):
     def __init__(self, calculator_type: Type[SupervisedSequantialLangageSimilarityCalculator], labels_idx: List,
-                 bad_words_args: UpdateBadWordsKwargs , seed : dict , memory_length: int = None,
+                 bad_words_args: UpdateBadWordsKwargs , seed : dict , dynamic_seed_mode : bool = False,
+                 turnover_rate : float = 0.5 , static_seed_relative_size : float = 0.4, memory_length: int = None,
                  training_args: dict = None):
         super().__init__(calculator_type, labels_idx, bad_words_args , memory_length ,training_args)
+        self.static_seed_relative_size = static_seed_relative_size
+        self.turnover_rate = turnover_rate
+        self.dynamic_seed_mode = dynamic_seed_mode
         self.seed = seed
+
+
 
 
 class NoSupervisedCalculatorKwargs(CalculatorKwargs):
