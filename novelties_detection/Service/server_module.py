@@ -94,7 +94,7 @@ class CollectThread(Thread):
             new_data = self.rssCollector.treatNewsFeedList(**self.collect_kwargs)
             new_data = CollectThread.clean_lang(new_data , self.lang)
             WINDOW_DATA += new_data
-            logging.info(f"the Collector thread with id : {get_ident()} fetch {len(new_data)} articles")
+            logging.info(f"the Collector thread with id : {get_ident()} get {len(new_data)} articles")
             COLLECT_IN_PROGRESS = False
         COLLECT_LOCKER.release()
 
@@ -207,11 +207,9 @@ class NoveltiesDetectionThread(Thread):
             PROCESS_LOCKER.acquire()
             if COLLECT_IN_PROGRESS == False:
                 PROCESS_IN_PROGRESS = True
-                self.process(WINDOW_DATA)
+                self.process()
             else:
                 raise ServiceException("Collector thread keep running also Processor thread are waiting")
-            PROCESS_IN_PROGRESS = False
-            PROCESS_LOCKER.release()
         except ServiceException as se:
             logging.warning(se)
             pass
@@ -219,6 +217,9 @@ class NoveltiesDetectionThread(Thread):
             logging.error(f"Error during print novelties  : {e}")
             pass
         finally:
+            # release lock
+            PROCESS_IN_PROGRESS = False
+            PROCESS_LOCKER.release()
             # re-initialize WINDOW_DATA
             del WINDOW_DATA
             WINDOW_DATA = []
