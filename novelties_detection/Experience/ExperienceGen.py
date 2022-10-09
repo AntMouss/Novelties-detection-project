@@ -14,7 +14,7 @@ from novelties_detection.Experience.data_utils import (TimeLineArticlesDataset,
 from novelties_detection.Experience.Sequential_Module import SupervisedSequantialLangageSimilarityCalculator , GuidedSequantialLangageSimilarityCalculator
 from novelties_detection.Experience.data_analysis import Analyser , SupervisedSampler
 from novelties_detection.Experience.Exception_utils import *
-import pandas as pd
+
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s' , level=logging.INFO)
 logger = logging.getLogger(__name__)

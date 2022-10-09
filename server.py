@@ -1,5 +1,6 @@
 import os
 import pickle
+import logging
 import json
 from novelties_detection.Service.server_utils import createApp
 from novelties_detection.Service.endpoints.apis_utils import ServiceException
@@ -25,6 +26,13 @@ from config.server_settings import (
     LABELS_IDX
 )
 
+# set level logs
+logging.basicConfig(level=logging.INFO)
+
+# deactivate gensim logs
+gensim_logger = logging.getLogger('gensim')
+gensim_logger.setLevel(logging.WARNING)
+
 #server info
 HOST = "0.0.0.0"
 PORT = 5000
@@ -37,6 +45,7 @@ OUTPUT_PATH = os.getenv("OUTPUT_PATH")
 LOOP_DELAY_PROCESS = LOOP_DELAY_PROCESS
 LOOP_DELAY_COLLECT = LOOP_DELAY_COLLECT
 PREPROCESSOR = PREPROCESSOR
+LABELS_IDX = LABELS_IDX
 LANG = LANG
 
 

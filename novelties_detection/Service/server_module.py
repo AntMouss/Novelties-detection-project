@@ -10,7 +10,7 @@ import logging
 from novelties_detection.Experience.utils import collect_decorator_timer , process_decorator_timer
 from novelties_detection.Service.endpoints.apis_utils import ServiceException
 
-logging.basicConfig(level=logging.INFO)
+
 
 WINDOW_DATA = [] # contain the data of one temporal window
 
