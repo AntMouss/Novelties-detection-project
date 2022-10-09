@@ -157,7 +157,7 @@ class RSSCollector:
                     self.saveProcessedNewsHashes(self.hashs)
 
             except Exception as e:
-                self.writeLogError(e, 1, url)
+                self.write_log_error(e, 1, url)
                 pass
         # Add the news information (if there's new news) in the database
         print("RSS news extraction end")
@@ -187,7 +187,7 @@ class RSSCollector:
                 feed_date= ""
             feedList=[]
         except Exception as e:
-            self.writeLogError(e, 1, rss_url , print_log=print_log)
+            self.write_log_error(e, 1, rss_url, print_log=print_log)
             return []
         # For each news in the rss feed
         j=0
@@ -202,7 +202,7 @@ class RSSCollector:
                 if r.status_code != 200:
                     continue
             except Exception as e:
-                self.writeLogError(e, 2, entry['link'] , print_log=print_log)
+                self.write_log_error(e, 2, entry['link'], print_log=print_log)
                 continue
 
             try:
@@ -243,7 +243,7 @@ class RSSCollector:
                 feed.update(text_fields)
 
             except Exception as e:
-                self.writeLogError(e, 2, entry['link'] , print_log=print_log)
+                self.write_log_error(e, 2, entry['link'], print_log=print_log)
                 continue
 
             feedList.append(feed)
@@ -441,7 +441,7 @@ class RSSCollector:
             with open(mediaName, 'wb') as fMedia:
                 fMedia.write(mediaContent.content)
         except Exception as e:
-            self.writeLogError(e, 3, url_media , print_log=print_log)
+            self.write_log_error(e, 3, url_media, print_log=print_log)
 
             return ''
 
@@ -499,13 +499,13 @@ class RSSCollector:
         return hashs
 
 
-    def writeLogError(self, exception, nu_type, link , print_log : bool = True):
+    def write_log_error(self, exception, nu_type, link, print_log : bool = True):
 
             exc_tb = sys.exc_info()[2]
             exc_line = exc_tb.tb_lineno
             msg_err = f" {str(datetime.now())}-----New Error type {str(nu_type)}: {str(exception)} for link: {link} at line {exc_line}"
 
-            if self.rootOutputFolder is None:
+            if self.rootOutputFolder is not None:
                 if not os.path.exists(self.logFolderPath):
                     os.makedirs(self.logFolderPath)
 
@@ -516,7 +516,7 @@ class RSSCollector:
                 print(msg_err)
 
 
-    def writeLogPerf(self, msg_perf , print_log : bool = True):
+    def write_log_perf(self, msg_perf, print_log : bool = True):
 
 
         if self.rootOutputFolder is not None:
@@ -562,7 +562,7 @@ class RSSCollector:
             except Exception as e:
                 pass
 
-        self.writeLogPerf(msg_perf , print_log=print_log)
+        self.write_log_perf(msg_perf, print_log=print_log)
 
 
 
