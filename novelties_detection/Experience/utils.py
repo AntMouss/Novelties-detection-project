@@ -19,5 +19,5 @@ def timer_func(func , name : str = None):
 
     return wrap_func
 
-collect_decorator = partial(timer_func, name="Collect News")
-process_decorator = partial(timer_func, name="Process News")
+collect_decorator_timer = partial(timer_func, name="Collect News")
+process_decorator_timer = partial(timer_func, name="Process News")
