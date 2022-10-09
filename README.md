@@ -113,6 +113,9 @@ unzip novelties-detection-master.zip
 #change current directory.
 cd Novelties-detection-project
 
+#then you can overwrite the 'config/server_settings.py' file and build the image with the command below
+docker build --tag novelties-detection-image .
+
 ```
 
 Run the container with **persistent** way.

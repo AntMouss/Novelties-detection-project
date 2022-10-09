@@ -84,19 +84,17 @@ class CollectThread(Thread):
         if PROCESS_IN_PROGRESS == False:
             COLLECT_IN_PROGRESS = True
             new_data = self.rssCollector.treatNewsFeedList(**self.collect_kwargs)
-            new_data = self.clean_lang(new_data)
+            new_data = CollectThread.clean_lang(new_data , self.lang)
             WINDOW_DATA += new_data
             logging.info(f"the Collector thread with id : {get_ident()} fetch {len(new_data)} articles")
             COLLECT_IN_PROGRESS = False
         COLLECT_LOCKER.release()
 
-    def clean_lang(self , articles):
-        articles_idx_to_remove = []
+    @staticmethod
+    def clean_lang(articles , lang):
         for idx ,  article in enumerate(articles):
-            if article["lang"] != self.lang:
-                articles_idx_to_remove.append(idx)
-        for idx in articles_idx_to_remove:
-            del articles[idx]
+            if article["lang"] != lang:
+                articles.remove(article)
         return articles
 
     def run(self):
