@@ -64,7 +64,7 @@ wget https://github.com/AntMouss/Novelties-detection-project/archive/master.zip 
 unzip novelties-detection-master.zip
 
 #changes current work directory.
-cd Novelties-detection-project
+cd Novelties-detection-project-main
 
 #create service environment
 python3 -m venv ./venv
@@ -111,7 +111,7 @@ wget https://github.com/AntMouss/Novelties-detection-project/archive/master.zip 
 unzip novelties-detection-master.zip
 
 #change current directory.
-cd Novelties-detection-project
+cd Novelties-detection-project-main
 
 #then you can overwrite the 'config/server_settings.py' file and build the image with the command below
 docker build --tag novelties-detection-image .
