@@ -77,14 +77,14 @@ class MetaSequencialLangageSimilarityCalculator:
             self.date_window_idx[end_date_window] = window_idx
 
     @staticmethod
-    def compute_similarity(cluster1: Dict, cluster2: Dict, soft=False):
+    def compute_jaccar_similarity(cluster1: Dict, cluster2: Dict, weigthed=False):
 
         if len(cluster1) == 0 or len(cluster2) == 0:
             raise NoWordsClusterException("cluster contain no words... impossible to compute similarity ")
         intersection = list(set(cluster1).intersection(set(cluster2)))
         difference = list(set(cluster1).difference(set(cluster2)))
         disappearance = list(set(cluster2).difference(set(cluster1)))
-        if soft:
+        if weigthed:
             # to normalize output result because score depend of the engine
             total = sum([score for _, score in cluster1.items()])
             similarity_score = sum([cluster1[word] for word in intersection]) / total
@@ -324,16 +324,16 @@ class NoSupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSim
         total_previous_Top_words = dict(ChainMap(*previous_top_words_topics))
         total_new_Top_words = dict(ChainMap(*new_top_words_topics))
         try:
-            total_similarity_score, _ = self.compute_similarity(total_new_Top_words, total_previous_Top_words,
-                                                                soft=soft)
+            total_similarity_score, _ = self.compute_jaccar_similarity(total_new_Top_words, total_previous_Top_words,
+                                                                       weigthed=soft)
         except NoWordsClusterException:
             total_similarity_score = np.nan
             pass
         for new_topic in range(new_nb_topics):
             for previous_topic in range(previous_nb_topics):
                 try:
-                    similarity_score, (novelties, habbits, disappearances) = self.compute_similarity(
-                        new_top_words_topics[new_topic], previous_top_words_topics[previous_topic], soft=soft)
+                    similarity_score, (novelties, habbits, disappearances) = self.compute_jaccar_similarity(
+                        new_top_words_topics[new_topic], previous_top_words_topics[previous_topic], weigthed=soft)
                 except NoWordsClusterException:
                     similarity_score = 0
                     novelties = []
@@ -456,8 +456,8 @@ class SupervisedSequantialLangageSimilarityCalculator(MetaSequencialLangageSimil
         disappearances = []
         for topic_id in range(self.nb_topics):
             try:
-                similarity_score, (novelties_topic, habbits_topic, disappearances_topic) = self.compute_similarity(
-                    newTopWordsTopics[topic_id], previousTopWordsTopics[topic_id], soft=soft)
+                similarity_score, (novelties_topic, habbits_topic, disappearances_topic) = self.compute_jaccar_similarity(
+                    newTopWordsTopics[topic_id], previousTopWordsTopics[topic_id], weigthed=soft)
             except NoWordsClusterException:
                 similarity_score = np.nan
                 novelties_topic = []

@@ -370,7 +370,6 @@ class WordsCounter:
         @param words: list of words
         @param binary: if True --> set 1 for each word is words else set number of word occurence in words
         """
-        counter = {}
         if binary:
             return {word : 1 for word in set(words)}
         else:

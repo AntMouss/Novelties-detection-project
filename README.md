@@ -152,7 +152,7 @@ sudo ls /var/lib/docker/volumes/<volume_name>/_data
 **_Note_** : The service runs on port **5000** so make sure there isn't any other applications running on this port before launching.
 
 * provide about **10-20 GB** disk space for 3 months of collect with images collection (depends on your settings).
-* provide about **1.5 GB** disk space for novelties-detection-image.
+* provide about **1.5 GB** disk space for novelties-detection-image storage.
 
 ## Explanation
 
