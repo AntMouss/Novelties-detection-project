@@ -1,5 +1,5 @@
 import logging
-from time import time
+from datetime import datetime
 from functools import partial
 
 
@@ -10,12 +10,12 @@ def timer_func(func , name : str = None):
     # the function object passed
     def wrap_func(*args, **kwargs):
 
-        start_time = time()
+        start_time = datetime.now()
         logging.info(f"{name} begin at {start_time}")
         func(*args, **kwargs)
-        end_time = time()
+        end_time = datetime.now()
         duration = end_time - start_time
-        logging.info(f"{name} finish at {end_time}  , with duration : {duration}")
+        logging.info(f"{name} finish at {end_time}  , with duration : {duration.total_seconds()} seconds")
 
     return wrap_func
 
