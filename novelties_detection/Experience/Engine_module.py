@@ -116,16 +116,17 @@ class TFIDF(SupervisedEngine):
 
         super().__init__(**kwargs)
         self.n_docs = len(self.texts)
-        self.documents_words_binar_counter = DocumentsWordsCounter(self.texts , binary=True)
-        self.words_columns_idx = self.documents_words_binar_counter.columns.tolist()
+        self.words_idx = list(self.dictionnary.token2id.keys())
+        documents_words_binar_counter = DocumentsWordsCounter(self.texts , binary=True)
+        self.documents_words_binar_counter = documents_words_binar_counter.reindex(columns = self.words_idx)
         self.corpus_words_counter = self.documents_words_binar_counter.to_numpy()
         self.corpus_words_counter = np.sum(self.corpus_words_counter , axis=0)
 
-        self.labels_words_counter = LabelsWordsCounter(self.texts , self.labels)
+        labels_words_counter = LabelsWordsCounter(self.texts , self.labels)
 
         # reindex columns to keep same words order between self.documents_words_binar_counter and self.labels_words_counter
         # and add label row for label that not existent in the self.labels (list of label)
-        self.labels_words_counter = (self.labels_words_counter.reindex(self.labels_idx , columns = self.words_columns_idx))
+        self.labels_words_counter = labels_words_counter.reindex(self.labels_idx, columns = self.words_idx)
 
         # replace 'nan' value by zero
         self.labels_words_counter.fillna(0)
@@ -162,7 +163,7 @@ class TFIDF(SupervisedEngine):
         #                        ,
         #                        ...
         #                        ]
-        return {self.words_columns_idx[word_idx] : label_serie[word_idx] for word_idx in word_idxs}
+        return {self.words_idx[word_idx] : label_serie[word_idx] for word_idx in word_idxs}
 
 
 
