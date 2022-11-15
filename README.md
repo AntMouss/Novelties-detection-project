@@ -28,7 +28,7 @@ We use topic modeling methods to get the word clusters that represent topics (th
 
 ### Base architecture diagram:
 
-![A test image](src/diagram/main_diagram.png)
+![A test image](src/diagram/main_diagram_2.drawio.png)
 
 for each blue point you can refer to the section [explanation](#explanation) , this will help you to understand how to configure custom novelties-detection service.
 
@@ -375,10 +375,10 @@ _here is the different types of **training** example diagram_:
 
 <ins>**Similarity Computation Steps diagram :**<ins/>
 
-<img src="src/diagram/Similarity_computation_diagram.png" alt="drawing" width="500"/>
+<img src="src/diagram/Similarity_computation_diagram.drawio.png" alt="drawing" width="500"/>
 
 1. we use similarity calculator extracting two consecutive models corresponding to two consecutive windows, and we compute [Jaccard similarity](https://pyshark.com/jaccard-similarity-and-jaccard-distance-in-python/)
-   the supervised case we compute **Jaccard similarity** for each topic corresponding to a label, and we stack similarity score in a list:
+   We use supervised calculator to compute **Jaccard similarity** for each topic corresponding to a label, and we stack similarity score in a list:
    **example** : assume the two below cluster words for the label i -> "sport":
 
 ```json
@@ -411,8 +411,7 @@ $Ji =\dfrac{3}{10}$
 
 $J = \dfrac{ \sum_{i=0}^{k}{Ji} }{k}$
 
-3. The process isn't the same for the unsupervised case , we append every cluster of words for each topic then we compute the total Jaccard similarity.
-4. Finally , we will classify the change rate between two windows using a normal distribution classifier .
+3. Finally , we will classify the change rate between two windows using a normal distribution classifier .
    The final result is a range percentiles :
 
 In our case , a percentile is a similarity score below which a given percentage k of scores in its frequency distribution falls (exclusive definition) or a score at or below which a given percentage falls (inclusive definition).
